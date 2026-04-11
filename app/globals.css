@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-white text-black;
+  }
+}
+
+@media print {
+  /* Hide sidebar and non-scorecard chrome */
+  aside,
+  nav,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  /* Ensure background colors print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Full width when printing */
+  main {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}
