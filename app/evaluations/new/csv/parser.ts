@@ -99,7 +99,10 @@ export function detectCSVType(headers: string[], filename: string): CSVType {
     if (hn.some((h) => h.includes("follower") || h.includes("subscriber"))) return "youtube_followers";
   }
 
-  // Demographics
+  // Demographics — Chartmetric Category/Group format
+  if (hn[0] === "category" && hn.some((h) => h === "group")) return "demographics";
+
+  // Demographics — standard wide/long formats
   const hasAge = hn.some((h) => h.includes("age"));
   const hasMF  = hn.some((h) => h === "male" || h.includes("male_")) && hn.some((h) => h === "female" || h.includes("female_"));
   const hasGender = hn.some((h) => h.includes("gender"));
@@ -265,6 +268,15 @@ function normPct(raw: string): string {
   return v <= 1 ? (v * 100).toFixed(1) : v.toFixed(1);
 }
 
+// For Chartmetric's Category/Group format the % sign is always present, so
+// "0.8%" really means 0.8% — strip the sign and keep the number as-is.
+function normChartmetricPct(raw: string): string {
+  if (!raw || raw.trim() === "-") return "";
+  const v = parseFloat(raw.replace(/[%$,]/g, ""));
+  if (isNaN(v)) return "";
+  return v.toFixed(1);
+}
+
 export function extractDemographics(
   csv: ParsedCSV,
   mapping?: SuggestedMapping
@@ -273,6 +285,45 @@ export function extractDemographics(
   const values: Record<string, string> = {};
 
   const hn = headers.map(norm);
+
+  // ── Chartmetric Category/Group format (auto-detected, no mapping step) ──
+  // Headers: Category, Group, Male, Female, All
+  if (!mapping && hn[0] === "category" && hn.some((h) => h === "group")) {
+    const categoryCol = headers[0];
+    const groupCol    = headers.find((h) => norm(h) === "group")!;
+    const maleCol     = headers.find((h) => norm(h) === "male")   ?? null;
+    const femaleCol   = headers.find((h) => norm(h) === "female") ?? null;
+    const allCol      = headers.find((h) => norm(h) === "all")    ?? null;
+
+    for (const row of rows) {
+      const category = row[categoryCol]?.trim();
+      const group    = row[groupCol]?.trim();
+      if (!category || !group) continue;
+
+      if (category === "Age" && maleCol && femaleCol) {
+        const bracket = matchAgeBracket(group);
+        if (bracket) {
+          const male   = normChartmetricPct(row[maleCol]   ?? "");
+          const female = normChartmetricPct(row[femaleCol] ?? "");
+          if (male)   values[bracket.mKey] = male;
+          if (female) values[bracket.fKey] = female;
+        }
+      } else if (category === "Ethnicity" && allCol) {
+        const ethKey = matchEthnicity(group);
+        if (ethKey) {
+          const pct = normChartmetricPct(row[allCol] ?? "");
+          if (pct) values[ethKey] = pct;
+        }
+      }
+    }
+
+    return {
+      values: values as Partial<EvalFormData>,
+      confidence: "high",
+      detectedFormat: "wide",
+      suggestedMapping: null,
+    };
+  }
 
   // Auto-detect mapping if not provided
   const autoMap: SuggestedMapping = {
