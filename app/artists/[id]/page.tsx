@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ArtistDetailClient from "@/components/ArtistDetailClient";
-import type { ScoringResult } from "@/lib/scoring-engine";
 
 export type ArtistEvaluation = {
   id: string;
@@ -41,23 +40,24 @@ export default async function ArtistDetailPage({
   if (error || !artist) notFound();
 
   // All completed evaluations for this artist, newest first
+  // Actual schema: score_total, tier, evaluated_at, evaluated_by (not results jsonb, created_at, or evaluator_id)
   const { data: evals } = await supabase
     .from("evaluations")
-    .select("id, results, created_at, evaluator_id")
+    .select("id, score_total, tier, evaluated_at, evaluated_by")
     .eq("artist_id", artist.id)
     .eq("status", "complete")
-    .order("created_at", { ascending: false });
+    .order("evaluated_at", { ascending: false });
 
   const evalRows = evals ?? [];
 
-  // Fetch evaluator display names
+  // Try to resolve evaluator display names from profiles
   let evaluatorMap = new Map<string, string>();
   if (evalRows.length > 0) {
-    const evaluatorIds = Array.from(new Set(evalRows.map((e) => e.evaluator_id)));
+    const evaluatorRefs = Array.from(new Set(evalRows.map((e) => e.evaluated_by).filter(Boolean)));
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, email")
-      .in("id", evaluatorIds);
+      .in("id", evaluatorRefs);
     evaluatorMap = new Map(
       (profiles ?? []).map((p) => [p.id, p.full_name || p.email || "Unknown"])
     );
@@ -65,17 +65,14 @@ export default async function ArtistDetailPage({
 
   const artistDetail: ArtistDetail = {
     ...artist,
-    evaluations: evalRows.map((ev) => {
-      const r = ev.results as ScoringResult | null;
-      return {
-        id: ev.id,
-        created_at: ev.created_at,
-        evaluator_name: evaluatorMap.get(ev.evaluator_id) ?? "Unknown",
-        total_score: r?.total_score ?? null,
-        tier_label: r?.tier_label ?? null,
-        revenue_tier: r?.revenue_tier ?? null,
-      };
-    }),
+    evaluations: evalRows.map((ev) => ({
+      id: ev.id,
+      created_at: ev.evaluated_at,
+      evaluator_name: evaluatorMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
+      total_score: ev.score_total ?? null,
+      tier_label: ev.tier ?? null,
+      revenue_tier: null, // revenue_tier not in current DB schema
+    })),
   };
 
   return <ArtistDetailClient artist={artistDetail} />;

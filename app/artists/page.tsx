@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ArtistsClient from "@/components/ArtistsClient";
-import type { ScoringResult } from "@/lib/scoring-engine";
 
 export type ArtistRow = {
   id: string;
@@ -36,22 +35,24 @@ export default async function ArtistsPage() {
       const artistIds = artistRows.map((a) => a.id);
 
       // Fetch all completed evaluations for these artists in one query
+      // Actual schema uses: score_total, tier, evaluated_at (not results jsonb or created_at)
       const { data: evals } = await supabase
         .from("evaluations")
-        .select("id, artist_id, results, created_at")
+        .select("id, artist_id, score_total, tier, evaluated_at")
         .eq("status", "complete")
         .in("artist_id", artistIds)
-        .order("created_at", { ascending: false });
+        .order("evaluated_at", { ascending: false });
 
       // Build: latest eval per artist + count per artist
-      const latestEvalMap = new Map<string, { results: ScoringResult | null; created_at: string }>();
+      const latestEvalMap = new Map<string, { score_total: number | null; tier: string | null; evaluated_at: string }>();
       const countMap = new Map<string, number>();
 
       for (const ev of evals ?? []) {
         if (!latestEvalMap.has(ev.artist_id)) {
           latestEvalMap.set(ev.artist_id, {
-            results: ev.results as ScoringResult | null,
-            created_at: ev.created_at,
+            score_total: ev.score_total,
+            tier: ev.tier,
+            evaluated_at: ev.evaluated_at,
           });
         }
         countMap.set(ev.artist_id, (countMap.get(ev.artist_id) ?? 0) + 1);
@@ -59,17 +60,16 @@ export default async function ArtistsPage() {
 
       artists = artistRows.map((a) => {
         const latest = latestEvalMap.get(a.id);
-        const r = latest?.results ?? null;
         return {
           id: a.id,
           name: a.name,
           genre: a.genre,
           merch_provider: a.merch_provider,
           management_company: a.management_company,
-          latest_score: r?.total_score ?? null,
-          latest_tier: r?.tier_label ?? null,
-          latest_revenue_tier: r?.revenue_tier ?? null,
-          last_evaluated: latest?.created_at ?? null,
+          latest_score: latest?.score_total ?? null,
+          latest_tier: latest?.tier ?? null,
+          latest_revenue_tier: null, // revenue_tier not in current DB schema
+          last_evaluated: latest?.evaluated_at ?? null,
           eval_count: countMap.get(a.id) ?? 0,
         };
       });

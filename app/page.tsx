@@ -30,35 +30,58 @@ export default async function DashboardPage() {
   let dbError: string | null = null;
 
   try {
+    // Actual schema: score_total, score_p1-p4, tier, action, evaluated_at, evaluated_by,
+    // pillar_weights, weight_profile — joined to artists(name, genre) via artist_id FK
     const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
-      .select("id, results, inputs, created_at, evaluator_id, artists(name, genre)")
+      .select("id, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
       .eq("status", "complete")
-      .order("created_at", { ascending: false });
+      .order("evaluated_at", { ascending: false });
 
     if (evalsError) throw evalsError;
 
     if (evals && evals.length > 0) {
-      const evaluatorIds = Array.from(new Set(evals.map((e) => e.evaluator_id).filter(Boolean)));
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", evaluatorIds);
+      // Try to resolve evaluator names via profiles (evaluated_by may be a UUID)
+      const evaluatorRefs = Array.from(new Set(evals.map((e) => e.evaluated_by).filter(Boolean)));
+      const profileMap = new Map<string, string>();
+      if (evaluatorRefs.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", evaluatorRefs);
+        (profiles ?? []).forEach((p) => profileMap.set(p.id, p.full_name || p.email || p.id));
+      }
 
-      const profileMap = new Map(
-        (profiles ?? []).map((p) => [p.id, p.full_name || p.email || "Unknown"])
-      );
+      evaluations = evals.map((ev) => {
+        const artist = ev.artists as unknown as { name: string; genre: string | null } | null;
+        const pw = ev.pillar_weights as { p1: number; p2: number; p3: number; p4: number } | null;
 
-      evaluations = evals.map((e) => {
-        const artist = e.artists as unknown as { name: string; genre: string | null } | null;
+        // Reconstruct a partial ScoringResult from the denormalized DB columns.
+        // revenue_tier, age_bracket, touring_bracket, and sub_scores are not stored yet.
+        const partialResult = ev.score_total != null ? ({
+          genre: "" as any,
+          genre_group: "" as any,
+          total_score: ev.score_total,
+          tier_label: ev.tier as ScoringResult["tier_label"],
+          action: ev.action ?? "",
+          revenue_tier: null as unknown as ScoringResult["revenue_tier"],
+          pillar_weights: pw ?? { p1: 0, p2: 0, p3: 0, p4: 0 },
+          age_bracket: 0,
+          touring_bracket: 0,
+          p1: { sub_scores: {}, weighted_score: ev.score_p1 ?? 0, final_score: ev.score_p1 ?? 0 },
+          p2: { sub_scores: {}, weighted_score: ev.score_p2 ?? 0, final_score: ev.score_p2 ?? 0, sub_weights: {}, tiktok_age_adjusted_weight: 0, youtube_excluded: false },
+          p3: { sub_scores: {}, weighted_score: ev.score_p3 ?? 0, final_score: ev.score_p3 ?? 0 },
+          p4: { sub_scores: {}, weighted_score: ev.score_p4 ?? 0, final_score: ev.score_p4 ?? 0 },
+        } as ScoringResult) : null;
+
         return {
-          id: e.id,
+          id: ev.id,
           artist_name: artist?.name ?? "",
           genre: artist?.genre ?? null,
-          results: e.results as ScoringResult | null,
-          inputs: e.inputs,
-          created_at: e.created_at,
-          evaluator_name: profileMap.get(e.evaluator_id) ?? "Unknown",
+          results: partialResult,
+          inputs: null, // inputs not stored in current schema
+          created_at: ev.evaluated_at,
+          evaluator_name: profileMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
         };
       });
     }
