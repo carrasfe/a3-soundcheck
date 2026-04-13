@@ -60,7 +60,14 @@ export default async function DashboardPage() {
       }));
     }
   } catch (err) {
-    dbError = err instanceof Error ? err.message : "Failed to load evaluations";
+    console.error("[DashboardPage] Supabase error:", JSON.stringify(err, null, 2));
+    if (err && typeof err === "object") {
+      const e = err as { message?: string; details?: string; hint?: string; code?: string };
+      dbError = [e.message, e.details, e.hint ? `(hint: ${e.hint})` : null, e.code ? `[${e.code}]` : null]
+        .filter(Boolean).join(" — ");
+    } else {
+      dbError = String(err);
+    }
   }
 
   return <DashboardClient evaluations={evaluations} isAdmin={isAdmin} dbError={dbError} />;
