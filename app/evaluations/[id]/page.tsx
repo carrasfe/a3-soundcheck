@@ -31,11 +31,11 @@ export default async function EvaluationDetailPage({
 
   const isAdmin = profile?.role === "admin";
 
-  // Actual schema: score_total, score_p1-p4, tier, action, evaluated_at, evaluated_by,
-  // pillar_weights — joined to artists(name, genre) via artist_id FK
+  // Select full JSONB blobs (results, inputs) for complete breakdown display,
+  // plus denormalized columns as fallback for older rows without JSONB data.
   const { data: row, error } = await supabase
     .from("evaluations")
-    .select("id, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, evaluated_at, evaluated_by, pillar_weights, status, artists(name, genre)")
+    .select("id, results, inputs, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, status, artists(name, genre)")
     .eq("id", params.id)
     .single();
 
@@ -50,17 +50,19 @@ export default async function EvaluationDetailPage({
     .single();
 
   const artist = row.artists as unknown as { name: string; genre: string | null } | null;
+
+  // Prefer the stored full ScoringResult JSONB; fall back to partial reconstruction
+  // from denormalized columns for evaluations saved before the results column was added.
+  const storedResult = row.results as ScoringResult | null;
   const pw = row.pillar_weights as { p1: number; p2: number; p3: number; p4: number } | null;
 
-  // Reconstruct a partial ScoringResult from the denormalized DB columns.
-  // revenue_tier, age_bracket, touring_bracket, and sub_scores are not stored yet.
-  const partialResult = ({
+  const finalResult: ScoringResult = storedResult ?? ({
     genre: "" as any,
     genre_group: "" as any,
     total_score: row.score_total ?? 0,
     tier_label: (row.tier ?? "Pass") as ScoringResult["tier_label"],
     action: row.action ?? "",
-    revenue_tier: null as unknown as ScoringResult["revenue_tier"],
+    revenue_tier: (row.revenue_tier ?? null) as unknown as ScoringResult["revenue_tier"],
     pillar_weights: pw ?? { p1: 0, p2: 0, p3: 0, p4: 0 },
     age_bracket: 0,
     touring_bracket: 0,
@@ -74,8 +76,8 @@ export default async function EvaluationDetailPage({
     id: row.id,
     artist_name: artist?.name ?? "",
     genre: artist?.genre ?? null,
-    results: partialResult,
-    inputs: {} as EvalFormData, // inputs not stored in current DB schema
+    results: finalResult,
+    inputs: (row.inputs as EvalFormData | null) ?? ({} as EvalFormData),
     created_at: row.evaluated_at,
     evaluator_name:
       evaluatorProfile?.full_name || evaluatorProfile?.email || row.evaluated_by || "Unknown",

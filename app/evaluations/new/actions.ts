@@ -93,14 +93,15 @@ export async function saveEvaluation(
     }
   }
 
-  // Write to the actual DB schema (denormalized columns, not JSONB blobs)
   const payload = {
+    // Denormalized columns (indexed, queryable)
     artist_id:      artistId,
     evaluated_by:   user.id,
     status,
     evaluated_at:   new Date().toISOString(),
     tier:           results?.tier_label ?? null,
     action:         results?.action ?? null,
+    revenue_tier:   results?.revenue_tier ?? null,
     score_total:    results?.total_score ?? null,
     score_p1:       results?.p1?.weighted_score ?? null,
     score_p2:       results?.p2?.weighted_score ?? null,
@@ -110,6 +111,9 @@ export async function saveEvaluation(
     weight_profile: results
       ? { age_bracket: results.age_bracket, touring_bracket: results.touring_bracket }
       : null,
+    // Full JSONB blobs — required for detail page, PDF, and pre-fill
+    inputs:  fd as unknown as Record<string, unknown>,
+    results: results as unknown as Record<string, unknown> | null,
   };
 
   if (existingId) {
@@ -152,11 +156,19 @@ export interface LoadResult {
   error: string | null;
 }
 
-export async function loadEvaluationInputs(_id: string): Promise<LoadResult> {
-  // The current DB schema does not store form inputs as a JSONB column.
-  // Pre-fill and re-evaluate are unavailable until an `inputs jsonb` column is added.
-  return {
-    data: null,
-    error: "Saved inputs are not stored in the current schema. Please fill in the form manually.",
-  };
+export async function loadEvaluationInputs(id: string): Promise<LoadResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: "Not authenticated" };
+
+  const { data: row, error } = await supabase
+    .from("evaluations")
+    .select("inputs")
+    .eq("id", id)
+    .single();
+
+  if (error) return { data: null, error: error.message };
+  if (!row?.inputs) return { data: null, error: "No saved inputs found for this evaluation." };
+
+  return { data: row.inputs as EvalFormData, error: null };
 }

@@ -30,11 +30,11 @@ export default async function DashboardPage() {
   let dbError: string | null = null;
 
   try {
-    // Actual schema: score_total, score_p1-p4, tier, action, evaluated_at, evaluated_by,
-    // pillar_weights, weight_profile — joined to artists(name, genre) via artist_id FK
+    // Include results JSONB for accurate weight profile, revenue tier, and sub-scores.
+    // Denormalized columns (score_total, tier, etc.) remain as fallback.
     const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
-      .select("id, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
+      .select("id, results, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
       .eq("status", "complete")
       .order("evaluated_at", { ascending: false });
 
@@ -56,15 +56,16 @@ export default async function DashboardPage() {
         const artist = ev.artists as unknown as { name: string; genre: string | null } | null;
         const pw = ev.pillar_weights as { p1: number; p2: number; p3: number; p4: number } | null;
 
-        // Reconstruct a partial ScoringResult from the denormalized DB columns.
-        // revenue_tier, age_bracket, touring_bracket, and sub_scores are not stored yet.
+        // Prefer stored full ScoringResult; fall back to partial reconstruction
+        // from denormalized columns for older rows without the results JSONB.
+        const storedResult = ev.results as unknown as ScoringResult | null;
         const partialResult = ev.score_total != null ? ({
           genre: "" as any,
           genre_group: "" as any,
           total_score: ev.score_total,
           tier_label: ev.tier as ScoringResult["tier_label"],
           action: ev.action ?? "",
-          revenue_tier: null as unknown as ScoringResult["revenue_tier"],
+          revenue_tier: (ev.revenue_tier ?? null) as unknown as ScoringResult["revenue_tier"],
           pillar_weights: pw ?? { p1: 0, p2: 0, p3: 0, p4: 0 },
           age_bracket: 0,
           touring_bracket: 0,
@@ -73,12 +74,13 @@ export default async function DashboardPage() {
           p3: { sub_scores: {}, weighted_score: ev.score_p3 ?? 0, final_score: ev.score_p3 ?? 0 },
           p4: { sub_scores: {}, weighted_score: ev.score_p4 ?? 0, final_score: ev.score_p4 ?? 0 },
         } as ScoringResult) : null;
+        const finalResult = storedResult ?? partialResult;
 
         return {
           id: ev.id,
           artist_name: artist?.name ?? "",
           genre: artist?.genre ?? null,
-          results: partialResult,
+          results: finalResult,
           inputs: null, // inputs not stored in current schema
           created_at: ev.evaluated_at,
           evaluator_name: profileMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
