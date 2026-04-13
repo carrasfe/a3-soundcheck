@@ -53,9 +53,10 @@ const REV_ORDER: Record<string, number> = { PREMIUM: 4, HIGH: 3, STANDARD: 2, LO
 interface Props {
   evaluations: EvaluationRow[];
   isAdmin: boolean;
+  dbError?: string | null;
 }
 
-export default function DashboardClient({ evaluations, isAdmin }: Props) {
+export default function DashboardClient({ evaluations, isAdmin, dbError }: Props) {
   const [search, setSearch] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [filterTier, setFilterTier] = useState("");
@@ -199,6 +200,13 @@ export default function DashboardClient({ evaluations, isAdmin }: Props) {
           </Link>
         </div>
       </div>
+
+      {/* DB error banner */}
+      {dbError && (
+        <div className="shrink-0 border-b border-red-200 bg-red-50 px-6 py-3 text-sm text-red-700">
+          <strong>Database error:</strong> {dbError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">

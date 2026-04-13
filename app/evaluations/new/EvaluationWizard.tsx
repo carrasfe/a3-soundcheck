@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { EvalFormData } from "./types";
 import { INITIAL_FORM_DATA } from "./types";
 import { saveEvaluation, loadEvaluationInputs } from "./actions";
@@ -126,6 +127,7 @@ interface Props {
 }
 
 export default function EvaluationWizard({ evaluatorName, prefillId, editId }: Props) {
+  const router = useRouter();
   const [step, setStep]           = useState(1);
   const [data, setData]           = useState<EvalFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors]       = useState<Errors>({});
@@ -229,9 +231,9 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       const result = await saveEvaluation(data, "complete", savedId ?? undefined);
       if (result.error) {
         setSaveError(result.error);
-      } else {
-        setSavedId(result.id);
+      } else if (result.id) {
         try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+        router.push(`/evaluations/${result.id}`);
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");

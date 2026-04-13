@@ -27,13 +27,16 @@ export default async function DashboardPage() {
   const isAdmin = profile?.role === "admin";
 
   let evaluations: EvaluationRow[] = [];
+  let dbError: string | null = null;
 
   try {
-    const { data: evals } = await supabase
+    const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
       .select("id, artist_name, genre, results, inputs, created_at, evaluator_id")
       .eq("status", "complete")
       .order("created_at", { ascending: false });
+
+    if (evalsError) throw evalsError;
 
     if (evals && evals.length > 0) {
       const evaluatorIds = Array.from(new Set(evals.map((e) => e.evaluator_id).filter(Boolean)));
@@ -56,9 +59,9 @@ export default async function DashboardPage() {
         evaluator_name: profileMap.get(e.evaluator_id) ?? "Unknown",
       }));
     }
-  } catch {
-    // DB not set up — show empty dashboard
+  } catch (err) {
+    dbError = err instanceof Error ? err.message : "Failed to load evaluations";
   }
 
-  return <DashboardClient evaluations={evaluations} isAdmin={isAdmin} />;
+  return <DashboardClient evaluations={evaluations} isAdmin={isAdmin} dbError={dbError} />;
 }
