@@ -39,13 +39,6 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
     return ((v / f) * 100).toFixed(2) + "%";
   }, [data.tiktok_followers, data.tiktok_avg_views]);
 
-  // YT ER live preview
-  const ytEr = useMemo(() => {
-    const s = parseFloat(data.youtube_subscribers) || 0;
-    const v = parseFloat(data.youtube_avg_views)   || 0;
-    if (!s || !v) return null;
-    return ((v / s) * 100).toFixed(2) + "%";
-  }, [data.youtube_subscribers, data.youtube_avg_views]);
 
   return (
     <div className="space-y-6">
@@ -292,19 +285,15 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
             error={errors.youtube_subscribers}
             csvFilled={csvFilled.has("youtube_subscribers")}
           />
-          <div>
-            <Input
-              label="Average Views per Video"
-              type="number"
-              min={0}
-              value={data.youtube_avg_views}
-              onChange={set("youtube_avg_views")}
-              placeholder="e.g. 2400"
-            />
-            {ytEr && (
-              <p className="mt-1 text-xs text-gray-500">Calculated ER: <span className="font-semibold text-[#1B2A4A]">{ytEr}</span></p>
-            )}
-          </div>
+          <Input
+            label="YouTube Engagement Rate (%)"
+            type="number"
+            min={0}
+            step="0.01"
+            value={data.youtube_er_pct}
+            onChange={set("youtube_er_pct")}
+            placeholder="Enter as 2.5, not 0.025"
+          />
         </div>
         <p className="mt-2 text-xs text-gray-500">
           Semi-optional: if score is 0–1, YouTube is excluded from the weighted average and its weight is redistributed.

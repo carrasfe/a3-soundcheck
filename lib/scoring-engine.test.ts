@@ -22,7 +22,7 @@ const DEFAULTS = {
   tiktok_followers: 100_000,
   tiktok_avg_views: 5_000,
   youtube_subscribers: 20_000,
-  youtube_avg_views: 500,
+  youtube_er_pct: 2.5,
   store_quality: 3,
   merch_range: 3 as const,
   price_point_highest: 40,
@@ -216,7 +216,7 @@ describe("P2 – TikTok ER follower gate", () => {
 describe("P2 – YouTube semi-optional", () => {
   it("excludes YouTube when score is 1 and redistributes weight", () => {
     // Very low YT subscribers → score 1
-    const r = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 1_000, youtube_avg_views: 5 });
+    const r = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 1_000, youtube_er_pct: 0.5 });
     expect(r.p2.youtube_excluded).toBe(true);
     expect(r.p2.sub_weights.YouTube).toBe(0);
     // All remaining weights should sum to ~1
@@ -225,7 +225,7 @@ describe("P2 – YouTube semi-optional", () => {
   });
   it("includes YouTube when score is 2+", () => {
     // High subs + decent views → score ≥2
-    const r = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 100_000, youtube_avg_views: 3_000 });
+    const r = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 100_000, youtube_er_pct: 3.0 });
     expect(r.p2.youtube_excluded).toBe(false);
     expect(r.p2.sub_weights.YouTube).toBeGreaterThan(0);
   });
@@ -494,7 +494,7 @@ describe("Tier classification thresholds", () => {
       fan_concentration_ratio: 30, spotify_monthly_listeners: 5_000_000,
       ig_followers: 1_000_000, ig_er_pct: 8, reddit_members: 50_000,
       merch_sentiment: 5, tiktok_followers: 1_000_000, tiktok_avg_views: 100_000,
-      youtube_subscribers: 500_000, youtube_avg_views: 30_000,
+      youtube_subscribers: 500_000, youtube_er_pct: 6.0,
       store_quality: 5, merch_range: 5, price_point_highest: 150, d2c_level: 4,
       spotify_yoy_pct: 50, venue_progression: "tier_change",
       ig_30day_gain: 50_000, press_score: 5, playlist_score: 5,
@@ -511,7 +511,7 @@ describe("Tier classification thresholds", () => {
       fan_concentration_ratio: 20, spotify_monthly_listeners: 2_000_000,
       ig_followers: 500_000, ig_er_pct: 5, reddit_members: 2_000,
       merch_sentiment: 4, tiktok_followers: 500_000, tiktok_avg_views: 50_000,
-      youtube_subscribers: 200_000, youtube_avg_views: 8_000,
+      youtube_subscribers: 200_000, youtube_er_pct: 4.0,
       store_quality: 4, merch_range: 4, price_point_highest: 80, d2c_level: 3,
       spotify_yoy_pct: 25, venue_progression: "slight_step_up",
       ig_30day_gain: 10_000, press_score: 4, playlist_score: 4,
@@ -655,7 +655,7 @@ describe("Calibration artists", () => {
       tiktok_followers: 600_000,
       tiktok_avg_views: 30_000,
       youtube_subscribers: 150_000,
-      youtube_avg_views: 4_500,
+      youtube_er_pct: 3.0,
       // P3
       store_quality: 4,
       merch_range: 3,
@@ -703,7 +703,7 @@ describe("Calibration artists", () => {
       tiktok_followers: 50_000,
       tiktok_avg_views: 800,
       youtube_subscribers: 300_000,
-      youtube_avg_views: 6_000,
+      youtube_er_pct: 2.0,
       // P3
       store_quality: 4,
       merch_range: 4,
@@ -750,7 +750,7 @@ describe("Calibration artists", () => {
       tiktok_followers: 40_000,
       tiktok_avg_views: 1_200,
       youtube_subscribers: 120_000,
-      youtube_avg_views: 3_600,
+      youtube_er_pct: 3.0,
       // P3
       store_quality: 4,
       merch_range: 4,
@@ -797,7 +797,7 @@ describe("Calibration artists", () => {
       tiktok_followers: 180_000,
       tiktok_avg_views: 7_200,
       youtube_subscribers: 25_000,
-      youtube_avg_views: 600,
+      youtube_er_pct: 2.4,
       // P3
       store_quality: 3,
       merch_range: 3,
@@ -843,7 +843,7 @@ describe("Calibration artists", () => {
       tiktok_followers: 2_000_000,
       tiktok_avg_views: 60_000,
       youtube_subscribers: 2_000_000,
-      youtube_avg_views: 60_000,
+      youtube_er_pct: 3.0,
       // P3
       store_quality: 5,
       merch_range: 5,
@@ -880,7 +880,7 @@ describe("Edge cases", () => {
       genre: "Jazz / Blues (Traditional)",
       ig_er_pct: undefined,
       tiktok_avg_views: undefined,
-      youtube_avg_views: undefined,
+      youtube_er_pct: undefined,
       spotify_yoy_pct: undefined,
       ig_30day_gain: undefined,
       price_point_highest: undefined,

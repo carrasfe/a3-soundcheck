@@ -104,7 +104,7 @@ export interface ScoringInputs {
   tiktok_followers: number;
   tiktok_avg_views?: number;      // used to calc TikTok ER
   youtube_subscribers: number;
-  youtube_avg_views?: number;     // avg views per video for ER calc
+  youtube_er_pct?: number;        // engagement rate % entered directly (e.g. 2.5 means 2.5%)
 
   // ── Pillar 3 ──
   store_quality: number;          // 1–5 manual
@@ -545,12 +545,11 @@ function scoreTikTokEr(followers: number, avgViews?: number, demo?: Demographics
   return Math.min(score, maxScore);
 }
 
-function scoreYouTubeEr(genre: Genre, subs: number, avgViews?: number): number {
-  if (avgViews === undefined || avgViews === null) return 0;
+function scoreYouTubeEr(genre: Genre, subs: number, erPct?: number): number {
+  if (erPct === undefined || erPct === null) return 0;
   if (subs === 0) return 0;
 
   const maxScore = subs < 5_000 ? 1 : subs < 50_000 ? 3 : 5;
-  const erPct    = (avgViews / subs) * 100;
 
   let thresholds: [number, number, number, number];
   if (YT_HIGH_GENRES.has(genre)) {
@@ -594,7 +593,7 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   const redditScore  = scoreReddit(inputs.genre, inputs.reddit_members, inputs.demographics);
   const merchScore   = inputs.merch_sentiment;
   const tiktokScore  = scoreTikTokEr(inputs.tiktok_followers, inputs.tiktok_avg_views, inputs.demographics);
-  const ytScore      = scoreYouTubeEr(inputs.genre, inputs.youtube_subscribers, inputs.youtube_avg_views);
+  const ytScore      = scoreYouTubeEr(inputs.genre, inputs.youtube_subscribers, inputs.youtube_er_pct);
 
   // TikTok age-adjusted weight
   const ttAdjWeight  = tiktokAgeAdjustedWeight(wTikTok, inputs.demographics);

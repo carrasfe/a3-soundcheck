@@ -547,8 +547,8 @@ function buildPage2(doc: jsPDF, d: ScorecardData, r: ScoringResult, inputs: Eval
   if (!ytExcluded) {
     p2Rows.push({
       metric: "YouTube Engagement",
-      input:  inputs.youtube_avg_views
-        ? `${fmtNum(inputs.youtube_avg_views)} avg views  (${fmtNum(inputs.youtube_subscribers)} subs)`
+      input:  inputs.youtube_er_pct
+        ? `${parseFloat(inputs.youtube_er_pct).toFixed(2)}% ER  (${fmtNum(inputs.youtube_subscribers)} subs)`
         : `${fmtNum(inputs.youtube_subscribers)} subscribers`,
       score:  fmtScore(r.p2.sub_scores.YouTube ?? 0),
       weight: `${((sw.YouTube ?? 0) * 100).toFixed(0)}%`,
@@ -559,7 +559,7 @@ function buildPage2(doc: jsPDF, d: ScorecardData, r: ScoringResult, inputs: Eval
 
   const p2Notes: string[] = [];
   if (ytExcluded) {
-    p2Notes.push("YouTube excluded: avg views not provided — weight redistributed to other metrics");
+    p2Notes.push("YouTube excluded: ER% not provided or score ≤1 — weight redistributed to other metrics");
   }
   if (discordBonus > 0 && inputs.discord_members) {
     p2Notes.push(`Discord Bonus: ${fmtNum(inputs.discord_members)} members  →  +${discordBonus.toFixed(3)} added to score`);
