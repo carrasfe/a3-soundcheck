@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   try {
     const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
-      .select("id, artist_name, genre, results, inputs, created_at, evaluator_id")
+      .select("id, results, inputs, created_at, evaluator_id, artists(name, genre)")
       .eq("status", "complete")
       .order("created_at", { ascending: false });
 
@@ -49,15 +49,18 @@ export default async function DashboardPage() {
         (profiles ?? []).map((p) => [p.id, p.full_name || p.email || "Unknown"])
       );
 
-      evaluations = evals.map((e) => ({
-        id: e.id,
-        artist_name: e.artist_name,
-        genre: e.genre,
-        results: e.results as ScoringResult | null,
-        inputs: e.inputs,
-        created_at: e.created_at,
-        evaluator_name: profileMap.get(e.evaluator_id) ?? "Unknown",
-      }));
+      evaluations = evals.map((e) => {
+        const artist = e.artists as unknown as { name: string; genre: string | null } | null;
+        return {
+          id: e.id,
+          artist_name: artist?.name ?? "",
+          genre: artist?.genre ?? null,
+          results: e.results as ScoringResult | null,
+          inputs: e.inputs,
+          created_at: e.created_at,
+          evaluator_name: profileMap.get(e.evaluator_id) ?? "Unknown",
+        };
+      });
     }
   } catch (err) {
     console.error("[DashboardPage] Supabase error:", JSON.stringify(err, null, 2));

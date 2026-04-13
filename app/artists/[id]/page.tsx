@@ -34,7 +34,7 @@ export default async function ArtistDetailPage({
 
   const { data: artist, error } = await supabase
     .from("artists")
-    .select("id, name, genre, merch_provider, management_company, manager_names, booking_agent")
+    .select("id, name, genre, merch_provider:current_merch_provider, management_company, manager_names, booking_agent")
     .eq("id", params.id)
     .single();
 

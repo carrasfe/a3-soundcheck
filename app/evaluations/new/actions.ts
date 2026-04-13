@@ -76,7 +76,7 @@ export async function saveEvaluation(
         management_company: fd.management_company || null,
         manager_names: fd.manager_names || null,
         booking_agent: fd.booking_agent || null,
-        merch_provider: fd.merch_provider || null,
+        current_merch_provider: fd.merch_provider || null,
         updated_at: new Date().toISOString(),
       }).eq("id", existing.id);
       artistId = existing.id;
@@ -87,7 +87,7 @@ export async function saveEvaluation(
         management_company: fd.management_company || null,
         manager_names: fd.manager_names || null,
         booking_agent: fd.booking_agent || null,
-        merch_provider: fd.merch_provider || null,
+        current_merch_provider: fd.merch_provider || null,
       }).select("id").single();
       artistId = inserted?.id ?? null;
     }
@@ -96,8 +96,6 @@ export async function saveEvaluation(
   const payload = {
     artist_id: artistId,
     evaluator_id: user.id,
-    artist_name: fd.artist_name.trim(),
-    genre: fd.genre || null,
     status,
     inputs: fd as unknown as Record<string, unknown>,
     results: results as unknown as Record<string, unknown> | null,

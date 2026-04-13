@@ -27,7 +27,7 @@ export default async function ArtistsPage() {
   try {
     const { data: artistRows, error: artistsError } = await supabase
       .from("artists")
-      .select("id, name, genre, merch_provider, management_company")
+      .select("id, name, genre, merch_provider:current_merch_provider, management_company")
       .order("name");
 
     if (artistsError) throw artistsError;

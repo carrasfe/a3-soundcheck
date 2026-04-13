@@ -33,7 +33,7 @@ export default async function EvaluationDetailPage({
 
   const { data: row, error } = await supabase
     .from("evaluations")
-    .select("id, artist_name, genre, results, inputs, created_at, evaluator_id, status")
+    .select("id, results, inputs, created_at, evaluator_id, status, artists(name, genre)")
     .eq("id", params.id)
     .single();
 
@@ -47,10 +47,12 @@ export default async function EvaluationDetailPage({
     .eq("id", row.evaluator_id)
     .single();
 
+  const artist = row.artists as unknown as { name: string; genre: string | null } | null;
+
   const evaluation: EvaluationRecord = {
     id: row.id,
-    artist_name: row.artist_name,
-    genre: row.genre,
+    artist_name: artist?.name ?? "",
+    genre: artist?.genre ?? null,
     results: row.results as ScoringResult,
     inputs: row.inputs as EvalFormData,
     created_at: row.created_at,
