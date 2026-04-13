@@ -116,6 +116,73 @@ export function ScoreSelector({
   );
 }
 
+// ── Radio card selector (all options always visible) ──────────
+interface RadioCardOption {
+  value: string;
+  title: string;
+  detail?: string;
+}
+interface RadioCardSelectorProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: RadioCardOption[];
+  required?: boolean;
+  error?: string;
+}
+export function RadioCardSelector({
+  label, value, onChange, options, required, error,
+}: RadioCardSelectorProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-gray-700">
+        {label}{required && <span className="ml-0.5 text-[#C0392B]">*</span>}
+      </label>
+      <div className="flex flex-col gap-2">
+        {options.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={`flex items-start gap-3 rounded-lg border p-3 text-left transition ${
+                selected
+                  ? "border-[#C0392B] bg-[#C0392B]/5"
+                  : "border-gray-200 bg-white hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+              }`}
+            >
+              <span
+                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                  selected ? "border-[#C0392B]" : "border-gray-300"
+                }`}
+              >
+                {selected && <span className="h-2 w-2 rounded-full bg-[#C0392B]" />}
+              </span>
+              <span
+                className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
+                  selected ? "bg-[#C0392B] text-white" : "bg-[#1B2A4A]/10 text-[#1B2A4A]"
+                }`}
+              >
+                {opt.value}
+              </span>
+              <span className="flex flex-col">
+                <span className={`text-sm font-medium ${selected ? "text-[#1B2A4A]" : "text-gray-700"}`}>
+                  {opt.title}
+                </span>
+                {opt.detail && (
+                  <span className="text-xs text-gray-500">{opt.detail}</span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+    </div>
+  );
+}
+
 // ── Real-time score badge ─────────────────────────────────────
 export function ScoreBadge({ score, size = "sm" }: { score: number | null; size?: "sm" | "md" }) {
   if (score === null || isNaN(score)) {

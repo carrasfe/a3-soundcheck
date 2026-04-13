@@ -33,13 +33,13 @@ const FIELD_META: Array<{
   step: string;
   unit?: string;
 }> = [
-  { key: "spotify_monthly_listeners", label: "Spotify Monthly Listeners", step: "Step 4 (P2)" },
-  { key: "fan_concentration_ratio",   label: "Spotify FCR %",             step: "Step 4 (P2)", unit: "%" },
-  { key: "spotify_yoy_pct",           label: "Spotify YoY Change",        step: "Step 6 (P4)", unit: "%" },
-  { key: "ig_followers",              label: "Instagram Followers",        step: "Step 4 (P2)" },
-  { key: "ig_30day_gain",             label: "Instagram 30-Day Gain",      step: "Step 6 (P4)" },
-  { key: "tiktok_followers",          label: "TikTok Followers",           step: "Step 4 (P2)" },
-  { key: "youtube_subscribers",       label: "YouTube Subscribers",        step: "Step 4 (P2)" },
+  { key: "spotify_monthly_listeners", label: "Spotify Monthly Listeners", step: "Step 4 — Spotify" },
+  { key: "fan_concentration_ratio",   label: "Spotify FCR %",             step: "Step 4 — Spotify",   unit: "%" },
+  { key: "spotify_yoy_pct",           label: "Spotify YoY Change",        step: "Step 4 — Spotify",   unit: "%" },
+  { key: "ig_followers",              label: "Instagram Followers",        step: "Step 5 — Instagram" },
+  { key: "ig_30day_gain",             label: "Instagram 30-Day Gain",      step: "Step 5 — Instagram" },
+  { key: "tiktok_followers",          label: "TikTok Followers",           step: "Step 6 — TikTok & YouTube" },
+  { key: "youtube_subscribers",       label: "YouTube Subscribers",        step: "Step 6 — TikTok & YouTube" },
 ];
 
 export default function ChartmetricImportModal({ onApply, onClose }: Props) {

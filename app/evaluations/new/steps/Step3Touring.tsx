@@ -9,29 +9,39 @@ import ChartmetricImportModal from "../csv/ChartmetricImportModal";
 
 function fmt(n: number): string { return n.toLocaleString(); }
 
+const VENUE_PROGRESSION_OPTIONS = [
+  { value: "smaller",        label: "Smaller venues than previous cycle" },
+  { value: "same",           label: "Same venue size" },
+  { value: "slight_step_up", label: "Slight step-up" },
+  { value: "major_jump",     label: "Major jump" },
+  { value: "tier_change",    label: "Tier change (e.g. clubs → theatres)" },
+];
+
 export default function Step3Touring({ data, onChange, onCsvFill, errors }: StepProps) {
   const [showImportModal, setShowImportModal] = useState(false);
   const set = (key: keyof EvalFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       onChange({ [key]: e.target.value });
 
-  const cap  = parseFloat(data.venue_capacity)   || 0;
-  const dates = parseFloat(data.num_dates)        || 0;
-  const st   = parseFloat(data.sell_through_pct) || 0;
+  const cap   = parseFloat(data.venue_capacity)   || 0;
+  const dates = parseFloat(data.num_dates)         || 0;
+  const st    = parseFloat(data.sell_through_pct) || 0;
   const reach = cap * dates * (st / 100);
 
   const showResaleFields =
     data.resale_situation === "some_sold_out" || data.resale_situation === "all_sold_out";
 
-  // Real-time P1 scores
-  const p1 = useMemo(() => {
+  // Real-time scores (P1 for touring, P4 for venue progression)
+  const scores = useMemo(() => {
     const inputs = buildScoringInputs(data);
     if (!inputs || !data.genre) return null;
     try {
       const result = calculateScore(inputs);
-      return result.p1;
+      return { p1: result.p1, p4: result.p4 };
     } catch { return null; }
   }, [data]);
+
+  const p1 = scores?.p1 ?? null;
 
   return (
     <div className="space-y-6">
@@ -47,7 +57,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
         <div>
           <p className="text-sm font-semibold text-[#1B2A4A]">Import platform data from Chartmetric</p>
           <p className="mt-0.5 text-xs text-[#1B2A4A]/70">
-            Upload up to 5 CSVs to auto-fill Spotify, Instagram, TikTok and YouTube fields across Steps 4 &amp; 6.
+            Upload up to 5 CSVs to auto-fill Spotify, Instagram, TikTok and YouTube fields in Steps 4–6.
           </p>
         </div>
         <button
@@ -219,6 +229,34 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
               </div>
             )}
           </div>
+        )}
+      </section>
+
+      {/* Venue Size Progression */}
+      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Venue Size Progression</h3>
+            <p className="text-xs text-gray-500">25% weight in P4 — vs. last major cycle</p>
+          </div>
+          <ScoreBadge score={scores?.p4.sub_scores.venue_progression ?? null} />
+        </div>
+        <Select
+          label="Venue progression vs. last cycle"
+          required
+          value={data.venue_progression}
+          onChange={set("venue_progression")}
+          error={errors.venue_progression}
+        >
+          <option value="">Select…</option>
+          {VENUE_PROGRESSION_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </Select>
+        {data.venue_progression === "same" && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            "Same venue size" auto-scores by capacity: &lt;1K=1, &lt;2.5K=2, &lt;5K=3, 5K+=4
+          </p>
         )}
       </section>
 

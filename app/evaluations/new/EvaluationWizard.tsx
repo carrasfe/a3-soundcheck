@@ -7,18 +7,24 @@ import { saveEvaluation, loadEvaluationInputs } from "./actions";
 import Step1ArtistInfo    from "./steps/Step1ArtistInfo";
 import Step2Demographics  from "./steps/Step2Demographics";
 import Step3Touring       from "./steps/Step3Touring";
-import Step4FanEngagement from "./steps/Step4FanEngagement";
-import Step5Ecommerce     from "./steps/Step5Ecommerce";
-import Step6Growth        from "./steps/Step6Growth";
-import Step7Results       from "./steps/Step7Results";
+import Step4Spotify       from "./steps/Step4Spotify";
+import Step5Instagram     from "./steps/Step5Instagram";
+import Step6TikTokYouTube from "./steps/Step6TikTokYouTube";
+import Step7Community     from "./steps/Step7Community";
+import Step8Ecommerce     from "./steps/Step5Ecommerce";
+import Step9PressPlaylist from "./steps/Step9PressPlaylist";
+import Step10Results      from "./steps/Step7Results";
 
 const STEPS = [
   "Artist Info",
   "Demographics",
-  "P1 — Touring",
-  "P2 — Fan Engagement",
-  "P3 — E-Commerce",
-  "P4 — Growth",
+  "Touring",
+  "Spotify",
+  "Instagram",
+  "TikTok & YouTube",
+  "Community",
+  "E-Commerce",
+  "Press & Playlist",
   "Results",
 ];
 
@@ -49,10 +55,11 @@ function validateStep(step: number, data: EvalFormData): Errors {
   }
 
   if (step === 3) {
-    pos(data.venue_capacity, "venue_capacity");
+    pos(data.venue_capacity,   "venue_capacity");
     pct(data.sell_through_pct, "sell_through_pct");
-    pos(data.num_dates, "num_dates");
-    if (!data.market_coverage) e.market_coverage = "Required";
+    pos(data.num_dates,        "num_dates");
+    if (!data.market_coverage)   e.market_coverage   = "Required";
+    if (!data.venue_progression) e.venue_progression = "Required";
     if (data.resale_situation !== "not_sold_out") {
       if (!data.face_value)   e.face_value   = "Required when sold out";
       else if (parseFloat(data.face_value) <= 0) e.face_value = "Must be greater than 0";
@@ -63,38 +70,48 @@ function validateStep(step: number, data: EvalFormData): Errors {
 
   if (step === 4) {
     if (!data.spotify_monthly_listeners) e.spotify_monthly_listeners = "Required";
-    else if (parseFloat(data.spotify_monthly_listeners) < 0) e.spotify_monthly_listeners = "Must be 0 or greater";
+    else if (parseFloat(data.spotify_monthly_listeners) < 0)
+      e.spotify_monthly_listeners = "Must be 0 or greater";
     pct(data.fan_concentration_ratio, "fan_concentration_ratio");
-    if (!data.p2_fan_identity) e.p2_fan_identity = "Required";
+    if (data.spotify_yoy_pct) {
+      const yoy = parseFloat(data.spotify_yoy_pct);
+      if (isNaN(yoy) || yoy < -100 || yoy > 1000)
+        e.spotify_yoy_pct = "Enter as a percentage, e.g. 25 for 25% growth";
+    }
+  }
+
+  if (step === 5) {
     if (!data.ig_followers) e.ig_followers = "Required";
     else if (parseFloat(data.ig_followers) < 0) e.ig_followers = "Must be 0 or greater";
     if (data.ig_er_pct) {
       const er = parseFloat(data.ig_er_pct);
       if (er < 0 || er > 100) e.ig_er_pct = "Must be 0–100 (e.g. 3.2 for 3.2%)";
     }
-    if (!data.reddit_members && data.reddit_members !== "0") e.reddit_members = "Required (enter 0 if none)";
-    if (!data.merch_sentiment)  e.merch_sentiment  = "Required";
+  }
+
+  if (step === 6) {
     if (!data.tiktok_followers) e.tiktok_followers = "Required";
     else if (parseFloat(data.tiktok_followers) < 0) e.tiktok_followers = "Must be 0 or greater";
     if (!data.youtube_subscribers) e.youtube_subscribers = "Required";
     else if (parseFloat(data.youtube_subscribers) < 0) e.youtube_subscribers = "Must be 0 or greater";
   }
 
-  if (step === 5) {
+  if (step === 7) {
+    if (!data.reddit_members && data.reddit_members !== "0")
+      e.reddit_members = "Required (enter 0 if none)";
+    if (!data.p2_fan_identity) e.p2_fan_identity = "Required";
+    if (!data.merch_sentiment) e.merch_sentiment  = "Required";
+  }
+
+  if (step === 8) {
     if (!data.store_quality) e.store_quality = "Required";
     if (!data.merch_range)   e.merch_range   = "Required";
     if (!data.d2c_level)     e.d2c_level     = "Required";
   }
 
-  if (step === 6) {
-    if (!data.venue_progression) e.venue_progression = "Required";
-    if (!data.press_score)       e.press_score        = "Required";
-    if (!data.playlist_score)    e.playlist_score     = "Required";
-    if (data.spotify_yoy_pct) {
-      const yoy = parseFloat(data.spotify_yoy_pct);
-      if (isNaN(yoy) || yoy < -100 || yoy > 1000)
-        e.spotify_yoy_pct = "Enter as a percentage, e.g. 25 for 25% growth";
-    }
+  if (step === 9) {
+    if (!data.press_score)    e.press_score    = "Required";
+    if (!data.playlist_score) e.playlist_score = "Required";
   }
 
   return e;
@@ -109,18 +126,18 @@ interface Props {
 }
 
 export default function EvaluationWizard({ evaluatorName, prefillId, editId }: Props) {
-  const [step, setStep]         = useState(1);
-  const [data, setData]         = useState<EvalFormData>(INITIAL_FORM_DATA);
-  const [errors, setErrors]     = useState<Errors>({});
-  const [savedId, setSavedId]   = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [step, setStep]           = useState(1);
+  const [data, setData]           = useState<EvalFormData>(INITIAL_FORM_DATA);
+  const [errors, setErrors]       = useState<Errors>({});
+  const [savedId, setSavedId]     = useState<string | null>(null);
+  const [isSaving, setIsSaving]   = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkCopied, setLinkCopied]           = useState(false);
   const [draftRestorePrompt, setDraftRestorePrompt] = useState(false);
   const [csvFilled, setCsvFilled] = useState<Set<string>>(new Set());
 
-  // Load prefill/edit data from DB, or draft from localStorage
+  // Load prefill/edit data from DB, or offer draft restore from localStorage
   useEffect(() => {
     const loadId = editId ?? prefillId;
     if (loadId) {
@@ -191,7 +208,6 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
     try {
       const result = await saveEvaluation(data, "draft", savedId ?? undefined);
       if (result.error) {
-        // DB might not be set up yet — draft is still in localStorage
         setDraftNote("Draft saved locally");
       } else {
         setSavedId(result.id);
@@ -215,11 +231,10 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
         setSaveError(result.error);
       } else {
         setSavedId(result.id);
-        // Clear local draft
         try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       }
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Save failed");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setIsSaving(false);
     }
@@ -248,14 +263,17 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   const renderStep = () => {
     const props = { data, onChange: update, onCsvFill: handleCsvFill, csvFilled, errors };
     switch (step) {
-      case 1: return <Step1ArtistInfo    {...props} />;
-      case 2: return <Step2Demographics  {...props} />;
-      case 3: return <Step3Touring       {...props} />;
-      case 4: return <Step4FanEngagement {...props} />;
-      case 5: return <Step5Ecommerce     {...props} />;
-      case 6: return <Step6Growth        {...props} />;
-      case 7: return (
-        <Step7Results
+      case 1:  return <Step1ArtistInfo    {...props} />;
+      case 2:  return <Step2Demographics  {...props} />;
+      case 3:  return <Step3Touring       {...props} />;
+      case 4:  return <Step4Spotify       {...props} />;
+      case 5:  return <Step5Instagram     {...props} />;
+      case 6:  return <Step6TikTokYouTube {...props} />;
+      case 7:  return <Step7Community     {...props} />;
+      case 8:  return <Step8Ecommerce     {...props} />;
+      case 9:  return <Step9PressPlaylist {...props} />;
+      case 10: return (
+        <Step10Results
           data={data}
           savedId={savedId}
           isSaving={isSaving}
@@ -281,17 +299,17 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
           </div>
 
           {/* Stepper */}
-          <nav className="hidden overflow-x-auto md:flex">
+          <nav className="hidden overflow-x-auto lg:flex">
             <ol className="flex items-center gap-0">
               {STEPS.map((label, i) => {
-                const n = i + 1;
+                const n           = i + 1;
                 const isActive    = n === step;
                 const isCompleted = n < step;
                 return (
                   <li key={n} className="flex items-center">
                     <button
                       onClick={() => goTo(n)}
-                      className="flex flex-col items-center px-2 py-1"
+                      className="flex flex-col items-center px-1.5 py-1"
                     >
                       <span
                         className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition ${
@@ -309,7 +327,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
                       </span>
                     </button>
                     {i < STEPS.length - 1 && (
-                      <div className={`h-px w-4 transition ${n < step ? "bg-white/30" : "bg-white/10"}`} />
+                      <div className={`h-px w-3 transition ${n < step ? "bg-white/30" : "bg-white/10"}`} />
                     )}
                   </li>
                 );
@@ -317,8 +335,8 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
             </ol>
           </nav>
 
-          {/* Mobile step indicator */}
-          <p className="text-sm text-white/70 md:hidden">
+          {/* Mobile / md step indicator */}
+          <p className="text-sm text-white/70 lg:hidden">
             Step {step} of {STEPS.length}: <strong className="text-white">{STEPS[step - 1]}</strong>
           </p>
 
@@ -366,7 +384,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       {/* ── Scrollable content ── */}
       <div className="flex-1 bg-gray-50 print:bg-white">
         <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-full print:px-8 print:py-4">
-          {/* Step title */}
+          {/* Step title + progress bar */}
           <div className="mb-6 print:hidden">
             <h1 className="text-xl font-bold text-[#1B2A4A]">{STEPS[step - 1]}</h1>
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-200">
@@ -382,7 +400,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       </div>
 
       {/* ── Sticky footer ── */}
-      {step < 7 && (
+      {step < 10 && (
         <footer className="sticky bottom-0 z-10 border-t border-gray-200 bg-white print:hidden">
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
             <button
@@ -396,19 +414,19 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
               onClick={() => goTo(step + 1)}
               className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
             >
-              {step === 6 ? "View Results →" : "Next →"}
+              {step === 9 ? "View Results →" : "Next →"}
             </button>
           </div>
         </footer>
       )}
-      {step === 7 && (
+      {step === 10 && (
         <footer className="sticky bottom-0 z-10 border-t border-gray-200 bg-white print:hidden">
           <div className="mx-auto flex max-w-3xl items-center px-4 py-3">
             <button
-              onClick={() => goTo(6)}
+              onClick={() => goTo(9)}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
             >
-              ← Back to Growth
+              ← Back to Press & Playlist
             </button>
           </div>
         </footer>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Select, ScoreSelector, ScoreBadge } from "../ui";
+import { Select, ScoreSelector, ScoreBadge, RadioCardSelector } from "../ui";
 import type { StepProps } from "../types";
 import { buildScoringInputs } from "../types";
 import { calculateScore } from "@/lib/scoring-engine";
@@ -14,11 +14,11 @@ const MERCH_RANGE_OPTIONS = [
   { value: "5", label: "5 — Full store with high-priced items and seasonal drops" },
 ];
 
-const D2C_DESCRIPTIONS = [
-  "1 — No email or SMS list",
-  "2 — Basic email list",
-  "3 — Email + SMS",
-  "4 — Email + SMS + fan club or Patreon",
+const D2C_OPTIONS = [
+  { value: "1", title: "No email or SMS list",                    detail: "No direct-to-consumer capability" },
+  { value: "2", title: "Basic email list",                        detail: "Can reach fans directly but limited" },
+  { value: "3", title: "Email + SMS",                             detail: "Strong direct communication channels" },
+  { value: "4", title: "Email + SMS + fan club or Patreon",       detail: "Full D2C infrastructure with monetized community" },
 ];
 
 const STORE_DESCRIPTIONS = [
@@ -136,13 +136,12 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
           </div>
           <ScoreBadge score={p3?.sub_scores.d2c ?? null} />
         </div>
-        <ScoreSelector
+        <RadioCardSelector
           label="Direct-to-consumer capabilities"
           required
           value={data.d2c_level}
           onChange={(v) => onChange({ d2c_level: v })}
-          descriptions={D2C_DESCRIPTIONS}
-          max={4}
+          options={D2C_OPTIONS}
           error={errors.d2c_level}
         />
       </section>
