@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { EvalFormData } from "./types";
 import { INITIAL_FORM_DATA } from "./types";
@@ -131,10 +131,13 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   const [step, setStep]           = useState(1);
   const [data, setData]           = useState<EvalFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors]       = useState<Errors>({});
-  const [savedId, setSavedId]     = useState<string | null>(null);
-  const [isSaving, setIsSaving]   = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [draftNote, setDraftNote] = useState<string | null>(null);
+  const [savedId, setSavedId]         = useState<string | null>(null);
+  const [isSaving, setIsSaving]       = useState(false);
+  const [saveError, setSaveError]     = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo]     = useState<string | null>(null);
+  const [draftNote, setDraftNote]     = useState<string | null>(null);
+  const autoSaveDoneRef               = useRef(false);
   const [linkCopied, setLinkCopied]           = useState(false);
   const [draftRestorePrompt, setDraftRestorePrompt] = useState(false);
   const [csvFilled, setCsvFilled] = useState<Set<string>>(new Set());
@@ -165,6 +168,24 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   useEffect(() => {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }, [data]);
+
+  // Auto-save as draft when the user reaches the Results step — safety net so
+  // data exists in the DB even if the explicit "Save Evaluation" fails.
+  useEffect(() => {
+    if (step !== 10) {
+      autoSaveDoneRef.current = false;
+      return;
+    }
+    if (autoSaveDoneRef.current) return;
+    autoSaveDoneRef.current = true;
+
+    saveEvaluation(data, "draft", savedId ?? undefined).then((result) => {
+      if (!result.error && result.id) {
+        setSavedId(result.id);
+      }
+    }).catch(() => { /* silently ignore — this is best-effort */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const update = useCallback((updates: Partial<EvalFormData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -227,13 +248,20 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
+    setSaveSuccess(null);
+    setDebugInfo(null);
     try {
       const result = await saveEvaluation(data, "complete", savedId ?? undefined);
       if (result.error) {
         setSaveError(result.error);
+        if (result.debugInfo) setDebugInfo(result.debugInfo);
       } else if (result.id) {
         try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-        router.push(`/evaluations/${result.id}`);
+        setSavedId(result.id);
+        setSaveSuccess(result.id);
+        setTimeout(() => {
+          router.push(`/evaluations/${result.id}`);
+        }, 2000);
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");
@@ -280,6 +308,8 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
           savedId={savedId}
           isSaving={isSaving}
           saveError={saveError}
+          saveSuccess={saveSuccess}
+          debugInfo={debugInfo}
           evaluatorName={evaluatorName}
           onSave={handleSave}
           onCopyLink={handleCopyLink}

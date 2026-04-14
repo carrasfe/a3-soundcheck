@@ -37,6 +37,26 @@ import type { EvalFormData } from "./types";
 export interface SaveResult {
   id: string | null;
   error: string | null;
+  debugInfo?: string | null;
+}
+
+function buildDebugInfo(
+  op: string,
+  err: { message?: string; details?: string; hint?: string; code?: string },
+  payload: Record<string, unknown>
+): string {
+  const safePayload = { ...payload };
+  // Truncate large JSONB blobs in debug output so clipboard stays readable
+  if (safePayload.inputs)  safePayload.inputs  = "[EvalFormData — omitted]";
+  if (safePayload.results) safePayload.results = "[ScoringResult — omitted]";
+  return [
+    `Operation: evaluations ${op}`,
+    `Message: ${err.message ?? "unknown"}`,
+    `Details: ${err.details ?? "none"}`,
+    `Hint: ${err.hint ?? "none"}`,
+    `Code: ${err.code ?? "none"}`,
+    `Payload: ${JSON.stringify(safePayload, null, 2)}`,
+  ].join("\n");
 }
 
 export async function saveEvaluation(
@@ -71,7 +91,7 @@ export async function saveEvaluation(
       .single();
 
     if (existing) {
-      await supabase.from("artists").update({
+      const { error: updateErr } = await supabase.from("artists").update({
         genre: fd.genre || null,
         management_company: fd.management_company || null,
         manager_names: fd.manager_names || null,
@@ -79,9 +99,15 @@ export async function saveEvaluation(
         current_merch_provider: fd.merch_provider || null,
         updated_at: new Date().toISOString(),
       }).eq("id", existing.id);
+      if (updateErr) {
+        console.error("[saveEvaluation] Artist update failed:", {
+          message: updateErr.message, details: updateErr.details,
+          hint: updateErr.hint, code: updateErr.code,
+        });
+      }
       artistId = existing.id;
     } else {
-      const { data: inserted } = await supabase.from("artists").insert({
+      const { data: inserted, error: insertErr } = await supabase.from("artists").insert({
         name: fd.artist_name.trim(),
         genre: fd.genre || null,
         management_company: fd.management_company || null,
@@ -89,6 +115,15 @@ export async function saveEvaluation(
         booking_agent: fd.booking_agent || null,
         current_merch_provider: fd.merch_provider || null,
       }).select("id").single();
+      if (insertErr) {
+        console.error("[saveEvaluation] Artist insert failed:", {
+          message: insertErr.message, details: insertErr.details,
+          hint: insertErr.hint, code: insertErr.code,
+        });
+        // Return early — without an artist_id the evaluation insert will likely fail too
+        const dbg = `Artist insert failed\nMessage: ${insertErr.message}\nDetails: ${insertErr.details ?? "none"}\nHint: ${insertErr.hint ?? "none"}\nCode: ${insertErr.code ?? "none"}`;
+        return { id: null, error: `Artist insert failed: ${insertErr.message}`, debugInfo: dbg };
+      }
       artistId = inserted?.id ?? null;
     }
   }
@@ -121,7 +156,15 @@ export async function saveEvaluation(
       .from("evaluations")
       .update(payload)
       .eq("id", existingId);
-    if (error) return { id: null, error: error.message };
+    if (error) {
+      console.error("[saveEvaluation] Evaluation update failed:", {
+        message: error.message, details: error.details,
+        hint: error.hint, code: error.code,
+        payloadKeys: Object.keys(payload),
+      });
+      const dbg = buildDebugInfo("update", error, payload);
+      return { id: null, error: error.message, debugInfo: dbg };
+    }
     return { id: existingId, error: null };
   }
 
@@ -131,7 +174,15 @@ export async function saveEvaluation(
     .select("id")
     .single();
 
-  if (error) return { id: null, error: error.message };
+  if (error) {
+    console.error("[saveEvaluation] Evaluation insert failed:", {
+      message: error.message, details: error.details,
+      hint: error.hint, code: error.code,
+      payloadKeys: Object.keys(payload),
+    });
+    const dbg = buildDebugInfo("insert", error, payload);
+    return { id: null, error: error.message, debugInfo: dbg };
+  }
 
   // Audit log — fire and forget
   if (status === "complete" && results) {

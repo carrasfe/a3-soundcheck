@@ -12,6 +12,8 @@ interface Props {
   savedId: string | null;
   isSaving: boolean;
   saveError: string | null;
+  saveSuccess: string | null;
+  debugInfo: string | null;
   evaluatorName: string;
   onSave: () => void;
   onCopyLink: () => void;
@@ -89,7 +91,28 @@ function PillarCard({
   );
 }
 
-export default function Step7Results({ data, savedId, isSaving, saveError, evaluatorName, onSave, onCopyLink, linkCopied }: Props) {
+function CopyDebugButton({ debugInfo }: { debugInfo: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(debugInfo);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      prompt("Copy this debug info:", debugInfo);
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 rounded border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-100"
+    >
+      {copied ? "✓ Copied" : "Copy Debug Info"}
+    </button>
+  );
+}
+
+export default function Step7Results({ data, savedId, isSaving, saveError, saveSuccess, debugInfo, evaluatorName, onSave, onCopyLink, linkCopied }: Props) {
   const { result, scoringError } = useMemo<{ result: ScoringResult | null; scoringError: string | null }>(() => {
     const inputs = buildScoringInputs(data);
     if (!inputs || !data.genre) return { result: null, scoringError: null };
@@ -316,11 +339,34 @@ export default function Step7Results({ data, savedId, isSaving, saveError, evalu
         </div>
       </div>
 
+      {/* Save error banner — shown above action buttons so it's immediately visible */}
+      {saveError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 print:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-red-700">Save failed</p>
+              <p className="mt-0.5 text-sm text-red-600">{saveError}</p>
+            </div>
+            {debugInfo && <CopyDebugButton debugInfo={debugInfo} />}
+          </div>
+        </div>
+      )}
+
+      {/* Success banner */}
+      {saveSuccess && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 print:hidden">
+          <p className="text-sm font-semibold text-emerald-700">Evaluation saved successfully!</p>
+          <p className="mt-0.5 text-xs text-emerald-600">
+            ID: {saveSuccess} · Redirecting to detail page…
+          </p>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3 print:hidden">
         <button
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isSaving || !!saveSuccess}
           className="flex items-center gap-2 rounded-lg bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226] disabled:opacity-60"
         >
           {isSaving ? "Saving…" : savedId ? "Update Evaluation" : "Save Evaluation"}
@@ -349,12 +395,7 @@ export default function Step7Results({ data, savedId, isSaving, saveError, evalu
         </button>
       </div>
 
-      {saveError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 print:hidden">
-          {saveError}
-        </div>
-      )}
-      {savedId && (
+      {savedId && !saveSuccess && (
         <p className="text-xs text-gray-400 print:hidden">
           Evaluation ID: {savedId}
         </p>
