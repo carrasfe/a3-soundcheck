@@ -1,6 +1,6 @@
 /**
- * A3 Soundcheck — PDF Scorecard Generator  (v2, compact single-page)
- * Landscape A4. Bloomberg-terminal density.
+ * A3 Soundcheck — PDF Scorecard Generator  (v3, fixed-layout single-page)
+ * Landscape A4 (297 × 210 mm). Bloomberg-terminal density.
  * Import lazily: const { downloadScorecardPDF } = await import("@/lib/generate-scorecard-pdf");
  */
 
@@ -20,19 +20,39 @@ export interface ScorecardData {
   inputs: EvalFormData;
 }
 
-// ─── Page constants — Landscape A4 ───────────────────────────────────────────
+// ─── Fixed page layout — all Y positions locked ───────────────────────────────
+//
+//  0 ──────────── Header bar (navy)                           25 mm
+// 25 ──────────── Management / Agent strip (bg-info)         45 mm
+// 45 ──────────── Profile strip (white, dividers)            53 mm
+// 53 ──────────── Four pillar columns                       148 mm  (95 mm budget)
+//148 ──────────── Score composition table                   180 mm  (32 mm)
+//180 ──────────── Demographics (only if data entered)       192 mm  (12 mm)
+//204 ──────────── Footer
+//210 ──────────── Bottom of page
 
-const PW = 297;   // page width  mm
-const PH = 210;   // page height mm
-const ML = 10;    // left margin
-const MR = 10;    // right margin
-const CW = PW - ML - MR;  // 277 mm usable
+const PW = 297;
+const PH = 210;
+const ML = 10;
+const MR = 10;
+const CW = PW - ML - MR;   // 277 mm usable width
+
+const HDR_H      = 25;
+const MGMT_TOP   = HDR_H;          // 25
+const MGMT_H     = 20;
+const PROF_TOP   = MGMT_TOP + MGMT_H;  // 45
+const PROF_H     = 8;
+const PILLAR_TOP = PROF_TOP + PROF_H;  // 53  (fixed)
+const PILLAR_H   = 95;                 // budget: never overflow this
+const SCORE_TOP  = PILLAR_TOP + PILLAR_H; // 148 (fixed)
+const SCORE_H    = 32;
+const DEMO_TOP   = SCORE_TOP + SCORE_H;  // 180 (fixed)
+const FOOTER_Y   = 204;
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
 type RGB = [number, number, number];
 const NAVY:    RGB = [27,  42,  74];
-const NAVY_LT: RGB = [38,  58,  98];
 const RED:     RGB = [192, 57,  43];
 const DK:      RGB = [25,  25,  25];
 const MD:      RGB = [90,  90,  90];
@@ -41,9 +61,9 @@ const WHITE:   RGB = [255, 255, 255];
 const BGINFO:  RGB = [237, 241, 248];
 const BGROW:   RGB = [248, 249, 252];
 const DIV:     RGB = [205, 211, 222];
-const AMBER:   RGB = [175, 115,   0];
 const GREEN:   RGB = [18,  130,  55];
 const BLUE:    RGB = [37,   99, 200];
+const AMBER:   RGB = [175, 115,   0];
 const SCORERED:RGB = [175,  35,  35];
 
 function scoreColor(v: number): RGB {
@@ -53,7 +73,7 @@ function scoreColor(v: number): RGB {
   return SCORERED;
 }
 
-// ─── jsPDF primitives ─────────────────────────────────────────────────────────
+// ─── Drawing primitives ───────────────────────────────────────────────────────
 
 function box(doc: jsPDF, x: number, y: number, w: number, h: number, fill: RGB) {
   doc.setFillColor(fill[0], fill[1], fill[2]);
@@ -62,8 +82,10 @@ function box(doc: jsPDF, x: number, y: number, w: number, h: number, fill: RGB) 
 
 function t(
   doc: jsPDF, text: string, x: number, y: number,
-  opts: { sz?: number; bold?: boolean; italic?: boolean; color?: RGB;
-          align?: "left" | "center" | "right"; maxW?: number } = {}
+  opts: {
+    sz?: number; bold?: boolean; italic?: boolean; color?: RGB;
+    align?: "left" | "center" | "right"; maxW?: number;
+  } = {}
 ) {
   doc.setFontSize(opts.sz ?? 7.5);
   doc.setFont("helvetica", opts.italic ? "italic" : opts.bold ? "bold" : "normal");
@@ -100,7 +122,7 @@ function fK(s: string | undefined | null): string {
 function fP(s: string | undefined | null): string {
   if (!s || s.trim() === "") return "—";
   const v = parseFloat(s);
-  return isNaN(v) ? "—" : `${v}%`;
+  return isNaN(v) ? "—" : `${v.toFixed(1)}%`;
 }
 
 function fs(v: number): string { return v.toFixed(2); }
@@ -134,209 +156,229 @@ const VIP_S: Record<string, string> = {
 const AGE_L  = ["", "Very Young", "Young", "Mixed", "Mature", "Very Mature"];
 const TOUR_L = ["", "Light", "Moderate", "Heavy", "Massive"];
 
-// ─── Layout geometry ──────────────────────────────────────────────────────────
-
-const HDR_H  = 28;   // navy header bar
-const INFO_H = 13;   // artist-info strip
-const PILLAR_TOP = HDR_H + INFO_H + 2;
-
-const PCOL_GAP = 3.5;
-const PCOL_W   = (CW - PCOL_GAP * 3) / 4;  // ≈ 67 mm per column
-const PCOL_X   = [0, 1, 2, 3].map(i => ML + i * (PCOL_W + PCOL_GAP));
-
-const PH_H  = 8.5;  // pillar header row height
-const RH    = 5.6;  // sub-metric row height
-
-// Sub-column widths within each pillar column
-const NW = PCOL_W * 0.46;   // metric name width
-const IW = PCOL_W * 0.34;   // input value width  (score uses remainder)
-
-// ─── SECTION: Header bar ─────────────────────────────────────────────────────
+// ─── SECTION 1: Header bar ────────────────────────────────────────────────────
 
 function drawHeader(doc: jsPDF, d: ScorecardData): void {
   const r = d.results;
   box(doc, 0, 0, PW, HDR_H, NAVY);
 
-  // — Left: branding ——————————
-  t(doc, "A3 SOUNDCHECK", ML, 7, { sz: 7, bold: true, color: [170, 190, 220] });
+  // Branding
+  t(doc, "A3 SOUNDCHECK", ML, 6.5, { sz: 6.5, bold: true, color: [170, 190, 220] });
 
-  // Artist name (truncated to fit left panel)
-  const name = d.artistName.length > 40 ? d.artistName.slice(0, 38) + "…" : d.artistName;
-  t(doc, name, ML, 16.5, { sz: 15, bold: true, color: WHITE });
+  // Artist name
+  const name = d.artistName.length > 42 ? d.artistName.slice(0, 40) + "…" : d.artistName;
+  t(doc, name, ML, 15.5, { sz: 14, bold: true, color: WHITE });
 
-  // Genre + evaluator line
+  // Genre · Evaluator · Date
   const genreStr = d.genre ? d.genre.toUpperCase() + "  ·  " : "";
-  const metaStr = `${genreStr}${d.evaluatorName}  ·  ${shortDate(d.evaluationDate)}`;
-  t(doc, metaStr, ML, 23.5, { sz: 7, color: [165, 185, 218] });
+  t(doc, `${genreStr}${d.evaluatorName}  ·  ${shortDate(d.evaluationDate)}`,
+    ML, 22, { sz: 6.5, color: [165, 185, 218] });
 
-  // — Right: score badge ——————
-  const BADGE_W = 58;
-  const BADGE_X = PW - MR - BADGE_W;
-  box(doc, BADGE_X, 1, BADGE_W, HDR_H - 2, RED);
+  // Score badge (red, right side)
+  const BW = 56;
+  const BX = PW - MR - BW;
+  box(doc, BX, 1, BW, HDR_H - 2, RED);
 
   const tier = r.tier_label;
   const tierStr = (tier === "Pass" ? "BELOW" : tier.toUpperCase()) + " TARGET";
+  t(doc, "TOTAL SCORE", BX + BW / 2, 6.5, { sz: 6, color: [255, 200, 190], align: "center" });
+  t(doc, fs(r.total_score), BX + BW / 2, 15.5, { sz: 18, bold: true, color: WHITE, align: "center" });
+  t(doc, tierStr, BX + BW / 2, 21.5, { sz: 7, bold: true, color: WHITE, align: "center" });
 
-  t(doc, "TOTAL SCORE", BADGE_X + BADGE_W / 2, 7, { sz: 6.5, color: [255, 195, 185], align: "center" });
-  t(doc, fs(r.total_score), BADGE_X + BADGE_W / 2, 16, { sz: 19, bold: true, color: WHITE, align: "center" });
-  t(doc, tierStr, BADGE_X + BADGE_W / 2, 22, { sz: 7, bold: true, color: WHITE, align: "center" });
-
-  // — Action text (between name and badge) ————
-  const ACT_X = ML + 165;
-  const ACT_W = BADGE_X - ACT_X - 4;
-  if (ACT_W > 20) {
-    const lines = doc.splitTextToSize(r.action, ACT_W);
-    const shown = (lines as string[]).slice(0, 3).join("\n");
-    t(doc, shown, ACT_X, 16, { sz: 6.5, italic: true, color: [175, 195, 225], maxW: ACT_W });
+  // Action text — between artist name and badge
+  const AX  = ML + 158;
+  const AW  = BX - AX - 4;
+  if (AW > 18) {
+    const lines = (doc.splitTextToSize(r.action, AW) as string[]).slice(0, 3).join("\n");
+    t(doc, lines, AX, 14, { sz: 6.5, italic: true, color: [175, 200, 228], maxW: AW });
   }
 }
 
-// ─── SECTION: Artist info strip ──────────────────────────────────────────────
+// ─── SECTION 2: Management / Agent strip ──────────────────────────────────────
 
-function drawInfoStrip(doc: jsPDF, d: ScorecardData): void {
-  const r   = d.results;
+function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   const inp = d.inputs;
-  const Y   = HDR_H;
+  const Y   = MGMT_TOP;
 
-  box(doc, 0, Y, PW, INFO_H, BGINFO);
-  hl(doc, 0, PW, Y, DIV, 0.35);
-  hl(doc, 0, PW, Y + INFO_H, DIV, 0.35);
+  box(doc, 0, Y, PW, MGMT_H, BGINFO);
+  hl(doc, 0, PW, Y,            DIV, 0.35);
+  hl(doc, 0, PW, Y + MGMT_H,  DIV, 0.35);
 
-  const w = r.pillar_weights;
-  const wStr = `${fp(w.p1)}/${fp(w.p2)}/${fp(w.p3)}/${fp(w.p4)}`;
-  const ageTour = `${AGE_L[r.age_bracket] ?? "—"} × ${TOUR_L[r.touring_bracket] ?? "—"}`;
-  const profLine = `${ageTour}  ·  ${wStr}  ·  ${r.genre_group} P2`;
-  const revLine  = `Revenue: ${r.revenue_tier ?? "—"}`;
+  // ── Left column: Management ──────────────────── (width ~130mm)
+  const LW = 130;  // left column width
+  let ly = Y + 4.5;
 
-  // Col 1: Management
-  const mgmt  = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
-  const others = inp.other_mgmt_artists ? `+${inp.other_mgmt_artists}` : "";
-  t(doc, "MGMT", ML, Y + 5,    { sz: 6, bold: true, color: LT });
-  t(doc, mgmt + (others ? "  " + others : ""), ML + 9, Y + 5, { sz: 6.5, color: DK, maxW: 62 });
+  // Row 1: Management label + company — managers
+  const mgmtVal = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
+  t(doc, "MANAGEMENT", ML, ly, { sz: 6, bold: true, color: LT });
+  t(doc, mgmtVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
+  ly += 4.5;
 
-  // Col 2: Booking
-  const agent = [inp.booking_agent].filter(Boolean).join(" — ") || "—";
-  const agOth = inp.other_agent_artists ? `+${inp.other_agent_artists}` : "";
-  t(doc, "AGENT", ML, Y + 10,   { sz: 6, bold: true, color: LT });
-  t(doc, agent + (agOth ? "  " + agOth : ""), ML + 9, Y + 10, { sz: 6.5, color: DK, maxW: 62 });
-
-  // Divider
-  vl(doc, ML + 78, Y + 2, Y + INFO_H - 2, DIV);
-
-  // Col 3: Merch
-  t(doc, "MERCH", ML + 82, Y + 5,  { sz: 6, bold: true, color: LT });
-  t(doc, inp.merch_provider || "—", ML + 92, Y + 5, { sz: 6.5, color: DK, maxW: 48 });
-
-  // Col 4: Weight profile
-  vl(doc, ML + 145, Y + 2, Y + INFO_H - 2, DIV);
-  t(doc, "PROFILE", ML + 149, Y + 5, { sz: 6, bold: true, color: LT });
-  t(doc, profLine, ML + 163, Y + 5, { sz: 6.5, color: DK });
-  t(doc, revLine,  ML + 163, Y + 10, { sz: 6.5, color: MD });
-
-  // Eval ID — far right
-  if (d.evaluationId) {
-    t(doc, `ID ${d.evaluationId.toUpperCase().slice(0, 8)}`, PW - MR, Y + 10, {
-      sz: 5.5, color: LT, align: "right",
-    });
+  // Row 1b: Other managed artists (indented, italic)
+  if (inp.other_mgmt_artists) {
+    t(doc, "Other managed:", ML + 24, ly, { sz: 5.5, color: LT });
+    t(doc, inp.other_mgmt_artists, ML + 51, ly, { sz: 5.5, color: MD, maxW: LW - 53 });
+    ly += 4;
   }
+
+  // Row 2: Agent label + agency — agent names
+  const agentVal = [inp.booking_agent].filter(Boolean).join(" — ") || "—";
+  t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
+  t(doc, agentVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
+  ly += 4.5;
+
+  // Row 2b: Other booked artists
+  if (inp.other_agent_artists) {
+    t(doc, "Other booked:", ML + 24, ly, { sz: 5.5, color: LT });
+    t(doc, inp.other_agent_artists, ML + 49, ly, { sz: 5.5, color: MD, maxW: LW - 51 });
+  }
+
+  // ── Divider ───────────────────────────────────────────────────
+  vl(doc, ML + LW + 4, Y + 2, Y + MGMT_H - 2, DIV);
+
+  // ── Right column: Merch Provider ──────────────────────────────
+  const RX = ML + LW + 10;
+  t(doc, "MERCH PROVIDER", RX, Y + 4.5, { sz: 6, bold: true, color: LT });
+  t(doc, inp.merch_provider || "—", RX + 32, Y + 4.5, { sz: 6.5, color: DK, maxW: CW - LW - 44 });
 }
 
-// ─── SECTION: Pillar columns ──────────────────────────────────────────────────
+// ─── SECTION 3: Profile strip ─────────────────────────────────────────────────
 
-/** Draw the navy pillar header row and return the Y for the first data row. */
-function pillarHeader(doc: jsPDF, ci: number, label: string, score: number, weightPct: number): number {
+function drawProfileStrip(doc: jsPDF, d: ScorecardData): void {
+  const r = d.results;
+  const Y = PROF_TOP;
+
+  hl(doc, 0, PW, Y, DIV, 0.3);
+
+  const w    = r.pillar_weights;
+  const wStr = `${fp(w.p1)} / ${fp(w.p2)} / ${fp(w.p3)} / ${fp(w.p4)}`;
+  const age  = AGE_L[r.age_bracket]  ?? "—";
+  const tour = TOUR_L[r.touring_bracket] ?? "—";
+
+  const parts = [
+    `${age} × ${tour}`,
+    `Weights: ${wStr}`,
+    `${r.genre_group} P2 profile`,
+    `Revenue: ${r.revenue_tier ?? "—"}`,
+    d.evaluationId ? `ID: ${d.evaluationId.toUpperCase().slice(0, 8)}` : null,
+  ].filter(Boolean).join("   ·   ");
+
+  t(doc, "WEIGHT PROFILE", ML, Y + 5.5, { sz: 5.5, bold: true, color: LT });
+  t(doc, parts, ML + 28, Y + 5.5, { sz: 6.5, color: DK });
+
+  hl(doc, 0, PW, Y + PROF_H, DIV, 0.3);
+}
+
+// ─── SECTION 4: Pillar grid ───────────────────────────────────────────────────
+
+const PCOL_GAP = 3;
+const PCOL_W   = (CW - PCOL_GAP * 3) / 4;   // ≈ 67.75 mm
+const PCOL_X   = [0, 1, 2, 3].map(i => ML + i * (PCOL_W + PCOL_GAP));
+
+const PH_H = 8.5;   // pillar header height
+const CLH  = 4.5;   // column-label header height
+const RH   = 5.5;   // sub-metric row height
+
+// Fixed offsets within each row band (all text shares same baseline)
+const TEXT_OFF = RH - 1.6;   // baseline from row top (≈ 3.9 mm into a 5.5 mm band)
+
+// Sub-column x-offsets within each pillar column (relative to PCOL_X[ci])
+const NW = PCOL_W * 0.46;   // name column width  (~31 mm)
+// input starts at NW; score right-aligned at PCOL_W - 2
+
+function drawPillarColHeader(doc: jsPDF, ci: number, label: string, score: number, wPct: number): number {
   const x = PCOL_X[ci];
   const y = PILLAR_TOP;
+
+  // Navy bar
   box(doc, x, y, PCOL_W, PH_H, NAVY);
+  t(doc, label, x + 2, y + PH_H - 2.5, { sz: 7.5, bold: true, color: WHITE });
+  t(doc, `${fs(score)}  (${wPct}%)`, x + PCOL_W - 2, y + PH_H - 2.5,
+    { sz: 7.5, bold: true, color: WHITE, align: "right" });
 
-  // Label left
-  t(doc, label, x + 2, y + 6, { sz: 7.5, bold: true, color: WHITE });
+  // Sub-column labels row
+  const chy = y + PH_H + CLH - 1.5;
+  t(doc, "Metric", x + 2,           chy, { sz: 5.5, color: LT });
+  t(doc, "Input",  x + NW,          chy, { sz: 5.5, color: LT });
+  t(doc, "Score",  x + PCOL_W - 2,  chy, { sz: 5.5, color: LT, align: "right" });
+  hl(doc, x, x + PCOL_W, y + PH_H + CLH, DIV, 0.2);
 
-  // Score (weight%) right
-  t(doc, `${fs(score)}  (${weightPct}%)`, x + PCOL_W - 2, y + 6, {
-    sz: 7.5, bold: true, color: WHITE, align: "right",
-  });
-
-  // Light column header labels
-  const hy = y + PH_H + 3;
-  t(doc, "Metric", x + 2,       hy, { sz: 5.5, color: LT });
-  t(doc, "Input",  x + NW,      hy, { sz: 5.5, color: LT });
-  t(doc, "Score",  x + PCOL_W - 2, hy, { sz: 5.5, color: LT, align: "right" });
-  hl(doc, x, x + PCOL_W, hy + 1, DIV, 0.2);
-
-  return y + PH_H + 5;  // first data row Y
+  // Return top of first data row
+  return y + PH_H + CLH;
 }
 
-type SubRow = {
-  name: string;
-  input: string;
-  score: number;
-  isBonus?: boolean;
-};
+type SubRow = { name: string; input: string; score: number; isBonus?: boolean };
 
-function drawSubRows(doc: jsPDF, ci: number, startY: number, rows: SubRow[]): number {
+function drawSubRows(doc: jsPDF, ci: number, rowsTopY: number, rows: SubRow[]): number {
   const x = PCOL_X[ci];
-  let y = startY;
+
   rows.forEach((row, i) => {
-    if (i % 2 === 1) box(doc, x, y - RH + 1.2, PCOL_W, RH, BGROW);
+    const rowTop  = rowsTopY + i * RH;
+    const textY   = rowTop + TEXT_OFF;   // shared baseline for all three cells
+
+    // Alternating row background
+    if (i % 2 === 1) box(doc, x, rowTop, PCOL_W, RH, BGROW);
 
     // Metric name
-    t(doc, row.name, x + 2, y, { sz: 7, color: row.isBonus ? MD : DK, italic: row.isBonus });
+    t(doc, row.name, x + 2, textY, {
+      sz: 7, color: row.isBonus ? MD : DK, italic: !!row.isBonus,
+    });
 
     // Input value
-    t(doc, row.input, x + NW, y, { sz: 7, color: MD });
+    t(doc, row.input, x + NW, textY, { sz: 7, color: MD });
 
-    // Score / bonus value
+    // Score value
     const scoreStr = row.isBonus
       ? (row.score > 0 ? `+${row.score.toFixed(2)}` : "+0.00")
       : fs(row.score);
-    const sColor = row.isBonus
-      ? (row.score > 0 ? GREEN : LT)
-      : (row.score > 0 ? scoreColor(row.score) : LT);
-    t(doc, scoreStr, x + PCOL_W - 2, y, { sz: 7, bold: !row.isBonus, color: sColor, align: "right" });
 
-    y += RH;
+    const sColor: RGB = row.isBonus
+      ? (row.score > 0 ? GREEN : LT)   // gray for +0.00 bonus
+      : scoreColor(row.score);
+
+    t(doc, scoreStr, x + PCOL_W - 2, textY, {
+      sz: 7, bold: !row.isBonus, color: sColor, align: "right",
+    });
   });
 
-  hl(doc, x, x + PCOL_W, y - 0.5, DIV, 0.2);
-  return y + 1;
+  const endY = rowsTopY + rows.length * RH;
+  hl(doc, x, x + PCOL_W, endY, DIV, 0.2);
+  return endY;
 }
 
 // P1 — Touring
 function drawP1(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
-  const w = r.pillar_weights;
-  let y = pillarHeader(doc, 0, "P1  TOURING", r.p1.final_score, Math.round(w.p1 * 100));
-
+  const w     = r.pillar_weights;
+  const first = drawPillarColHeader(doc, 0, "P1  TOURING", r.p1.final_score, Math.round(w.p1 * 100));
   const reach = Math.round(nv(inp.venue_capacity) * nv(inp.num_dates) * (nv(inp.sell_through_pct) / 100));
 
   const rows: SubRow[] = [
-    { name: "Venue Capacity",  input: fK(inp.venue_capacity),                            score: r.p1.sub_scores.venue_capacity ?? 0 },
-    { name: "Sell-Through",    input: fP(inp.sell_through_pct),                          score: r.p1.sub_scores.sell_through ?? 0 },
-    { name: "Audience Reach",  input: reach > 0 ? fK(String(reach)) : "—",               score: r.p1.sub_scores.total_audience_reach ?? 0 },
-    { name: "Market Coverage", input: inp.market_coverage ? `${inp.market_coverage}/5` : "—", score: r.p1.sub_scores.market_coverage ?? 0 },
-    { name: "Resale Signal",   input: RESALE_S[inp.resale_situation] ?? "—",              score: r.p1.sub_scores.resale ?? 0 },
-    { name: "VIP Bonus",       input: VIP_S[inp.vip_level] ?? "None",                    score: r.p1.bonus ?? 0, isBonus: true },
+    { name: "Venue Capacity",  input: fK(inp.venue_capacity),                                    score: r.p1.sub_scores.venue_capacity ?? 0 },
+    { name: "Sell-Through",    input: fP(inp.sell_through_pct),                                  score: r.p1.sub_scores.sell_through ?? 0 },
+    { name: "Audience Reach",  input: reach > 0 ? fK(String(reach)) : "—",                       score: r.p1.sub_scores.total_audience_reach ?? 0 },
+    { name: "Market Coverage", input: inp.market_coverage ? `${inp.market_coverage}/5` : "—",    score: r.p1.sub_scores.market_coverage ?? 0 },
+    { name: "Resale Signal",   input: RESALE_S[inp.resale_situation] ?? "—",                      score: r.p1.sub_scores.resale ?? 0 },
+    { name: "VIP Bonus",       input: VIP_S[inp.vip_level] ?? "None", score: r.p1.bonus ?? 0, isBonus: true },
   ];
-
-  return drawSubRows(doc, 0, y, rows);
+  return drawSubRows(doc, 0, first, rows);
 }
 
 // P2 — Fan Engagement
 function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
-  const w = r.pillar_weights;
-  let y = pillarHeader(doc, 1, "P2  FAN ENGAGEMENT", r.p2.final_score, Math.round(w.p2 * 100));
+  const w     = r.pillar_weights;
+  const first = drawPillarColHeader(doc, 1, "P2  FAN ENGAGEMENT", r.p2.final_score, Math.round(w.p2 * 100));
 
   const tikER = inp.tiktok_avg_views && inp.tiktok_followers
     ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}%`
     : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
 
   const rows: SubRow[] = [
-    { name: "Spotify FCR",     input: fP(inp.fan_concentration_ratio),                    score: r.p2.sub_scores.FCR ?? 0 },
-    { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—", score: r.p2.sub_scores.FanID ?? 0 },
+    { name: "Spotify FCR",     input: fP(inp.fan_concentration_ratio),                           score: r.p2.sub_scores.FCR ?? 0 },
+    { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—",    score: r.p2.sub_scores.FanID ?? 0 },
     { name: "Instagram ER",    input: inp.ig_er_pct ? `${parseFloat(inp.ig_er_pct).toFixed(2)}%` : fK(inp.ig_followers), score: r.p2.sub_scores.IG_ER ?? 0 },
-    { name: "Reddit",          input: fK(inp.reddit_members),                              score: r.p2.sub_scores.Reddit ?? 0 },
-    { name: "Merch Sentiment", input: inp.merch_sentiment ? `${inp.merch_sentiment}/5` : "—", score: r.p2.sub_scores.MerchSent ?? 0 },
-    { name: "TikTok ER",       input: tikER,                                               score: r.p2.sub_scores.TikTok ?? 0 },
+    { name: "Reddit",          input: fK(inp.reddit_members),                                     score: r.p2.sub_scores.Reddit ?? 0 },
+    { name: "Merch Sentiment", input: inp.merch_sentiment ? `${inp.merch_sentiment}/5` : "—",    score: r.p2.sub_scores.MerchSent ?? 0 },
+    { name: "TikTok ER",       input: tikER,                                                      score: r.p2.sub_scores.TikTok ?? 0 },
   ];
 
   if (!r.p2.youtube_excluded) {
@@ -354,113 +396,120 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
     isBonus: true,
   });
 
-  return drawSubRows(doc, 1, y, rows);
+  return drawSubRows(doc, 1, first, rows);
 }
 
 // P3 — E-Commerce
 function drawP3(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
-  const w = r.pillar_weights;
-  let y = pillarHeader(doc, 2, "P3  E-COMMERCE", r.p3.final_score, Math.round(w.p3 * 100));
+  const w     = r.pillar_weights;
+  const first = drawPillarColHeader(doc, 2, "P3  E-COMMERCE", r.p3.final_score, Math.round(w.p3 * 100));
 
   const rows: SubRow[] = [
-    { name: "Store Quality", input: inp.store_quality ? `${inp.store_quality}/5`    : "—", score: r.p3.sub_scores.store_quality ?? 0 },
-    { name: "Merch Range",   input: inp.merch_range    ? `${inp.merch_range}/5`      : "—", score: r.p3.sub_scores.merch_range ?? 0 },
-    { name: "Price Point",   input: inp.price_point_highest ? `$${inp.price_point_highest}` : "—", score: r.p3.sub_scores.price_point ?? 0 },
-    { name: "D2C Infra",     input: inp.d2c_level      ? `${inp.d2c_level}/4`        : "—", score: r.p3.sub_scores.d2c ?? 0 },
+    { name: "Store Quality", input: inp.store_quality       ? `${inp.store_quality}/5`       : "—", score: r.p3.sub_scores.store_quality ?? 0 },
+    { name: "Merch Range",   input: inp.merch_range          ? `${inp.merch_range}/5`          : "—", score: r.p3.sub_scores.merch_range ?? 0 },
+    { name: "Price Point",   input: inp.price_point_highest  ? `$${inp.price_point_highest}`  : "—", score: r.p3.sub_scores.price_point ?? 0 },
+    { name: "D2C Infra",     input: inp.d2c_level            ? `${inp.d2c_level}/4`            : "—", score: r.p3.sub_scores.d2c ?? 0 },
   ];
 
-  return drawSubRows(doc, 2, y, rows);
+  return drawSubRows(doc, 2, first, rows);
 }
 
 // P4 — Growth
 function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
-  const w = r.pillar_weights;
-  let y = pillarHeader(doc, 3, "P4  GROWTH", r.p4.final_score, Math.round(w.p4 * 100));
+  const w     = r.pillar_weights;
+  const first = drawPillarColHeader(doc, 3, "P4  GROWTH", r.p4.final_score, Math.round(w.p4 * 100));
 
   const rows: SubRow[] = [
-    { name: "Spotify YoY",   input: fP(inp.spotify_yoy_pct),                               score: r.p4.sub_scores.spotify_yoy ?? 0 },
-    { name: "Venue Prog.",   input: PROG_S[inp.venue_progression] ?? inp.venue_progression ?? "—", score: r.p4.sub_scores.venue_progression ?? 0 },
-    { name: "IG Growth",     input: inp.ig_30day_gain ? `+${fK(inp.ig_30day_gain)}` : "—", score: r.p4.sub_scores.ig_growth ?? 0 },
-    { name: "Press",         input: inp.press_score    ? `${inp.press_score}/5`    : "—",  score: r.p4.sub_scores.press ?? 0 },
-    { name: "Playlist",      input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",  score: r.p4.sub_scores.playlist ?? 0 },
+    { name: "Spotify YoY",  input: fP(inp.spotify_yoy_pct),                                    score: r.p4.sub_scores.spotify_yoy ?? 0 },
+    { name: "Venue Prog.",  input: PROG_S[inp.venue_progression] ?? inp.venue_progression ?? "—", score: r.p4.sub_scores.venue_progression ?? 0 },
+    { name: "IG Growth",    input: inp.ig_30day_gain ? `+${fK(inp.ig_30day_gain)}` : "—",       score: r.p4.sub_scores.ig_growth ?? 0 },
+    { name: "Press",        input: inp.press_score    ? `${inp.press_score}/5`    : "—",         score: r.p4.sub_scores.press ?? 0 },
+    { name: "Playlist",     input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",         score: r.p4.sub_scores.playlist ?? 0 },
   ];
 
-  let endY = drawSubRows(doc, 3, y, rows);
+  let endY = drawSubRows(doc, 3, first, rows);
 
-  // Album cycle override note
   if (inp.show_album_cycle && inp.album_cycle_override) {
-    const x = PCOL_X[3];
     const note = `* Album cycle: ${inp.album_cycle_override.replace(/_/g, " ")}`;
-    t(doc, note, x + 2, endY + 2, { sz: 5.5, italic: true, color: LT });
-    endY += 5;
+    t(doc, note, PCOL_X[3] + 2, endY + 2.5, { sz: 5.5, italic: true, color: LT });
   }
 
   return endY;
 }
 
-function drawPillarGrid(doc: jsPDF, d: ScorecardData): number {
+function drawPillarGrid(doc: jsPDF, d: ScorecardData): void {
   const r   = d.results;
   const inp = d.inputs;
 
-  const endY1 = drawP1(doc, r, inp);
-  const endY2 = drawP2(doc, r, inp);
-  const endY3 = drawP3(doc, r, inp);
-  const endY4 = drawP4(doc, r, inp);
+  drawP1(doc, r, inp);
+  drawP2(doc, r, inp);
+  drawP3(doc, r, inp);
+  drawP4(doc, r, inp);
 
-  // Vertical dividers spanning full pillar height
-  const gridBottom = Math.max(endY1, endY2, endY3, endY4);
+  // Vertical dividers spanning full pillar budget height
   [1, 2, 3].forEach(i => {
-    vl(doc, PCOL_X[i] - PCOL_GAP / 2, PILLAR_TOP, gridBottom, DIV, 0.25);
+    vl(doc, PCOL_X[i] - PCOL_GAP / 2, PILLAR_TOP, PILLAR_TOP + PILLAR_H, DIV, 0.25);
   });
-
-  return gridBottom + 3;
 }
 
-// ─── SECTION: Score composition ──────────────────────────────────────────────
+// ─── SECTION 5: Score composition table ──────────────────────────────────────
 
-function drawScoreComp(doc: jsPDF, r: ScoringResult, startY: number): number {
-  hl(doc, ML, PW - MR, startY, DIV, 0.35);
-  const y = startY + 5;
-
-  t(doc, "SCORE COMPOSITION", ML, y, { sz: 6.5, bold: true, color: NAVY });
+function drawScoreComp(doc: jsPDF, r: ScoringResult): void {
+  const Y = SCORE_TOP;
+  hl(doc, 0, PW, Y, DIV, 0.4);
 
   const w = r.pillar_weights;
-  const pillars = [
+  const pillars: Array<{ label: string; score: number; weight: number }> = [
     { label: "P1  Touring",        score: r.p1.final_score, weight: w.p1 },
     { label: "P2  Fan Engagement", score: r.p2.final_score, weight: w.p2 },
     { label: "P3  E-Commerce",     score: r.p3.final_score, weight: w.p3 },
     { label: "P4  Growth",         score: r.p4.final_score, weight: w.p4 },
   ];
 
-  // Column headers
-  const TX  = ML + 36;
-  const GW  = (CW - 36 - 42) / pillars.length;  // width per pillar block
-  const HDY = y - 4;
-  t(doc, "Pillar",      TX,           HDY, { sz: 5.5, color: LT });
-  t(doc, "Score",       TX + GW * 0.55, HDY, { sz: 5.5, color: LT });
-  t(doc, "Weight",      TX + GW * 1.1,  HDY, { sz: 5.5, color: LT });
-  t(doc, "Contribution",TX + GW * 1.7,  HDY, { sz: 5.5, color: LT });
+  // Column x positions (fixed, right-aligned scores)
+  const NX  = ML + 2;    // Pillar name left edge
+  const SX  = ML + 118;  // Score right edge
+  const WX  = ML + 158;  // Weight right edge
+  const CX  = ML + 205;  // Contribution right edge
 
-  let colX = TX;
-  pillars.forEach(({ label, score, weight }) => {
+  // Section title
+  let y = Y + 5;
+  t(doc, "SCORE COMPOSITION", NX, y, { sz: 6.5, bold: true, color: NAVY });
+
+  // Column headers
+  y += 5;
+  t(doc, "Pillar",         NX,   y, { sz: 5.5, color: LT });
+  t(doc, "Score",          SX,   y, { sz: 5.5, color: LT, align: "right" });
+  t(doc, "Weight",         WX,   y, { sz: 5.5, color: LT, align: "right" });
+  t(doc, "Contribution",   CX,   y, { sz: 5.5, color: LT, align: "right" });
+  hl(doc, ML, CX + 5, y + 1.5, DIV, 0.2);
+
+  // Data rows
+  const ROW_H = 4.5;
+  y += 2;
+  pillars.forEach(({ label, score, weight }, i) => {
+    y += ROW_H;
+    if (i % 2 === 1) box(doc, ML, y - ROW_H + 0.5, CX - ML + 10, ROW_H, BGROW);
     const contrib = score * weight;
-    t(doc, label,          colX,           y, { sz: 7, color: DK });
-    t(doc, fs(score),      colX + GW * 0.55, y, { sz: 7, bold: true, color: scoreColor(score) });
-    t(doc, fp(weight),     colX + GW * 1.1,  y, { sz: 7, color: MD });
-    t(doc, fs(contrib),    colX + GW * 1.7,  y, { sz: 7, color: DK });
-    colX += GW * 2.5;
+    t(doc, label,       NX, y, { sz: 7, color: DK });
+    t(doc, fs(score),   SX, y, { sz: 7, bold: true, color: scoreColor(score), align: "right" });
+    t(doc, fp(weight),  WX, y, { sz: 7, color: MD,  align: "right" });
+    t(doc, fs(contrib), CX, y, { sz: 7, color: DK,  align: "right" });
   });
 
-  // Total
-  t(doc, "TOTAL",        colX + 4,  y, { sz: 7, bold: true, color: NAVY });
-  t(doc, fs(r.total_score), colX + 24, y, { sz: 8, bold: true, color: RED });
-
-  return y + 6;
+  // Divider + Total row
+  y += 2;
+  hl(doc, ML, CX + 5, y, DIV, 0.3);
+  y += 4;
+  t(doc, "TOTAL",             NX, y, { sz: 7.5, bold: true, color: NAVY });
+  t(doc, fs(r.total_score),   CX, y, { sz: 8,   bold: true, color: RED,  align: "right" });
 }
 
-// ─── SECTION: Demographics ────────────────────────────────────────────────────
+// ─── SECTION 6: Demographics ─────────────────────────────────────────────────
 
-function drawDemographics(doc: jsPDF, inp: EvalFormData, startY: number): number {
+function drawDemographics(doc: jsPDF, inp: EvalFormData): void {
+  const Y = DEMO_TOP;
+
   const agePairs: [string, number][] = [
     ["13–17", nv(inp.d_13_17_m) + nv(inp.d_13_17_f)],
     ["18–24", nv(inp.d_18_24_m) + nv(inp.d_18_24_f)],
@@ -470,59 +519,55 @@ function drawDemographics(doc: jsPDF, inp: EvalFormData, startY: number): number
     ["65+",   nv(inp.d_65_m)    + nv(inp.d_65_f)],
   ];
   const ethAll: [string, number][] = [
-    ["White",     nv(inp.eth_white)],
-    ["Hispanic",  nv(inp.eth_hispanic)],
-    ["Afr.Am.",   nv(inp.eth_aa)],
-    ["Asian",     nv(inp.eth_asian)],
+    ["White",    nv(inp.eth_white)],
+    ["Hispanic", nv(inp.eth_hispanic)],
+    ["Afr.Am.",  nv(inp.eth_aa)],
+    ["Asian",    nv(inp.eth_asian)],
   ];
   const ethPairs: [string, number][] = ethAll.filter(([, v]) => (v as number) > 0);
 
   const hasAge = agePairs.some(([, v]) => v > 0);
   const hasEth = ethPairs.length > 0;
-  if (!hasAge && !hasEth) return startY;
+  if (!hasAge && !hasEth) return;
 
-  hl(doc, ML, PW - MR, startY, DIV, 0.3);
-  let y = startY + 5;
+  hl(doc, 0, PW, Y, DIV, 0.3);
+  let y = Y + 5;
 
   t(doc, "AUDIENCE DEMOGRAPHICS", ML, y, { sz: 6.5, bold: true, color: NAVY });
-  y += 4;
+  y += 4.5;
 
-  // Age row
+  // Age brackets — inline horizontal row, 1 decimal place
   if (hasAge) {
     t(doc, "Age:", ML, y, { sz: 6, bold: true, color: LT });
     let ax = ML + 12;
     agePairs.forEach(([grp, val]) => {
       if (val <= 0) return;
       t(doc, grp, ax, y, { sz: 6, color: MD });
-      t(doc, `${val}%`, ax + 8, y, { sz: 6.5, bold: true, color: DK });
-      ax += 26;
+      t(doc, `${val.toFixed(1)}%`, ax + 9, y, { sz: 6.5, bold: true, color: DK });
+      ax += 27;
     });
     y += 5;
   }
 
-  // Ethnicity row
+  // Ethnicity — inline horizontal row, 1 decimal place
   if (hasEth) {
     t(doc, "Ethnicity:", ML, y, { sz: 6, bold: true, color: LT });
-    let ex = ML + 18;
+    let ex = ML + 19;
     ethPairs.forEach(([grp, val]) => {
       t(doc, grp, ex, y, { sz: 6, color: MD });
-      t(doc, `${val}%`, ex + 12, y, { sz: 6.5, bold: true, color: DK });
-      ex += 33;
+      t(doc, `${val.toFixed(1)}%`, ex + 13, y, { sz: 6.5, bold: true, color: DK });
+      ex += 34;
     });
-    y += 5;
   }
-
-  return y;
 }
 
-// ─── SECTION: Footer ─────────────────────────────────────────────────────────
+// ─── SECTION 7: Footer ───────────────────────────────────────────────────────
 
 function drawFooter(doc: jsPDF, d: ScorecardData): void {
-  const Y = PH - 5;
-  hl(doc, ML, PW - MR, Y - 1, DIV, 0.3);
-  t(doc, "A3 Merchandise — Confidential", ML, Y + 2, { sz: 6, color: LT });
-  const right = `${shortDate(d.evaluationDate)}${d.evaluationId ? "  ·  " + d.evaluationId.toUpperCase().slice(0, 8) : ""}`;
-  t(doc, right, PW - MR, Y + 2, { sz: 6, color: LT, align: "right" });
+  hl(doc, ML, PW - MR, FOOTER_Y - 1, DIV, 0.3);
+  t(doc, "A3 Merchandise — Confidential", ML, FOOTER_Y + 3, { sz: 6, color: LT });
+  const right = `${shortDate(d.evaluationDate)}${d.evaluationId ? "  ·  ID " + d.evaluationId.toUpperCase().slice(0, 8) : ""}`;
+  t(doc, right, PW - MR, FOOTER_Y + 3, { sz: 6, color: LT, align: "right" });
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -530,14 +575,12 @@ function drawFooter(doc: jsPDF, d: ScorecardData): void {
 export function downloadScorecardPDF(data: ScorecardData): void {
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
 
-  const r   = data.results;
-  const inp = data.inputs;
-
   drawHeader(doc, data);
-  drawInfoStrip(doc, data);
-  let y = drawPillarGrid(doc, data);
-  y = drawScoreComp(doc, r, y);
-  drawDemographics(doc, inp, y + 2);
+  drawMgmtStrip(doc, data);
+  drawProfileStrip(doc, data);
+  drawPillarGrid(doc, data);
+  drawScoreComp(doc, data.results);
+  drawDemographics(doc, data.inputs);
   drawFooter(doc, data);
 
   const slug = safeFilename(data.artistName);
