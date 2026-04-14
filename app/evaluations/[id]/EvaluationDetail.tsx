@@ -32,6 +32,32 @@ const AGE_BRACKET_LABELS = [
 ];
 const TOURING_LABELS = ["", "Light", "Moderate", "Heavy", "Massive"];
 
+// ── Input formatting helpers ──────────────────────────────────
+
+function fmtNum(n: number): string {
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000)
+    return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return n.toLocaleString();
+}
+
+const VIP_LABELS: Record<string, string> = {
+  none: "No VIP",
+  offered_before: "Offered Before",
+  basic: "Basic",
+  premium_mg: "Premium MG",
+  tiered_high: "Tiered High",
+};
+
+const VENUE_PROG_LABELS: Record<string, string> = {
+  smaller: "Smaller",
+  same: "Same",
+  slight_step_up: "Step-up",
+  major_jump: "Major Jump",
+  tier_change: "Tier Change",
+};
+
 // ── Pillar card ───────────────────────────────────────────────
 
 function PillarCard({
@@ -43,7 +69,7 @@ function PillarCard({
   name: string;
   result: PillarBreakdown;
   weight: number;
-  subRows: Array<{ key: string; label: string; weight: number }>;
+  subRows: Array<{ key: string; label: string; weight: number; inputVal?: string }>;
 }) {
   const scoreColor =
     result.final_score >= 4
@@ -71,17 +97,19 @@ function PillarCard({
         <thead>
           <tr className="border-b border-gray-100 text-xs text-gray-400">
             <th className="px-5 py-2 text-left font-medium">Metric</th>
+            <th className="px-3 py-2 text-left font-medium">Input</th>
             <th className="px-3 py-2 text-center font-medium">Score</th>
             <th className="px-3 py-2 text-center font-medium">Weight</th>
             <th className="px-5 py-2 text-right font-medium">Contribution</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {subRows.map(({ key, label, weight: w }) => {
+          {subRows.map(({ key, label, weight: w, inputVal }) => {
             const s = result.sub_scores[key] ?? 0;
             return (
               <tr key={key}>
                 <td className="px-5 py-2 text-gray-700">{label}</td>
+                <td className="px-3 py-2 text-xs text-gray-400">{inputVal ?? "—"}</td>
                 <td className="px-3 py-2 text-center font-semibold text-[#1B2A4A]">
                   {Number.isInteger(s) ? s : s.toFixed(1)}
                 </td>
@@ -100,7 +128,7 @@ function PillarCard({
             <tr className="border-t border-dashed border-gray-200 bg-emerald-50/50">
               <td
                 className="px-5 py-1.5 text-xs text-emerald-700"
-                colSpan={3}
+                colSpan={4}
               >
                 Bonus (VIP / Discord)
               </td>
@@ -155,6 +183,113 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
   const dates = parseFloat((evaluation.inputs as any)?.num_dates ?? "0") || 0;
   const st = parseFloat((evaluation.inputs as any)?.sell_through_pct ?? "0") || 0;
   const reach = Math.round(cap * dates * (st / 100));
+
+  // ── Input display values ──────────────────────────────────
+  // inp is null for older evaluations saved before the inputs column was added
+  const inp = evaluation.inputs
+    ? (evaluation.inputs as unknown as Record<string, string>)
+    : null;
+  const g = (key: string): string => inp?.[key] ?? "";
+  const nv = (key: string): number => parseFloat(inp?.[key] ?? "") || 0;
+
+  const inputDisplay: Record<string, string> = (() => {
+    if (inp === null) return {} as Record<string, string>;
+
+    // Resale signal
+    const resSit = g("resale_situation");
+    const fv = g("face_value");
+    const rp = g("resale_price");
+    const resaleStr =
+      resSit === "not_sold_out"  ? "Not SO" :
+      resSit === "some_sold_out" ? `Some SO $${fv}/$${rp}` :
+      resSit === "all_sold_out"  ? `All SO $${fv}/$${rp}` : "—";
+
+    // TikTok ER (avg_views / followers * 100)
+    const ttFlwrs = nv("tiktok_followers");
+    const ttViews = nv("tiktok_avg_views");
+    const ttER = ttFlwrs > 0 ? (ttViews / ttFlwrs) * 100 : 0;
+    const tiktokStr = ttFlwrs > 0
+      ? `${ttER.toFixed(1)}% (${fmtNum(ttFlwrs)} flwrs)`
+      : "—";
+
+    // Spotify YoY
+    const yoyRaw = g("spotify_yoy_pct");
+    const listeners = nv("spotify_monthly_listeners");
+    const yoyStr = (() => {
+      if (!yoyRaw) return "—";
+      const yoyNum = parseFloat(yoyRaw);
+      const pct = `${yoyNum > 0 ? "+" : ""}${yoyNum.toFixed(1)}%`;
+      return listeners > 0 ? `${pct} (${fmtNum(listeners)})` : pct;
+    })();
+
+    // IG 30-day growth
+    const gainRaw = g("ig_30day_gain");
+    const igFlwrs = nv("ig_followers");
+    const igGrowthStr = (() => {
+      if (!gainRaw) return "—";
+      const gainNum = parseFloat(gainRaw);
+      const gainStr = `${gainNum > 0 ? "+" : ""}${gainNum.toLocaleString()}`;
+      return igFlwrs > 0 ? `${gainStr} (${fmtNum(igFlwrs)} flwrs)` : gainStr;
+    })();
+
+    return {
+      // P1 — Touring
+      venue_capacity:
+        nv("venue_capacity") > 0 ? nv("venue_capacity").toLocaleString() : "—",
+      sell_through:
+        g("sell_through_pct") ? `${g("sell_through_pct")}%` : "—",
+      total_audience_reach:
+        reach > 0 ? reach.toLocaleString() : "—",
+      market_coverage:
+        g("market_coverage") ? `${g("market_coverage")}/5` : "—",
+      resale: resaleStr,
+
+      // P2 — Fan Engagement
+      FCR:
+        g("fan_concentration_ratio")
+          ? `${parseFloat(g("fan_concentration_ratio")).toFixed(2)}%`
+          : "—",
+      FanID:
+        g("p2_fan_identity") ? `${g("p2_fan_identity")}/5` : "—",
+      IG_ER:
+        g("ig_er_pct") && igFlwrs > 0
+          ? `${parseFloat(g("ig_er_pct")).toFixed(2)}% (${fmtNum(igFlwrs)} flwrs)`
+          : "—",
+      Reddit:
+        nv("reddit_members") > 0 ? nv("reddit_members").toLocaleString() : "—",
+      MerchSent:
+        g("merch_sentiment") ? `${g("merch_sentiment")}/5` : "—",
+      TikTok: tiktokStr,
+      YouTube:
+        g("youtube_er_pct") && nv("youtube_subscribers") > 0
+          ? `${parseFloat(g("youtube_er_pct")).toFixed(2)}% (${fmtNum(nv("youtube_subscribers"))} subs)`
+          : "—",
+
+      // P3 — E-Commerce
+      store_quality:
+        g("store_quality") ? `${g("store_quality")}/5` : "—",
+      merch_range:
+        g("merch_range") ? `${g("merch_range")}/5` : "—",
+      price_point:
+        g("price_point_highest")
+          ? `$${parseFloat(g("price_point_highest")).toLocaleString()}`
+          : "—",
+      d2c:
+        g("d2c_level") ? `${g("d2c_level")}/4` : "—",
+
+      // P4 — Growth
+      spotify_yoy: yoyStr,
+      venue_progression:
+        VENUE_PROG_LABELS[g("venue_progression")] ?? "—",
+      ig_growth: igGrowthStr,
+      press:
+        g("press_score") ? `${g("press_score")}/5` : "—",
+      playlist:
+        g("playlist_score") ? `${g("playlist_score")}/5` : "—",
+    };
+  })();
+
+  const iv = (key: string): string => inputDisplay[key] ?? "—";
 
   return (
     <div className="min-h-full bg-gray-50 print:bg-white">
@@ -334,11 +469,11 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p1}
           weight={r.pillar_weights.p1}
           subRows={[
-            { key: "venue_capacity",       label: "Venue Capacity",       weight: 0.25 },
-            { key: "sell_through",         label: "Sell-Through",         weight: 0.20 },
-            { key: "total_audience_reach", label: "Total Audience Reach", weight: 0.20 },
-            { key: "market_coverage",      label: "Market Coverage",      weight: 0.15 },
-            { key: "resale",               label: "Resale Signal",        weight: 0.20 },
+            { key: "venue_capacity",       label: "Venue Capacity",       weight: 0.25, inputVal: iv("venue_capacity") },
+            { key: "sell_through",         label: "Sell-Through",         weight: 0.20, inputVal: iv("sell_through") },
+            { key: "total_audience_reach", label: "Total Audience Reach", weight: 0.20, inputVal: iv("total_audience_reach") },
+            { key: "market_coverage",      label: "Market Coverage",      weight: 0.15, inputVal: iv("market_coverage") },
+            { key: "resale",               label: "Resale Signal",        weight: 0.20, inputVal: iv("resale") },
           ]}
         />
 
@@ -347,14 +482,14 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p2}
           weight={r.pillar_weights.p2}
           subRows={[
-            { key: "FCR",       label: "Fan Concentration Ratio", weight: p2r.sub_weights.FCR },
-            { key: "FanID",     label: "Fan Identity Signaling",  weight: p2r.sub_weights.FanID },
-            { key: "IG_ER",     label: "Instagram Engagement",    weight: p2r.sub_weights.IG_ER },
-            { key: "Reddit",    label: "Reddit",                  weight: p2r.sub_weights.Reddit },
-            { key: "MerchSent", label: "Merch Sentiment",         weight: p2r.sub_weights.MerchSent },
-            { key: "TikTok",    label: "TikTok Engagement",       weight: p2r.sub_weights.TikTok },
+            { key: "FCR",       label: "Fan Concentration Ratio", weight: p2r.sub_weights.FCR,       inputVal: iv("FCR") },
+            { key: "FanID",     label: "Fan Identity Signaling",  weight: p2r.sub_weights.FanID,     inputVal: iv("FanID") },
+            { key: "IG_ER",     label: "Instagram Engagement",    weight: p2r.sub_weights.IG_ER,     inputVal: iv("IG_ER") },
+            { key: "Reddit",    label: "Reddit",                  weight: p2r.sub_weights.Reddit,    inputVal: iv("Reddit") },
+            { key: "MerchSent", label: "Merch Sentiment",         weight: p2r.sub_weights.MerchSent, inputVal: iv("MerchSent") },
+            { key: "TikTok",    label: "TikTok Engagement",       weight: p2r.sub_weights.TikTok,    inputVal: iv("TikTok") },
             ...(!p2r.youtube_excluded
-              ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2r.sub_weights.YouTube }]
+              ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2r.sub_weights.YouTube, inputVal: iv("YouTube") }]
               : []),
           ]}
         />
@@ -364,10 +499,10 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p3}
           weight={r.pillar_weights.p3}
           subRows={[
-            { key: "store_quality", label: "Store Quality",      weight: 0.35 },
-            { key: "merch_range",   label: "Merch Range",        weight: 0.30 },
-            { key: "price_point",   label: "Price Point",        weight: 0.25 },
-            { key: "d2c",           label: "D2C Infrastructure", weight: 0.10 },
+            { key: "store_quality", label: "Store Quality",      weight: 0.35, inputVal: iv("store_quality") },
+            { key: "merch_range",   label: "Merch Range",        weight: 0.30, inputVal: iv("merch_range") },
+            { key: "price_point",   label: "Price Point",        weight: 0.25, inputVal: iv("price_point") },
+            { key: "d2c",           label: "D2C Infrastructure", weight: 0.10, inputVal: iv("d2c") },
           ]}
         />
 
@@ -376,11 +511,11 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p4}
           weight={r.pillar_weights.p4}
           subRows={[
-            { key: "spotify_yoy",       label: "Spotify YoY",        weight: 0.30 },
-            { key: "venue_progression", label: "Venue Progression",  weight: 0.25 },
-            { key: "ig_growth",         label: "IG Growth",          weight: 0.20 },
-            { key: "press",             label: "Press Coverage",     weight: 0.15 },
-            { key: "playlist",          label: "Playlist Placement", weight: 0.10 },
+            { key: "spotify_yoy",       label: "Spotify YoY",        weight: 0.30, inputVal: iv("spotify_yoy") },
+            { key: "venue_progression", label: "Venue Progression",  weight: 0.25, inputVal: iv("venue_progression") },
+            { key: "ig_growth",         label: "IG Growth",          weight: 0.20, inputVal: iv("ig_growth") },
+            { key: "press",             label: "Press Coverage",     weight: 0.15, inputVal: iv("press") },
+            { key: "playlist",          label: "Playlist Placement", weight: 0.10, inputVal: iv("playlist") },
           ]}
         />
 
