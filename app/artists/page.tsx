@@ -13,12 +13,23 @@ export type ArtistRow = {
   latest_revenue_tier: string | null;
   last_evaluated: string | null;
   eval_count: number;
+  is_a3_client: boolean;
+  is_archived: boolean;
 };
 
-export default async function ArtistsPage() {
+export default async function ArtistsPage({
+  searchParams,
+}: {
+  searchParams: { filter?: string };
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const initialTab =
+    searchParams.filter === "a3clients" ? "a3clients" :
+    searchParams.filter === "archived"  ? "archived"  :
+    "all";
 
   let artists: ArtistRow[] = [];
   let dbError: string | null = null;
@@ -26,7 +37,7 @@ export default async function ArtistsPage() {
   try {
     const { data: artistRows, error: artistsError } = await supabase
       .from("artists")
-      .select("id, name, genre, merch_provider:current_merch_provider, management_company")
+      .select("id, name, genre, merch_provider:current_merch_provider, management_company, is_a3_client, is_archived")
       .order("name");
 
     if (artistsError) throw artistsError;
@@ -34,8 +45,6 @@ export default async function ArtistsPage() {
     if (artistRows && artistRows.length > 0) {
       const artistIds = artistRows.map((a) => a.id);
 
-      // Fetch all completed evaluations for these artists in one query
-      // Actual schema uses: score_total, tier, evaluated_at (not results jsonb or created_at)
       const { data: evals } = await supabase
         .from("evaluations")
         .select("id, artist_id, score_total, tier, evaluated_at")
@@ -43,7 +52,6 @@ export default async function ArtistsPage() {
         .in("artist_id", artistIds)
         .order("evaluated_at", { ascending: false });
 
-      // Build: latest eval per artist + count per artist
       const latestEvalMap = new Map<string, { score_total: number | null; tier: string | null; evaluated_at: string }>();
       const countMap = new Map<string, number>();
 
@@ -68,9 +76,11 @@ export default async function ArtistsPage() {
           management_company: a.management_company,
           latest_score: latest?.score_total ?? null,
           latest_tier: latest?.tier ?? null,
-          latest_revenue_tier: null, // revenue_tier not in current DB schema
+          latest_revenue_tier: null,
           last_evaluated: latest?.evaluated_at ?? null,
           eval_count: countMap.get(a.id) ?? 0,
+          is_a3_client: a.is_a3_client ?? false,
+          is_archived: a.is_archived ?? false,
         };
       });
     }
@@ -85,5 +95,5 @@ export default async function ArtistsPage() {
     }
   }
 
-  return <ArtistsClient artists={artists} dbError={dbError} />;
+  return <ArtistsClient artists={artists} dbError={dbError} initialTab={initialTab} />;
 }

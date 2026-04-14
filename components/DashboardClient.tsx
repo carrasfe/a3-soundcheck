@@ -181,9 +181,7 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
                 <>
                   {evaluations.length}{" "}
                   {evaluations.length === 1 ? "evaluation" : "evaluations"}:{" "}
-                  <span className="font-semibold text-[#e05a4c]">
-                    {tierCounts.Priority} Priority
-                  </span>
+                  <span className="font-semibold text-[#e05a4c]">{tierCounts.Priority} Priority</span>
                   {", "}
                   <span className="text-white/80">{tierCounts.Active} Active</span>
                   {", "}
@@ -194,20 +192,12 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
               )}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
-            >
-              Upload Scorecard
-            </button>
-            <Link
-              href="/evaluations/new"
-              className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
-            >
-              + New Evaluation
-            </Link>
-          </div>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+          >
+            Upload Scorecard
+          </button>
         </div>
       </div>
       {showUploadModal && <UploadScorecardModal onClose={() => setShowUploadModal(false)} />}
@@ -218,6 +208,46 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
           <strong>Database error:</strong> {dbError}
         </div>
       )}
+
+      {/* ── Action cards ──────────────────────────────────── */}
+      <div className="shrink-0 border-b border-gray-200 bg-gray-50 px-6 py-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Card 1 — New Evaluation */}
+          <Link
+            href="/evaluations/new"
+            className="group flex flex-col rounded-xl bg-[#C0392B] p-5 shadow-sm transition hover:bg-[#a93226] hover:shadow-md"
+          >
+            <span className="mb-3 text-2xl">📋</span>
+            <p className="text-base font-bold text-white">New Evaluation</p>
+            <p className="mt-1 text-xs text-white/70">Start a new artist scorecard</p>
+          </Link>
+
+          {/* Card 2 — Current A3 Clients */}
+          <Link
+            href="/artists?filter=a3clients"
+            className="group flex flex-col rounded-xl bg-[#1B2A4A] p-5 shadow-sm transition hover:bg-[#152238] hover:shadow-md"
+          >
+            <span className="mb-3 text-2xl">⭐</span>
+            <p className="text-base font-bold text-white">Current A3 Clients</p>
+            <p className="mt-1 text-xs text-white/70">View and manage your A3 Merch client roster</p>
+          </Link>
+
+          {/* Card 3 — Artist Soundchecks */}
+          <Link
+            href="/artists"
+            className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#1B2A4A]/30 hover:shadow-md"
+          >
+            <span className="mb-3 text-2xl">🎤</span>
+            <p className="text-base font-bold text-[#1B2A4A]">Artist Soundchecks</p>
+            <p className="mt-1 text-xs text-gray-500">Browse all artists and evaluation history</p>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Recent Evaluations ─────────────────────────────── */}
+      <div className="shrink-0 border-b border-gray-200 bg-white px-6 pt-5 pb-0">
+        <p className="text-sm font-semibold uppercase tracking-wider text-gray-500">Recent Evaluations</p>
+      </div>
 
       {/* Filters */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">

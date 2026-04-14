@@ -19,6 +19,8 @@ export type ArtistDetail = {
   management_company: string | null;
   manager_names: string | null;
   booking_agent: string | null;
+  is_a3_client: boolean;
+  is_archived: boolean;
   evaluations: ArtistEvaluation[];
 };
 
@@ -33,14 +35,12 @@ export default async function ArtistDetailPage({
 
   const { data: artist, error } = await supabase
     .from("artists")
-    .select("id, name, genre, merch_provider:current_merch_provider, management_company, manager_names, booking_agent")
+    .select("id, name, genre, merch_provider:current_merch_provider, management_company, manager_names, booking_agent, is_a3_client, is_archived")
     .eq("id", params.id)
     .single();
 
   if (error || !artist) notFound();
 
-  // All completed evaluations for this artist, newest first
-  // Actual schema: score_total, tier, evaluated_at, evaluated_by (not results jsonb, created_at, or evaluator_id)
   const { data: evals } = await supabase
     .from("evaluations")
     .select("id, score_total, tier, evaluated_at, evaluated_by")
@@ -50,7 +50,6 @@ export default async function ArtistDetailPage({
 
   const evalRows = evals ?? [];
 
-  // Try to resolve evaluator display names from profiles
   let evaluatorMap = new Map<string, string>();
   if (evalRows.length > 0) {
     const evaluatorRefs = Array.from(new Set(evalRows.map((e) => e.evaluated_by).filter(Boolean)));
@@ -65,13 +64,15 @@ export default async function ArtistDetailPage({
 
   const artistDetail: ArtistDetail = {
     ...artist,
+    is_a3_client: artist.is_a3_client ?? false,
+    is_archived: artist.is_archived ?? false,
     evaluations: evalRows.map((ev) => ({
       id: ev.id,
       created_at: ev.evaluated_at,
       evaluator_name: evaluatorMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
       total_score: ev.score_total ?? null,
       tier_label: ev.tier ?? null,
-      revenue_tier: null, // revenue_tier not in current DB schema
+      revenue_tier: null,
     })),
   };
 
