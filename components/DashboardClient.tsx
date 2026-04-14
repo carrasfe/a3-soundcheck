@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { EvaluationRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
+import UploadScorecardModal from "@/components/UploadScorecardModal";
 
 // ── Display helpers ───────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // ── Filter options ────────────────────────────────────────
   const genres = useMemo(
@@ -192,14 +194,23 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
               )}
             </p>
           </div>
-          <Link
-            href="/evaluations/new"
-            className="shrink-0 rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
-          >
-            + New Evaluation
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+            >
+              Upload Scorecard
+            </button>
+            <Link
+              href="/evaluations/new"
+              className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
+            >
+              + New Evaluation
+            </Link>
+          </div>
         </div>
       </div>
+      {showUploadModal && <UploadScorecardModal onClose={() => setShowUploadModal(false)} />}
 
       {/* DB error banner */}
       {dbError && (
