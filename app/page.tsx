@@ -94,22 +94,6 @@ export default async function DashboardPage() {
         };
       });
     }
-    // Fetch drafts for the current user (up to 10 most recent)
-    const { data: draftRows } = await supabase
-      .from("evaluations")
-      .select("id, artists(name), updated_at")
-      .eq("status", "draft")
-      .eq("evaluated_by", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(10);
-
-    if (draftRows) {
-      drafts = draftRows.map((d) => ({
-        id: d.id,
-        artist_name: (d.artists as unknown as { name: string } | null)?.name ?? "Unnamed draft",
-        updated_at: d.updated_at,
-      }));
-    }
   } catch (err) {
     console.error("[DashboardPage] Supabase error:", JSON.stringify(err, null, 2));
     if (err && typeof err === "object") {
@@ -119,6 +103,41 @@ export default async function DashboardPage() {
     } else {
       dbError = String(err);
     }
+  }
+
+  // Fetch drafts in a separate query so any error here never blocks the evaluations list.
+  // Use evaluated_at for ordering — it's explicitly set in saveEvaluation; updated_at
+  // may not auto-update on row updates (no trigger) or may not exist in all schemas.
+  try {
+    const { data: draftRows, error: draftError } = await supabase
+      .from("evaluations")
+      .select("id, artists(name), evaluated_at")
+      .eq("status", "draft")
+      .eq("evaluated_by", user.id)
+      .order("evaluated_at", { ascending: false })
+      .limit(10);
+
+    if (draftError) {
+      console.error("[DashboardPage] Drafts query error:", JSON.stringify(draftError));
+    } else {
+      console.log(`[DashboardPage] Fetched ${draftRows?.length ?? 0} drafts`);
+    }
+
+    if (draftRows && draftRows.length > 0) {
+      drafts = draftRows.map((d) => {
+        const artistsData = d.artists as unknown;
+        const artistName = Array.isArray(artistsData)
+          ? ((artistsData as Array<{ name: string }>)[0]?.name ?? "Unnamed draft")
+          : ((artistsData as { name: string } | null)?.name ?? "Unnamed draft");
+        return {
+          id: d.id,
+          artist_name: artistName,
+          updated_at: (d as Record<string, unknown>).evaluated_at as string ?? "",
+        };
+      });
+    }
+  } catch (draftErr) {
+    console.error("[DashboardPage] Drafts fetch threw:", draftErr);
   }
 
   return <DashboardClient evaluations={evaluations} drafts={drafts} isAdmin={isAdmin} dbError={dbError} />;
