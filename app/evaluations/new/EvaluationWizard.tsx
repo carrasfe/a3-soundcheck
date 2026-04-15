@@ -257,9 +257,11 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
         try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
         setSavedId(result.id);
         setSaveSuccess(result.id);
+        const destUrl = `/evaluations/${result.id}`;
+        console.log("[EvaluationWizard] Save successful, redirecting to:", destUrl);
         setTimeout(() => {
-          router.push(`/evaluations/${result.id}`);
-        }, 2000);
+          router.push(destUrl);
+        }, 1500);
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");

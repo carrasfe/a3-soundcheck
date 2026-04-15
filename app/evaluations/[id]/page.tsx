@@ -39,8 +39,16 @@ export default async function EvaluationDetailPage({
     .eq("id", params.id)
     .single();
 
-  if (error || !row || row.status !== "complete") {
+  if (error || !row) {
+    console.error("[EvaluationDetailPage] Row not found for id:", params.id, error?.message);
     notFound();
+  }
+
+  // Draft evaluations aren't shown on the detail page — redirect back to the wizard so
+  // the user can complete and save rather than seeing a confusing 404.
+  if (row.status !== "complete") {
+    console.warn("[EvaluationDetailPage] Evaluation is not complete (status:", row.status, "), redirecting to wizard for id:", params.id);
+    redirect(`/evaluations/new?edit=${params.id}`);
   }
 
   const { data: evaluatorProfile } = await supabase

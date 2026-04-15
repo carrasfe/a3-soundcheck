@@ -150,10 +150,11 @@ export async function saveEvaluation(
   };
 
   if (existingId) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("evaluations")
       .update(payload)
-      .eq("id", existingId);
+      .eq("id", existingId)
+      .select("id");
     if (error) {
       console.error("[saveEvaluation] Evaluation update failed:", {
         message: error.message, details: error.details,
@@ -163,7 +164,13 @@ export async function saveEvaluation(
       const dbg = buildDebugInfo("update", error, payload);
       return { id: null, error: error.message, debugInfo: dbg };
     }
-    return { id: existingId, error: null };
+    if (!updated || updated.length === 0) {
+      // 0 rows affected — RLS blocked the update or the row no longer exists.
+      // Fall through to INSERT a fresh evaluation.
+      console.warn("[saveEvaluation] Update affected 0 rows for existingId:", existingId, "— inserting new row");
+    } else {
+      return { id: updated[0].id as string, error: null };
+    }
   }
 
   const { data, error } = await supabase

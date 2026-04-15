@@ -168,8 +168,10 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
     }
   };
 
-  // P2 sub-weights are stored in results
+  // P2 sub-weights are stored in results. Guard against undefined in case an old row's
+  // JSONB didn't include sub_weights (accessing it would throw "Cannot read properties of undefined").
   const p2r = r.p2 as ScoringResult["p2"];
+  const p2sw: Record<string, number> = p2r?.sub_weights ?? {};
 
   // Venue capacity + audience reach from inputs
   const cap = parseFloat((evaluation.inputs as any)?.venue_capacity ?? "0") || 0;
@@ -475,14 +477,14 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p2}
           weight={r.pillar_weights.p2}
           subRows={[
-            { key: "FCR",       label: "Fan Conversion Ratio",    weight: p2r.sub_weights.FCR,       inputVal: iv("FCR") },
-            { key: "FanID",     label: "Fan Identity Signaling",  weight: p2r.sub_weights.FanID,     inputVal: iv("FanID") },
-            { key: "IG_ER",     label: "Instagram Engagement",    weight: p2r.sub_weights.IG_ER,     inputVal: iv("IG_ER") },
-            { key: "Reddit",    label: "Reddit",                  weight: p2r.sub_weights.Reddit,    inputVal: iv("Reddit") },
-            { key: "MerchSent", label: "Merch Sentiment",         weight: p2r.sub_weights.MerchSent, inputVal: iv("MerchSent") },
-            { key: "TikTok",    label: "TikTok Engagement",       weight: p2r.sub_weights.TikTok,    inputVal: iv("TikTok") },
-            ...(!p2r.youtube_excluded
-              ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2r.sub_weights.YouTube, inputVal: iv("YouTube") }]
+            { key: "FCR",       label: "Fan Conversion Ratio",    weight: p2sw.FCR ?? 0,       inputVal: iv("FCR") },
+            { key: "FanID",     label: "Fan Identity Signaling",  weight: p2sw.FanID ?? 0,     inputVal: iv("FanID") },
+            { key: "IG_ER",     label: "Instagram Engagement",    weight: p2sw.IG_ER ?? 0,     inputVal: iv("IG_ER") },
+            { key: "Reddit",    label: "Reddit",                  weight: p2sw.Reddit ?? 0,    inputVal: iv("Reddit") },
+            { key: "MerchSent", label: "Merch Sentiment",         weight: p2sw.MerchSent ?? 0, inputVal: iv("MerchSent") },
+            { key: "TikTok",    label: "TikTok Engagement",       weight: p2sw.TikTok ?? 0,    inputVal: iv("TikTok") },
+            ...(!p2r?.youtube_excluded
+              ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2sw.YouTube ?? 0, inputVal: iv("YouTube") }]
               : []),
           ]}
         />
