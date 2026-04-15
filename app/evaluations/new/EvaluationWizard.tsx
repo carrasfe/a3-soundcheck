@@ -13,8 +13,7 @@ import Step5Instagram     from "./steps/Step5Instagram";
 import Step6TikTokYouTube from "./steps/Step6TikTokYouTube";
 import Step7Community     from "./steps/Step7Community";
 import Step8Ecommerce     from "./steps/Step5Ecommerce";
-import Step9PressPlaylist from "./steps/Step9PressPlaylist";
-import Step10Results      from "./steps/Step7Results";
+import Step9Results       from "./steps/Step7Results";
 
 const STEPS = [
   "Artist Info",
@@ -23,9 +22,8 @@ const STEPS = [
   "Spotify",
   "Instagram",
   "TikTok & YouTube",
-  "Community",
+  "Community, Sentiment & Press",
   "E-Commerce",
-  "Press & Playlist",
   "Results",
 ];
 
@@ -79,6 +77,7 @@ function validateStep(step: number, data: EvalFormData): Errors {
       if (isNaN(yoy) || yoy < -100 || yoy > 1000)
         e.spotify_yoy_pct = "Enter as a percentage, e.g. 25 for 25% growth";
     }
+    if (!data.playlist_score) e.playlist_score = "Required";
   }
 
   if (step === 5) {
@@ -102,17 +101,13 @@ function validateStep(step: number, data: EvalFormData): Errors {
       e.reddit_members = "Required (enter 0 if none)";
     if (!data.p2_fan_identity) e.p2_fan_identity = "Required";
     if (!data.merch_sentiment) e.merch_sentiment  = "Required";
+    if (!data.press_score)     e.press_score      = "Required";
   }
 
   if (step === 8) {
     if (!data.store_quality) e.store_quality = "Required";
     if (!data.merch_range)   e.merch_range   = "Required";
     if (!data.d2c_level)     e.d2c_level     = "Required";
-  }
-
-  if (step === 9) {
-    if (!data.press_score)    e.press_score    = "Required";
-    if (!data.playlist_score) e.playlist_score = "Required";
   }
 
   return e;
@@ -172,7 +167,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   // Auto-save as draft when the user reaches the Results step — safety net so
   // data exists in the DB even if the explicit "Save Evaluation" fails.
   useEffect(() => {
-    if (step !== 10) {
+    if (step !== 9) {
       autoSaveDoneRef.current = false;
       return;
     }
@@ -301,9 +296,8 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       case 6:  return <Step6TikTokYouTube {...props} />;
       case 7:  return <Step7Community     {...props} />;
       case 8:  return <Step8Ecommerce     {...props} />;
-      case 9:  return <Step9PressPlaylist {...props} />;
-      case 10: return (
-        <Step10Results
+      case 9: return (
+        <Step9Results
           data={data}
           savedId={savedId}
           isSaving={isSaving}
@@ -432,7 +426,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       </div>
 
       {/* ── Sticky footer ── */}
-      {step < 10 && (
+      {step < 9 && (
         <footer className="sticky bottom-0 z-10 border-t border-gray-200 bg-white print:hidden">
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
             <button
@@ -446,19 +440,19 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
               onClick={() => goTo(step + 1)}
               className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
             >
-              {step === 9 ? "View Results →" : "Next →"}
+              {step === 8 ? "View Results →" : "Next →"}
             </button>
           </div>
         </footer>
       )}
-      {step === 10 && (
+      {step === 9 && (
         <footer className="sticky bottom-0 z-10 border-t border-gray-200 bg-white print:hidden">
           <div className="mx-auto flex max-w-3xl items-center px-4 py-3">
             <button
-              onClick={() => goTo(9)}
+              onClick={() => goTo(8)}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
             >
-              ← Back to Press & Playlist
+              ← Back
             </button>
           </div>
         </footer>

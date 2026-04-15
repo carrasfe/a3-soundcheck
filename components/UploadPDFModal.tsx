@@ -28,7 +28,7 @@ const FIELD_DEFS: FieldDef[] = [
   { label: "Face Value ($)",           key: "face_value",                group: "Touring" },
   { label: "Resale Price ($)",         key: "resale_price",              group: "Touring" },
   { label: "Spotify Monthly Listeners",key: "spotify_monthly_listeners", group: "Fan Engagement" },
-  { label: "Fan Concentration Ratio",  key: "fan_concentration_ratio",   group: "Fan Engagement" },
+  { label: "Fan Conversion Ratio",      key: "fan_concentration_ratio",   group: "Fan Engagement" },
   { label: "Fan Identity Score",       key: "p2_fan_identity",           group: "Fan Engagement" },
   { label: "IG Followers",             key: "ig_followers",              group: "Fan Engagement" },
   { label: "IG ER %",                  key: "ig_er_pct",                 group: "Fan Engagement" },
@@ -359,7 +359,13 @@ export default function UploadPDFModal({ onClose }: Props) {
       try {
         const inputs = buildScoringInputs(items[i].fd);
         if (inputs) { const r = calculateScore(inputs); score = r.total_score; tier = r.tier_label; }
-      } catch { /* scoring errors surface in saveEvaluation */ }
+      } catch (scoreErr) {
+        console.error(
+          `[UploadPDFModal] Pre-save scoring error for "${items[i].artistName}":`,
+          scoreErr instanceof Error ? scoreErr.stack ?? scoreErr.message : String(scoreErr),
+          "\nForm data genre:", items[i].fd.genre,
+        );
+      }
 
       const result = await saveEvaluation(items[i].fd, "complete");
 

@@ -64,7 +64,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <Input
-                label="Fan Concentration Ratio (FCR) %"
+                label="Fan Conversion Ratio (FCR) %"
                 required
                 type="number"
                 min={0}

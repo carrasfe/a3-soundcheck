@@ -20,10 +20,13 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
   const set = (key: keyof EvalFormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) => onChange({ [key]: e.target.value });
 
-  const p2 = useMemo(() => {
+  const { p2, p4 } = useMemo(() => {
     const inputs = buildScoringInputs(data);
-    if (!inputs || !data.genre) return null;
-    try { return calculateScore(inputs).p2; } catch { return null; }
+    if (!inputs || !data.genre) return { p2: null, p4: null };
+    try {
+      const r = calculateScore(inputs);
+      return { p2: r.p2, p4: r.p4 };
+    } catch { return { p2: null, p4: null }; }
   }, [data]);
 
   return (
@@ -113,6 +116,33 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
             "5 — Highly coveted, drops generate demand",
           ]}
           error={errors.merch_sentiment}
+        />
+      </section>
+
+      {/* Press / Blog Coverage */}
+      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+              Press / Blog Coverage
+            </h3>
+            <p className="text-xs text-gray-500">15% weight in P4</p>
+          </div>
+          <ScoreBadge score={p4?.sub_scores.press ?? null} />
+        </div>
+        <ScoreSelector
+          label=""
+          required
+          value={data.press_score}
+          onChange={(v) => onChange({ press_score: v })}
+          descriptions={[
+            "1 — No meaningful press",
+            "2 — Local / minor blog coverage",
+            "3 — Regional / mid-tier publications",
+            "4 — National press, multiple outlets",
+            "5 — Major national / international coverage",
+          ]}
+          error={errors.press_score}
         />
       </section>
 

@@ -7,6 +7,7 @@
 import jsPDF from "jspdf";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import type { EvalFormData } from "@/app/evaluations/new/types";
+import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 
@@ -153,7 +154,6 @@ const VIP_S: Record<string, string> = {
   none: "None", offered_before: "Prev.", basic: "Basic",
   premium_mg: "Prem.MG", tiered_high: "Tiered hi",
 };
-const AGE_L  = ["", "Very Young", "Young", "Mixed", "Mature", "Very Mature"];
 const TOUR_L = ["", "Light", "Moderate", "Heavy", "Massive"];
 
 // ─── SECTION 1: Header bar ────────────────────────────────────────────────────
@@ -252,11 +252,12 @@ function drawProfileStrip(doc: jsPDF, d: ScorecardData): void {
 
   const w    = r.pillar_weights;
   const wStr = `${fp(w.p1)} / ${fp(w.p2)} / ${fp(w.p3)} / ${fp(w.p4)}`;
-  const age  = AGE_L[r.age_bracket]  ?? "—";
+  const age  = getAgeProfileLabel(d.inputs);
   const tour = TOUR_L[r.touring_bracket] ?? "—";
 
   const parts = [
-    `${age} × ${tour}`,
+    age,
+    tour,
     `Weights: ${wStr}`,
     `${r.genre_group} P2 profile`,
     `Revenue: ${r.revenue_tier ?? "—"}`,

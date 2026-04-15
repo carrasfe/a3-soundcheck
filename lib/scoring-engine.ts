@@ -460,7 +460,7 @@ function scoreFCR(genre: Genre, fcr: number, monthlyListeners: number): number {
                      : monthlyListeners >= 1_000_000 ? 0.80
                      : 1.0;
 
-  const [t1, t2, t3, t4] = FCR_THRESHOLDS[genre].map(t => t * listenerMult);
+  const [t1, t2, t3, t4] = (FCR_THRESHOLDS[genre] ?? FCR_THRESHOLDS["Rock / Alt / Indie"]).map(t => t * listenerMult);
 
   if (fcr < t1) return 1;
   if (fcr < t2) return 2;
@@ -583,7 +583,7 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   tiktok_age_adjusted_weight: number;
   youtube_excluded: boolean;
 } {
-  const group = GENRE_GROUP_MAP[inputs.genre];
+  const group = GENRE_GROUP_MAP[inputs.genre] ?? "ROCK";
   const [wFCR, wFanID, wIGER, wReddit, wMerch, wTikTok, wYT] = P2_SUB_WEIGHTS[group];
 
   // Scores

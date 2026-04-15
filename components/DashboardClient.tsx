@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { EvaluationRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
+import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 import UploadScorecardModal from "@/components/UploadScorecardModal";
 import UploadPDFModal from "@/components/UploadPDFModal";
@@ -24,12 +25,10 @@ const TIER_STYLES: Record<string, string> = {
   Pass: "bg-gray-100 text-gray-500",
 };
 
-// Compact age/touring labels for the Weight Profile column
-const AGE_SHORT = ["", "Very Young", "Young", "Mixed", "Mature", "Very Mature"];
 const TOURING_SHORT = ["", "Light", "Moderate", "Heavy", "Massive"];
 
-function weightProfileLabel(r: ScoringResult): string {
-  const age = AGE_SHORT[r.age_bracket] ?? "—";
+function weightProfileLabel(r: ScoringResult, inputs?: Record<string, string> | null): string {
+  const age = getAgeProfileLabel(inputs);
   const tour = TOURING_SHORT[r.touring_bracket] ?? "—";
   const w = r.pillar_weights;
   const weights = `${(w.p1 * 100).toFixed(0)}/${(w.p2 * 100).toFixed(0)}/${(w.p3 * 100).toFixed(0)}/${(w.p4 * 100).toFixed(0)}`;
@@ -422,7 +421,7 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
                       {ev.results?.revenue_tier ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
-                      {ev.results ? weightProfileLabel(ev.results) : "—"}
+                      {ev.results ? weightProfileLabel(ev.results, ev.inputs as Record<string, string>) : "—"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{ev.evaluator_name}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">

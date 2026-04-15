@@ -157,7 +157,7 @@ const FIELD_DEFS: FieldDef[] = [
   { label: "Face Value ($)",        key: "face_value",             group: "Touring" },
   { label: "Resale Price ($)",      key: "resale_price",           group: "Touring" },
   { label: "Spotify Listeners",     key: "spotify_monthly_listeners", group: "Fan Engagement" },
-  { label: "Fan Concentration Ratio", key: "fan_concentration_ratio", group: "Fan Engagement" },
+  { label: "Fan Conversion Ratio",    key: "fan_concentration_ratio", group: "Fan Engagement" },
   { label: "Fan Identity Score",    key: "p2_fan_identity",        group: "Fan Engagement" },
   { label: "IG Followers",          key: "ig_followers",           group: "Fan Engagement" },
   { label: "IG ER %",               key: "ig_er_pct",              group: "Fan Engagement" },

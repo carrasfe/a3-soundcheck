@@ -47,7 +47,7 @@ const FIELD_GROUPS: FieldGroup[] = [
     group: "Step 4 — Fan Engagement",
     fields: [
       { kind: "single", key: "spotify_monthly_listeners", label: "Spotify Monthly Listeners" },
-      { kind: "single", key: "fan_concentration_ratio",   label: "Fan Concentration Ratio", unit: "%" },
+      { kind: "single", key: "fan_concentration_ratio",   label: "Fan Conversion Ratio",    unit: "%" },
       { kind: "single", key: "ig_followers",              label: "Instagram Followers" },
       { kind: "single", key: "ig_er_pct",                 label: "Instagram ER", unit: "%" },
       { kind: "single", key: "tiktok_followers",          label: "TikTok Followers" },

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import type { EvalFormData } from "../types";
-import { buildScoringInputs } from "../types";
+import { buildScoringInputs, getAgeProfileLabel } from "../types";
 import { calculateScore } from "@/lib/scoring-engine";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
@@ -20,8 +20,7 @@ interface Props {
   linkCopied: boolean;
 }
 
-const AGE_BRACKET_LABELS = ["", "Very Young (70%+)", "Young (55–70%)", "Mixed (45–55%)", "Mature (30–45%)", "Very Mature (<30%)"];
-const TOURING_LABELS     = ["", "Light", "Moderate", "Heavy", "Massive"];
+const TOURING_LABELS = ["", "Light", "Moderate", "Heavy", "Massive"];
 
 const TIER_STYLES: Record<string, string> = {
   Priority: "bg-[#C0392B] text-white",
@@ -165,7 +164,7 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
   const st = parseFloat(data.sell_through_pct) || 0;
   const reach = Math.round(cap * dates * (st / 100));
 
-  const ageLbl     = AGE_BRACKET_LABELS[r.age_bracket];
+  const ageLbl     = getAgeProfileLabel(data);
   const touringLbl = TOURING_LABELS[r.touring_bracket];
 
   return (
@@ -265,7 +264,7 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
         weight={r.pillar_weights.p2}
         bonus={r.p2.bonus}
         subRows={[
-          { key: "FCR",      label: "Fan Concentration Ratio",   weight: r.p2.sub_weights.FCR },
+          { key: "FCR",      label: "Fan Conversion Ratio",      weight: r.p2.sub_weights.FCR },
           { key: "FanID",    label: "Fan Identity Signaling",    weight: r.p2.sub_weights.FanID },
           { key: "IG_ER",    label: "Instagram Engagement",      weight: r.p2.sub_weights.IG_ER },
           { key: "Reddit",   label: "Reddit",                    weight: r.p2.sub_weights.Reddit },

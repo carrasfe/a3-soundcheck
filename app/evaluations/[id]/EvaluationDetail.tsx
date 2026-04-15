@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { EvaluationRecord } from "./page";
 import type { ScoringResult, PillarBreakdown } from "@/lib/scoring-engine";
+import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
 // ── Tier display ──────────────────────────────────────────────
@@ -22,14 +23,6 @@ const TIER_STYLES: Record<string, string> = {
   Pass: "bg-gray-100 text-gray-500",
 };
 
-const AGE_BRACKET_LABELS = [
-  "",
-  "Very Young (70%+)",
-  "Young (55–70%)",
-  "Mixed (45–55%)",
-  "Mature (30–45%)",
-  "Very Mature (<30%)",
-];
 const TOURING_LABELS = ["", "Light", "Moderate", "Heavy", "Massive"];
 
 // ── Input formatting helpers ──────────────────────────────────
@@ -424,7 +417,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
             <div>
               <p className="text-xs text-gray-500">Audience Age Bracket</p>
               <p className="font-semibold text-gray-800">
-                {AGE_BRACKET_LABELS[r.age_bracket] ?? "—"}
+                {getAgeProfileLabel(inp)}
               </p>
             </div>
             <div>
@@ -482,7 +475,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           result={r.p2}
           weight={r.pillar_weights.p2}
           subRows={[
-            { key: "FCR",       label: "Fan Concentration Ratio", weight: p2r.sub_weights.FCR,       inputVal: iv("FCR") },
+            { key: "FCR",       label: "Fan Conversion Ratio",    weight: p2r.sub_weights.FCR,       inputVal: iv("FCR") },
             { key: "FanID",     label: "Fan Identity Signaling",  weight: p2r.sub_weights.FanID,     inputVal: iv("FanID") },
             { key: "IG_ER",     label: "Instagram Engagement",    weight: p2r.sub_weights.IG_ER,     inputVal: iv("IG_ER") },
             { key: "Reddit",    label: "Reddit",                  weight: p2r.sub_weights.Reddit,    inputVal: iv("Reddit") },

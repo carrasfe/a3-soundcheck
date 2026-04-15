@@ -139,12 +139,76 @@ export function buildDemographics(fd: EvalFormData): DemographicsInput | undefin
   };
 }
 
+// ─── Age profile display label (Fix 3) ───────────────────────
+// Returns "18-24 Core (47.6%) × 60% Female" from raw form inputs.
+// Falls back to "No demographics — default weights applied" when blank.
+
+const _AGE_DEMO_BRACKETS = [
+  { label: "13-17", m: "d_13_17_m", f: "d_13_17_f" },
+  { label: "18-24", m: "d_18_24_m", f: "d_18_24_f" },
+  { label: "25-34", m: "d_25_34_m", f: "d_25_34_f" },
+  { label: "35-44", m: "d_35_44_m", f: "d_35_44_f" },
+  { label: "45-64", m: "d_45_64_m", f: "d_45_64_f" },
+  { label: "65+",   m: "d_65_m",    f: "d_65_f"    },
+];
+
+export function getAgeProfileLabel(
+  inputs: EvalFormData | Record<string, string> | null | undefined
+): string {
+  if (!inputs) return "No demographics — default weights applied";
+  const p = (k: string): number => parseFloat((inputs as Record<string, string>)[k] ?? "") || 0;
+  const brackets = _AGE_DEMO_BRACKETS.map((b) => ({
+    label: b.label,
+    mVal: p(b.m),
+    fVal: p(b.f),
+    total: p(b.m) + p(b.f),
+  }));
+  const grandTotal = brackets.reduce((s, b) => s + b.total, 0);
+  if (grandTotal === 0) return "No demographics — default weights applied";
+  const dom = brackets.reduce((best, cur) => (cur.total > best.total ? cur : best), brackets[0]);
+  const totalM = brackets.reduce((s, b) => s + b.mVal, 0);
+  const totalF = brackets.reduce((s, b) => s + b.fVal, 0);
+  const totalMF = totalM + totalF;
+  const genderLabel = totalM >= totalF ? "Male" : "Female";
+  const genderPct = totalMF > 0 ? Math.round((Math.max(totalM, totalF) / totalMF) * 100) : 0;
+  return `${dom.label} Core (${dom.total.toFixed(1)}%) × ${genderPct}% ${genderLabel}`;
+}
+
+const VALID_GENRES: Genre[] = [
+  "Rock / Alt / Indie",
+  "Country / Americana",
+  "Metal / Hard Rock",
+  "Pop",
+  "Punk / Hardcore / Pop-Punk / Emo",
+  "Southern Rock / Blues Rock",
+  "Progressive Rock / Prog Metal",
+  "EDM / Dance / Electronic",
+  "Hip-Hop / Rap",
+  "R&B / Soul",
+  "Latin / Regional Mexican",
+  "Christian / Gospel / Worship",
+  "Folk / Singer-Songwriter",
+  "Bluegrass / Roots",
+  "Jam Band / Jam Rock",
+  "K-Pop / J-Pop / J-Rock",
+  "Reggae / Ska",
+  "Jazz / Blues (Traditional)",
+  "Broadway / Theater",
+];
+
+function normalizeGenre(raw: string): Genre {
+  const exact = VALID_GENRES.find((g) => g === raw);
+  if (exact) return exact;
+  const lower = raw.toLowerCase().trim();
+  return VALID_GENRES.find((g) => g.toLowerCase() === lower) ?? "Rock / Alt / Indie";
+}
+
 export function buildScoringInputs(fd: EvalFormData): ScoringInputs | null {
   if (!fd.genre) return null;
   const fv = n(fd.face_value);
   const rp = n(fd.resale_price);
   return {
-    genre: fd.genre as Genre,
+    genre: normalizeGenre(fd.genre),
     demographics: buildDemographics(fd),
     venue_capacity: nOr(fd.venue_capacity, 0),
     sell_through_pct: nOr(fd.sell_through_pct, 0),

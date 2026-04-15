@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Callout, ChartmetricBadge } from "../ui";
 import type { EvalFormData, StepProps } from "../types";
-import { buildDemographics } from "../types";
+import { buildDemographics, getAgeProfileLabel } from "../types";
 import DemographicsImportModal from "../csv/DemographicsImportModal";
 
 const AGE_BRACKETS = [
@@ -42,14 +42,9 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
     const domIdx = brackets.indexOf(Math.max(...brackets));
     const dominant = brackets[domIdx] > 0 ? LABELS[domIdx] : "—";
 
-    const pctUnder35 =
-      under35 >= 70 ? "Very Young (70%+)"
-      : under35 >= 55 ? "Young (55–70%)"
-      : under35 >= 45 ? "Mixed (45–55%)"
-      : under35 >= 30 ? "Mature (30–45%)"
-      : "Very Mature (<30%)";
+    const ageProfileLabel = getAgeProfileLabel(data);
 
-    return { under35, over35, dominant, totalM, totalF, totalAll, pctUnder35 };
+    return { under35, over35, dominant, totalM, totalF, totalAll, ageProfileLabel };
   }, [data]);
 
   const rowTotal = (b: (typeof AGE_BRACKETS)[number]) => {
@@ -151,7 +146,7 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
               }
             />
             <div className="col-span-2 sm:col-span-4">
-              <Stat label="Age Profile" value={derived.pctUnder35} highlight />
+              <Stat label="Age Profile" value={derived.ageProfileLabel} highlight />
             </div>
           </div>
         )}
