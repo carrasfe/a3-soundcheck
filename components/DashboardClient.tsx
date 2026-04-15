@@ -6,6 +6,7 @@ import type { EvaluationRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 import UploadScorecardModal from "@/components/UploadScorecardModal";
+import UploadPDFModal from "@/components/UploadPDFModal";
 
 // ── Display helpers ───────────────────────────────────────────
 
@@ -66,6 +67,7 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showUploadPDFModal, setShowUploadPDFModal] = useState(false);
 
   // ── Filter options ────────────────────────────────────────
   const genres = useMemo(
@@ -192,15 +194,24 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
               )}
             </p>
           </div>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
-          >
-            Upload Scorecard
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => setShowUploadPDFModal(true)}
+              className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+            >
+              Upload PDF
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+            >
+              Upload Scorecard
+            </button>
+          </div>
         </div>
       </div>
       {showUploadModal && <UploadScorecardModal onClose={() => setShowUploadModal(false)} />}
+      {showUploadPDFModal && <UploadPDFModal onClose={() => setShowUploadPDFModal(false)} />}
 
       {/* DB error banner */}
       {dbError && (
