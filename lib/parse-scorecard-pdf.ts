@@ -199,22 +199,67 @@ function extractSubRows(band: TItem[]): SubRow[] {
   return results;
 }
 
+// ─── pdfjs-dist version (must match node_modules/pdfjs-dist) ─────────────────
+
+const PDFJS_VERSION = "5.6.205";
+const PDFJS_CDN     = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build`;
+
 // ─── Main parser ──────────────────────────────────────────────────────────────
 
 export async function parsePDFScorecard(file: File): Promise<PDFParseResult> {
-  // Dynamic — pdfjs-dist is large and browser-only
-  const pdfjs = await import("pdfjs-dist");
-
-  // Use unpkg to serve the matching worker version without bundler config
-  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  // pdfjs-dist/build/pdf.mjs is itself a webpack bundle (__webpack_require__
+  // runtime included). When Next.js's webpack tries to re-bundle it the two
+  // webpack runtimes collide → "Object.defineProperty called on non-object".
+  //
+  // Fix: load pdfjs directly from the CDN at runtime using webpackIgnore so
+  // Next.js's bundler never touches it. The worker URL already uses unpkg, so
+  // we already depend on CDN availability at parse time.
+  let pdfjs: typeof import("pdfjs-dist");
+  try {
+    pdfjs = await import(
+      /* webpackIgnore: true */
+      `${PDFJS_CDN}/pdf.min.mjs`
+    ) as typeof import("pdfjs-dist");
+  } catch (loadErr) {
+    console.error("[PDF Parser] Failed to load pdfjs-dist from CDN:", loadErr);
+    throw new Error(
+      "Could not load PDF library — check your internet connection and try again."
+    );
   }
 
-  const buffer   = await file.arrayBuffer();
-  const loadTask = pdfjs.getDocument({ data: buffer, useSystemFonts: true });
-  const pdf      = await loadTask.promise;
+  // Worker must run on the same CDN so versions are guaranteed to match.
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN}/pdf.worker.min.mjs`;
+  }
 
+  let buffer: ArrayBuffer;
+  let pdf: Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>;
+
+  try {
+    buffer = await file.arrayBuffer();
+    const loadTask = pdfjs.getDocument({ data: buffer, useSystemFonts: true });
+    pdf = await loadTask.promise;
+  } catch (openErr) {
+    console.error("[PDF Parser] Failed to open PDF:", openErr);
+    throw new Error(
+      `Could not open PDF file: ${openErr instanceof Error ? openErr.message : String(openErr)}`
+    );
+  }
+
+  try {
+    return await _parsePDF(pdf);
+  } catch (parseErr) {
+    console.error("[PDF Parser] Extraction error:", parseErr);
+    throw new Error(
+      `Failed to extract data from PDF: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`
+    );
+  }
+}
+
+// Split into a private helper so the outer function stays focused on loading/error handling.
+async function _parsePDF(
+  pdf: Awaited<ReturnType<typeof import("pdfjs-dist").getDocument>["promise"]>
+): Promise<PDFParseResult> {
   if (pdf.numPages < 1) throw new Error("Empty PDF");
 
   const page = await pdf.getPage(1);
@@ -224,6 +269,8 @@ export async function parsePDFScorecard(file: File): Promise<PDFParseResult> {
   // pt → mm (72 pt = 25.4 mm)
   const PT       = 25.4 / 72;
   const pageH_mm = vp.height * PT; // ≈ 210 mm for A4 landscape
+
+  console.log(`[PDF Parser] Page size: ${(vp.width * PT).toFixed(1)} × ${pageH_mm.toFixed(1)} mm, ${tc.items.length} text items`);
 
   // Build TItem array — filter empty strings and items without transforms
   const allItems: TItem[] = (
