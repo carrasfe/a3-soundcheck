@@ -122,7 +122,7 @@ function splitParen(s: string): { main: string; paren: string | null } {
  */
 function parenFK(paren: string | null): string {
   if (!paren) return "";
-  const cleaned = paren.replace(/\s*(flwrs?|subs?|listeners?)\s*$/i, "").trim();
+  const cleaned = paren.replace(/\s*(flwrs?|subs?|listeners?|avg)\s*$/i, "").trim();
   return reverseFK(cleaned);
 }
 
@@ -378,6 +378,8 @@ async function _parsePDF(
             fd.venue_capacity   = reverseFK(inp);
           else if (name.includes("sell-through") || name.includes("sell through"))
             fd.sell_through_pct = reverseFP(inp);
+          else if (name.includes("tour date"))
+            fd.num_dates        = reverseFK(inp);
           else if (name.includes("market cov"))
             fd.market_coverage  = parseSlash(inp);
           else if (name.includes("resale sig"))
@@ -391,8 +393,9 @@ async function _parsePDF(
         case 1:
           if (name.includes("spotify fcr") || name === "spotify fcr" ||
               (name.includes("fcr") && !name.includes("spotify yoy"))) {
-            // "Spotify FCR  88.7%" — direct percentage
+            // "Spotify FCR  88.7% (2.1M listeners)" — percentage + optional listeners parenthetical
             if (inp && inp !== "—") fd.fan_concentration_ratio = reverseFP(inp);
+            if (paren && !fd.spotify_monthly_listeners) fd.spotify_monthly_listeners = parenFK(paren);
           }
           else if (name.includes("fan identity") || name.includes("fan id")) {
             if (inp && inp !== "—") fd.p2_fan_identity = parseSlash(inp);
@@ -418,10 +421,17 @@ async function _parsePDF(
           else if (name.includes("tiktok er") || name.includes("tiktok")) {
             if (!inp || inp === "—") break;
             if (inp.endsWith("%")) {
-              // ER% shown; followers may be in parenthetical
+              // ER% shown; paren may be "71.5K flwrs, 50K avg" (multi-part)
               if (paren) {
-                fd.tiktok_followers = parenFK(paren);
-                // avg_views not recoverable from ER alone — warn if paren absent
+                const parenParts = paren.split(/\s*,\s*/);
+                for (const part of parenParts) {
+                  const pl = part.toLowerCase();
+                  if (pl.includes("flwr")) {
+                    fd.tiktok_followers = parenFK(part);
+                  } else if (pl.includes("avg")) {
+                    fd.tiktok_avg_views = parenFK(part);
+                  }
+                }
               } else {
                 warnings.push(
                   "TikTok: only ER% shown in PDF — enter TikTok followers & avg views manually"

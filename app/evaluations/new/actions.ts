@@ -202,6 +202,20 @@ export async function saveEvaluation(
   return { id: data.id, error: null };
 }
 
+export async function getDraftCount(): Promise<number> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { count, error } = await supabase
+    .from("evaluations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "draft")
+    .eq("evaluated_by", user.id);
+
+  return error ? 0 : (count ?? 0);
+}
+
 export interface LoadResult {
   data: EvalFormData | null;
   error: string | null;

@@ -308,7 +308,7 @@ function drawPillarColHeader(doc: jsPDF, ci: number, label: string, score: numbe
   return y + PH_H + CLH;
 }
 
-type SubRow = { name: string; input: string; score: number; isBonus?: boolean };
+type SubRow = { name: string; input: string; score: number; isBonus?: boolean; isInfo?: boolean };
 
 function drawSubRows(doc: jsPDF, ci: number, rowsTopY: number, rows: SubRow[]): number {
   const x = PCOL_X[ci];
@@ -322,24 +322,26 @@ function drawSubRows(doc: jsPDF, ci: number, rowsTopY: number, rows: SubRow[]): 
 
     // Metric name
     t(doc, row.name, x + 2, textY, {
-      sz: 7, color: row.isBonus ? MD : DK, italic: !!row.isBonus,
+      sz: 7, color: row.isBonus ? MD : (row.isInfo ? MD : DK), italic: !!row.isBonus,
     });
 
     // Input value
     t(doc, row.input, x + NW, textY, { sz: 7, color: MD });
 
-    // Score value
-    const scoreStr = row.isBonus
-      ? (row.score > 0 ? `+${row.score.toFixed(2)}` : "+0.00")
-      : fs(row.score);
+    // Score value — skip for informational rows
+    if (!row.isInfo) {
+      const scoreStr = row.isBonus
+        ? (row.score > 0 ? `+${row.score.toFixed(2)}` : "+0.00")
+        : fs(row.score);
 
-    const sColor: RGB = row.isBonus
-      ? (row.score > 0 ? GREEN : LT)   // gray for +0.00 bonus
-      : scoreColor(row.score);
+      const sColor: RGB = row.isBonus
+        ? (row.score > 0 ? GREEN : LT)   // gray for +0.00 bonus
+        : scoreColor(row.score);
 
-    t(doc, scoreStr, x + PCOL_W - 2, textY, {
-      sz: 7, bold: !row.isBonus, color: sColor, align: "right",
-    });
+      t(doc, scoreStr, x + PCOL_W - 2, textY, {
+        sz: 7, bold: !row.isBonus, color: sColor, align: "right",
+      });
+    }
   });
 
   const endY = rowsTopY + rows.length * RH;
@@ -356,6 +358,7 @@ function drawP1(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const rows: SubRow[] = [
     { name: "Venue Capacity",  input: fK(inp.venue_capacity),                                    score: r.p1.sub_scores.venue_capacity ?? 0 },
     { name: "Sell-Through",    input: fP(inp.sell_through_pct),                                  score: r.p1.sub_scores.sell_through ?? 0 },
+    { name: "Tour Dates",      input: fK(inp.num_dates),                                          score: 0, isInfo: true },
     { name: "Audience Reach",  input: reach > 0 ? fK(String(reach)) : "—",                       score: r.p1.sub_scores.total_audience_reach ?? 0 },
     { name: "Market Coverage", input: inp.market_coverage ? `${inp.market_coverage}/5` : "—",    score: r.p1.sub_scores.market_coverage ?? 0 },
     { name: "Resale Signal",   input: RESALE_S[inp.resale_situation] ?? "—",                      score: r.p1.sub_scores.resale ?? 0 },
@@ -379,11 +382,11 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
 
   // tikER: computed ER% (if both views+followers) or raw followers
   const tikERInput = (inp.tiktok_avg_views && inp.tiktok_followers)
-    ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}% (${fK(inp.tiktok_followers)} flwrs)`
+    ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}% (${fK(inp.tiktok_followers)} flwrs, ${fK(inp.tiktok_avg_views)} avg)`
     : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
 
   const rows: SubRow[] = [
-    { name: "Spotify FCR",     input: fP(inp.fan_concentration_ratio),                           score: r.p2.sub_scores.FCR ?? 0 },
+    { name: "Spotify FCR",     input: inp.spotify_monthly_listeners ? `${fP(inp.fan_concentration_ratio)} (${fK(inp.spotify_monthly_listeners)} listeners)` : fP(inp.fan_concentration_ratio), score: r.p2.sub_scores.FCR ?? 0 },
     { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—",    score: r.p2.sub_scores.FanID ?? 0 },
     { name: "Instagram ER",    input: igERInput,                                                  score: r.p2.sub_scores.IG_ER ?? 0 },
     { name: "Reddit",          input: fK(inp.reddit_members),                                     score: r.p2.sub_scores.Reddit ?? 0 },

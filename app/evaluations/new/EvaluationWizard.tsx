@@ -151,18 +151,21 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as EvalFormData;
-          if (parsed.artist_name || parsed.genre) setDraftRestorePrompt(true);
+          const parsed = JSON.parse(raw);
+          // Support both legacy format (plain EvalFormData) and new format ({ data, savedId })
+          const formData: EvalFormData = parsed.data ?? parsed;
+          if (formData.artist_name || formData.genre) setDraftRestorePrompt(true);
         }
       } catch { /* ignore */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save to localStorage on every change
+  // Auto-save to localStorage on every change — persist savedId alongside data so
+  // page refresh doesn't lose the DB row reference and create duplicate drafts.
   useEffect(() => {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
-  }, [data]);
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, savedId })); } catch { /* ignore */ }
+  }, [data, savedId]);
 
   // Auto-save as draft when the user reaches the Results step — safety net so
   // data exists in the DB even if the explicit "Save Evaluation" fails.
@@ -280,7 +283,14 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   const restoreDraft = () => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) setData(JSON.parse(raw));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Support both legacy format (plain EvalFormData) and new format ({ data, savedId })
+        const formData: EvalFormData = parsed.data ?? parsed;
+        const restoredId: string | null = parsed.savedId ?? null;
+        setData(formData);
+        if (restoredId) setSavedId(restoredId);
+      }
     } catch { /* ignore */ }
     setDraftRestorePrompt(false);
   };

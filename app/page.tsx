@@ -13,6 +13,12 @@ export type EvaluationRow = {
   evaluator_name: string;
 };
 
+export type DraftRow = {
+  id: string;
+  artist_name: string;
+  updated_at: string;
+};
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,6 +33,7 @@ export default async function DashboardPage() {
   const isAdmin = profile?.role === "admin";
 
   let evaluations: EvaluationRow[] = [];
+  let drafts: DraftRow[] = [];
   let dbError: string | null = null;
 
   try {
@@ -87,6 +94,22 @@ export default async function DashboardPage() {
         };
       });
     }
+    // Fetch drafts for the current user (up to 10 most recent)
+    const { data: draftRows } = await supabase
+      .from("evaluations")
+      .select("id, artists(name), updated_at")
+      .eq("status", "draft")
+      .eq("evaluated_by", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
+    if (draftRows) {
+      drafts = draftRows.map((d) => ({
+        id: d.id,
+        artist_name: (d.artists as unknown as { name: string } | null)?.name ?? "Unnamed draft",
+        updated_at: d.updated_at,
+      }));
+    }
   } catch (err) {
     console.error("[DashboardPage] Supabase error:", JSON.stringify(err, null, 2));
     if (err && typeof err === "object") {
@@ -98,5 +121,5 @@ export default async function DashboardPage() {
     }
   }
 
-  return <DashboardClient evaluations={evaluations} isAdmin={isAdmin} dbError={dbError} />;
+  return <DashboardClient evaluations={evaluations} drafts={drafts} isAdmin={isAdmin} dbError={dbError} />;
 }

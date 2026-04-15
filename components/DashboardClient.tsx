@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { EvaluationRow } from "@/app/page";
+import type { EvaluationRow, DraftRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
@@ -53,11 +53,12 @@ const REV_ORDER: Record<string, number> = { PREMIUM: 4, HIGH: 3, STANDARD: 2, LO
 
 interface Props {
   evaluations: EvaluationRow[];
+  drafts: DraftRow[];
   isAdmin: boolean;
   dbError?: string | null;
 }
 
-export default function DashboardClient({ evaluations, isAdmin, dbError }: Props) {
+export default function DashboardClient({ evaluations, drafts, isAdmin, dbError }: Props) {
   const [search, setSearch] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [filterTier, setFilterTier] = useState("");
@@ -253,6 +254,30 @@ export default function DashboardClient({ evaluations, isAdmin, dbError }: Props
           </Link>
         </div>
       </div>
+
+      {/* ── Drafts ────────────────────────────────────────── */}
+      {drafts.length > 0 && (
+        <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-6 py-4">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-amber-800">
+            Saved Drafts ({drafts.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {drafts.map((d) => (
+              <Link
+                key={d.id}
+                href={`/evaluations/new?edit=${d.id}`}
+                className="flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-amber-400 hover:shadow-md"
+              >
+                <span className="font-semibold text-[#1B2A4A]">{d.artist_name}</span>
+                <span className="text-xs text-gray-400">
+                  {new Date(d.updated_at).toLocaleDateString()}
+                </span>
+                <span className="text-xs font-medium text-amber-700">Continue →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Recent Evaluations ─────────────────────────────── */}
       <div className="shrink-0 border-b border-gray-200 bg-white px-6 pt-5 pb-0">

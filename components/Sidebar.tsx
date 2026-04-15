@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { getDraftCount } from "@/app/evaluations/new/actions";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -19,6 +21,11 @@ const ADMIN_ITEMS = [{ label: "Admin Settings", href: "/admin" }];
 export default function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
+  const [draftCount, setDraftCount] = useState(0);
+
+  useEffect(() => {
+    getDraftCount().then(setDraftCount).catch(() => {});
+  }, []);
 
   const displayName = profile?.full_name || "User";
   const isAdmin = profile?.role === "admin";
@@ -75,13 +82,18 @@ export default function Sidebar({ onClose }: SidebarProps) {
                 <Link
                   href={item.href}
                   onClick={onClose}
-                  className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-[#C0392B] text-white"
                       : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {item.href === "/" && draftCount > 0 && (
+                    <span className="ml-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-bold text-amber-900 leading-none">
+                      {draftCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
