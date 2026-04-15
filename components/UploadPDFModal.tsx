@@ -154,6 +154,7 @@ interface ProcessItem {
   score: number | null;
   tier: string | null;
   error: string | null;
+  debugInfo: string | null;
 }
 
 interface Props { onClose: () => void; }
@@ -343,7 +344,7 @@ export default function UploadPDFModal({ onClose }: Props) {
     const validItems = fileItems.filter((fi) => fi.status === "ok" && fi.fd);
     const items: ProcessItem[] = validItems.map((fi) => ({
       uid: fi.uid, artistName: fi.fd!.artist_name, fd: fi.fd!,
-      status: "pending", evalId: null, score: null, tier: null, error: null,
+      status: "pending", evalId: null, score: null, tier: null, error: null, debugInfo: null,
     }));
 
     setProcessItems(items);
@@ -362,12 +363,31 @@ export default function UploadPDFModal({ onClose }: Props) {
 
       const result = await saveEvaluation(items[i].fd, "complete");
 
+      if (result.error || !result.id) {
+        const errMsg = result.error ?? "Unknown error — no ID returned";
+        console.error(
+          `[UploadPDFModal] Save failed for "${items[i].artistName}":`,
+          errMsg,
+          result.debugInfo ? `\nDebug info:\n${result.debugInfo}` : ""
+        );
+      } else {
+        console.log(
+          `[UploadPDFModal] Saved "${items[i].artistName}" → id=${result.id}`,
+          { score, tier }
+        );
+      }
+
       setProcessItems((prev) =>
         prev.map((it, idx) =>
           idx !== i ? it
           : result.error || !result.id
-            ? { ...it, status: "error", error: result.error ?? "Unknown error" }
-            : { ...it, status: "done", evalId: result.id, score, tier }
+            ? {
+                ...it,
+                status: "error",
+                error: result.error ?? "Unknown error — no ID returned",
+                debugInfo: result.debugInfo ?? null,
+              }
+            : { ...it, status: "done", evalId: result.id, score, tier, debugInfo: null }
         )
       );
     }
@@ -687,40 +707,60 @@ export default function UploadPDFModal({ onClose }: Props) {
                 {failCount > 0 && ` ${failCount} failed.`}
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {["Artist Name", "Score", "Tier", "Status"].map((h, i) => (
-                        <th key={h} className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 ${i === 0 ? "text-left" : i === 3 ? "text-right" : "text-center"}`}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {processItems.map((item) => (
-                      <tr key={item.uid} className={item.status === "error" ? "opacity-60" : ""}>
-                        <td className="px-4 py-2.5 font-medium text-gray-800">{item.artistName}</td>
-                        <td className="px-4 py-2.5 text-center font-bold text-[#1B2A4A]">
-                          {item.score != null ? item.score.toFixed(2) : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {item.tier ? (
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${TIER_STYLES[item.tier] ?? "bg-gray-100 text-gray-500"}`}>
+              <div className="space-y-2">
+                {processItems.map((item) => (
+                  <div
+                    key={item.uid}
+                    className={`rounded-lg border px-4 py-3 ${
+                      item.status === "done"
+                        ? "border-green-200 bg-green-50"
+                        : "border-red-200 bg-red-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+                        {item.status === "done"
+                          ? <IconCheck className="h-4 w-4 text-green-600" />
+                          : <IconX className="h-4 w-4 text-red-500" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {item.artistName || "(unnamed)"}
+                        </p>
+                      </div>
+                      {item.status === "done" && item.score != null && (
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-[#1B2A4A]">{item.score.toFixed(2)}</p>
+                          {item.tier && (
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${TIER_STYLES[item.tier] ?? "bg-gray-100 text-gray-500"}`}>
                               {item.tier === "Pass" ? "Below" : item.tier}
                             </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-xs">
-                          {item.status === "done"
-                            ? <span className="font-medium text-green-600">✓ Saved</span>
-                            : <span className="text-red-600" title={item.error ?? undefined}>Failed</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          )}
+                        </div>
+                      )}
+                      <span className={`shrink-0 text-xs font-semibold ${item.status === "done" ? "text-green-700" : "text-red-700"}`}>
+                        {item.status === "done" ? "✓ Saved" : "✗ Failed"}
+                      </span>
+                    </div>
+
+                    {/* Error detail — shown inline for failed items */}
+                    {item.status === "error" && item.error && (
+                      <div className="mt-2 ml-7">
+                        <p className="text-xs font-medium text-red-700">{item.error}</p>
+                        {item.debugInfo && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-[10px] text-red-500 hover:text-red-700">
+                              Show debug info
+                            </summary>
+                            <pre className="mt-1 overflow-x-auto rounded bg-red-100 p-2 text-[9px] leading-relaxed text-red-800 whitespace-pre-wrap">
+                              {item.debugInfo}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
