@@ -31,7 +31,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { calculateScore } from "@/lib/scoring-engine";
-import { buildScoringInputs } from "./types";
+import { buildScoringInputs, getAgeProfileLabel } from "./types";
 import type { EvalFormData } from "./types";
 
 export interface SaveResult {
@@ -143,9 +143,7 @@ export async function saveEvaluation(
     score_p3:       results?.p3?.weighted_score ?? null,
     score_p4:       results?.p4?.weighted_score ?? null,
     pillar_weights: results?.pillar_weights ?? null,
-    weight_profile: results
-      ? { age_bracket: results.age_bracket, touring_bracket: results.touring_bracket }
-      : null,
+    weight_profile: getAgeProfileLabel(fd),
     // Full JSONB blobs — required for detail page, PDF, and pre-fill
     inputs:  fd as unknown as Record<string, unknown>,
     results: results as unknown as Record<string, unknown> | null,
@@ -236,4 +234,33 @@ export async function loadEvaluationInputs(id: string): Promise<LoadResult> {
   if (!row?.inputs) return { data: null, error: "No saved inputs found for this evaluation." };
 
   return { data: row.inputs as EvalFormData, error: null };
+}
+
+export async function deleteDraftEvaluation(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("evaluations")
+    .delete()
+    .eq("id", id)
+    .eq("status", "draft")
+    .eq("evaluated_by", user.id);
+
+  return { error: error?.message ?? null };
+}
+
+export async function deleteAllDrafts(): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("evaluations")
+    .delete()
+    .eq("status", "draft")
+    .eq("evaluated_by", user.id);
+
+  return { error: error?.message ?? null };
 }

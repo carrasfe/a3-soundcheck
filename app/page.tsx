@@ -41,7 +41,7 @@ export default async function DashboardPage() {
     // Denormalized columns (score_total, tier, etc.) remain as fallback.
     const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
-      .select("id, results, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
+      .select("id, results, inputs, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
       .eq("status", "complete")
       .order("evaluated_at", { ascending: false });
 
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
           artist_name: artist?.name ?? "",
           genre: artist?.genre ?? null,
           results: finalResult,
-          inputs: null, // inputs not stored in current schema
+          inputs: (ev as unknown as { inputs: Record<string, unknown> | null }).inputs ?? null,
           created_at: ev.evaluated_at,
           evaluator_name: profileMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
         };

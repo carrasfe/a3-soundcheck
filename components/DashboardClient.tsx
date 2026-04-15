@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { EvaluationRow, DraftRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
+import { deleteDraftEvaluation, deleteAllDrafts } from "@/app/evaluations/new/actions";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 import UploadScorecardModal from "@/components/UploadScorecardModal";
 import UploadPDFModal from "@/components/UploadPDFModal";
@@ -68,6 +69,37 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUploadPDFModal, setShowUploadPDFModal] = useState(false);
+
+  // ── Draft management state ────────────────────────────────
+  const [localDrafts, setLocalDrafts] = useState<DraftRow[]>(drafts);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [draftDeleting, setDraftDeleting] = useState(false);
+
+  const completedArtistNames = useMemo(
+    () => new Set(evaluations.map((e) => e.artist_name?.toLowerCase()).filter(Boolean)),
+    [evaluations]
+  );
+
+  const handleDeleteDraft = async (id: string) => {
+    setDraftDeleting(true);
+    const { error } = await deleteDraftEvaluation(id);
+    if (!error) {
+      setLocalDrafts((prev) => prev.filter((d) => d.id !== id));
+      setConfirmDeleteId(null);
+    }
+    setDraftDeleting(false);
+  };
+
+  const handleClearAllDrafts = async () => {
+    setDraftDeleting(true);
+    const { error } = await deleteAllDrafts();
+    if (!error) {
+      setLocalDrafts([]);
+      setConfirmClearAll(false);
+    }
+    setDraftDeleting(false);
+  };
 
   // ── Filter options ────────────────────────────────────────
   const genres = useMemo(
@@ -256,25 +288,100 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
       </div>
 
       {/* ── Drafts ────────────────────────────────────────── */}
-      {drafts.length > 0 && (
+      {localDrafts.length > 0 && (
         <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-6 py-4">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-amber-800">
-            Saved Drafts ({drafts.length})
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {drafts.map((d) => (
-              <Link
-                key={d.id}
-                href={`/evaluations/new?edit=${d.id}`}
-                className="flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-amber-400 hover:shadow-md"
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold uppercase tracking-wider text-amber-800">
+              Saved Drafts ({localDrafts.length})
+            </p>
+            {!confirmClearAll ? (
+              <button
+                onClick={() => setConfirmClearAll(true)}
+                className="text-xs text-amber-700 transition hover:text-red-600"
               >
-                <span className="font-semibold text-[#1B2A4A]">{d.artist_name}</span>
-                <span className="text-xs text-gray-400">
-                  {new Date(d.updated_at).toLocaleDateString()}
-                </span>
-                <span className="text-xs font-medium text-amber-700">Continue →</span>
-              </Link>
-            ))}
+                Clear All Drafts
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-700">Delete all drafts?</span>
+                <button
+                  onClick={handleClearAllDrafts}
+                  disabled={draftDeleting}
+                  className="text-xs font-semibold text-red-700 transition hover:text-red-900 disabled:opacity-50"
+                >
+                  Yes, delete all
+                </button>
+                <button
+                  onClick={() => setConfirmClearAll(false)}
+                  disabled={draftDeleting}
+                  className="text-xs text-gray-500 transition hover:text-gray-700 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {localDrafts.map((d) => {
+              const isCompleted = completedArtistNames.has(d.artist_name?.toLowerCase());
+              const isConfirming = confirmDeleteId === d.id;
+
+              if (isConfirming) {
+                return (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm shadow-sm"
+                  >
+                    <span className="text-xs text-red-700">Delete this draft?</span>
+                    <button
+                      onClick={() => handleDeleteDraft(d.id)}
+                      disabled={draftDeleting}
+                      className="text-xs font-semibold text-red-700 transition hover:text-red-900 disabled:opacity-50"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      disabled={draftDeleting}
+                      className="text-xs text-gray-500 transition hover:text-gray-700 disabled:opacity-50"
+                    >
+                      No
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={d.id}
+                  className="flex items-center rounded-lg border border-amber-200 bg-white shadow-sm transition hover:border-amber-400 hover:shadow-md"
+                >
+                  <Link
+                    href={`/evaluations/new?edit=${d.id}`}
+                    className="flex items-center gap-2 px-3 py-2 text-sm"
+                  >
+                    <span className="font-semibold text-[#1B2A4A]">{d.artist_name}</span>
+                    {isCompleted && (
+                      <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                        Completed
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {d.updated_at ? new Date(d.updated_at).toLocaleDateString() : ""}
+                    </span>
+                    <span className="text-xs font-medium text-amber-700">Continue →</span>
+                  </Link>
+                  <button
+                    onClick={() => setConfirmDeleteId(d.id)}
+                    className="px-2 py-2 text-gray-400 transition hover:text-red-600"
+                    title="Delete draft"
+                    aria-label="Delete draft"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
