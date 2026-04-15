@@ -368,23 +368,37 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const w     = r.pillar_weights;
   const first = drawPillarColHeader(doc, 1, "P2  FAN ENGAGEMENT", r.p2.final_score, Math.round(w.p2 * 100));
 
-  const tikER = inp.tiktok_avg_views && inp.tiktok_followers
-    ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}%`
+  // When showing ER%, also append follower/subscriber count in parentheses so
+  // the PDF parser can recover those raw values on re-import.
+  const igERInput = inp.ig_er_pct
+    ? (inp.ig_followers
+        ? `${parseFloat(inp.ig_er_pct).toFixed(2)}% (${fK(inp.ig_followers)} flwrs)`
+        : `${parseFloat(inp.ig_er_pct).toFixed(2)}%`)
+    : fK(inp.ig_followers);
+
+  // tikER: computed ER% (if both views+followers) or raw followers
+  const tikERInput = (inp.tiktok_avg_views && inp.tiktok_followers)
+    ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}% (${fK(inp.tiktok_followers)} flwrs)`
     : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
 
   const rows: SubRow[] = [
     { name: "Spotify FCR",     input: fP(inp.fan_concentration_ratio),                           score: r.p2.sub_scores.FCR ?? 0 },
     { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—",    score: r.p2.sub_scores.FanID ?? 0 },
-    { name: "Instagram ER",    input: inp.ig_er_pct ? `${parseFloat(inp.ig_er_pct).toFixed(2)}%` : fK(inp.ig_followers), score: r.p2.sub_scores.IG_ER ?? 0 },
+    { name: "Instagram ER",    input: igERInput,                                                  score: r.p2.sub_scores.IG_ER ?? 0 },
     { name: "Reddit",          input: fK(inp.reddit_members),                                     score: r.p2.sub_scores.Reddit ?? 0 },
     { name: "Merch Sentiment", input: inp.merch_sentiment ? `${inp.merch_sentiment}/5` : "—",    score: r.p2.sub_scores.MerchSent ?? 0 },
-    { name: "TikTok ER",       input: tikER,                                                      score: r.p2.sub_scores.TikTok ?? 0 },
+    { name: "TikTok ER",       input: tikERInput,                                                 score: r.p2.sub_scores.TikTok ?? 0 },
   ];
 
   if (!r.p2.youtube_excluded) {
+    const ytInput = inp.youtube_er_pct
+      ? (inp.youtube_subscribers
+          ? `${parseFloat(inp.youtube_er_pct).toFixed(2)}% (${fK(inp.youtube_subscribers)} subs)`
+          : `${parseFloat(inp.youtube_er_pct).toFixed(2)}%`)
+      : fK(inp.youtube_subscribers);
     rows.push({
       name: "YouTube ER",
-      input: inp.youtube_er_pct ? `${parseFloat(inp.youtube_er_pct).toFixed(2)}%` : fK(inp.youtube_subscribers),
+      input: ytInput,
       score: r.p2.sub_scores.YouTube ?? 0,
     });
   }
@@ -419,10 +433,24 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const w     = r.pillar_weights;
   const first = drawPillarColHeader(doc, 3, "P4  GROWTH", r.p4.final_score, Math.round(w.p4 * 100));
 
+  // Spotify YoY: append monthly listeners in parentheses if entered so the
+  // parser can recover spotify_monthly_listeners on re-import.
+  const spotifyYoyInput = inp.spotify_monthly_listeners
+    ? `${fP(inp.spotify_yoy_pct)} (${fK(inp.spotify_monthly_listeners)})`
+    : fP(inp.spotify_yoy_pct);
+
+  // IG Growth: append followers in parentheses if entered (and not already
+  // shown in the IG ER row) so the parser can recover ig_followers.
+  const igGrowthInput = inp.ig_30day_gain
+    ? (inp.ig_followers
+        ? `+${fK(inp.ig_30day_gain)} (${fK(inp.ig_followers)})`
+        : `+${fK(inp.ig_30day_gain)}`)
+    : "—";
+
   const rows: SubRow[] = [
-    { name: "Spotify YoY",  input: fP(inp.spotify_yoy_pct),                                    score: r.p4.sub_scores.spotify_yoy ?? 0 },
+    { name: "Spotify YoY",  input: spotifyYoyInput,                                              score: r.p4.sub_scores.spotify_yoy ?? 0 },
     { name: "Venue Prog.",  input: PROG_S[inp.venue_progression] ?? inp.venue_progression ?? "—", score: r.p4.sub_scores.venue_progression ?? 0 },
-    { name: "IG Growth",    input: inp.ig_30day_gain ? `+${fK(inp.ig_30day_gain)}` : "—",       score: r.p4.sub_scores.ig_growth ?? 0 },
+    { name: "IG Growth",    input: igGrowthInput,                                                 score: r.p4.sub_scores.ig_growth ?? 0 },
     { name: "Press",        input: inp.press_score    ? `${inp.press_score}/5`    : "—",         score: r.p4.sub_scores.press ?? 0 },
     { name: "Playlist",     input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",         score: r.p4.sub_scores.playlist ?? 0 },
   ];
