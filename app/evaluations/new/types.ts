@@ -23,10 +23,21 @@ export interface StepProps {
 
 // All form values as strings so <input> works naturally.
 // Numeric fields get converted to numbers only when scoring or saving.
+export interface ManagerSelection {
+  manager_id: string;
+  role: string;
+}
+
+export interface AgentSelection {
+  agent_id: string;
+  role: string;
+}
+
 export interface EvalFormData {
   // ── Step 1: Artist Info ──
   artist_name: string;
   genre: string;
+  // Legacy free-text (kept for reference, populated from structured contacts)
   management_company: string;
   manager_names: string;
   other_mgmt_artists: string;
@@ -34,6 +45,11 @@ export interface EvalFormData {
   other_agent_artists: string;
   merch_provider: string;
   vip_level: VipLevel;
+  // Structured contacts (new)
+  management_company_id: string;
+  manager_selections: ManagerSelection[];
+  booking_agency_id: string;
+  agent_selections: AgentSelection[];
 
   // ── Step 2: Demographics ──
   // Stored as Male % / Female % per bracket; scoring engine gets m+f sum
@@ -89,6 +105,8 @@ export const INITIAL_FORM_DATA: EvalFormData = {
   management_company: "", manager_names: "", other_mgmt_artists: "",
   booking_agent: "", other_agent_artists: "",
   merch_provider: "", vip_level: "none",
+  management_company_id: "", manager_selections: [],
+  booking_agency_id: "", agent_selections: [],
   d_13_17_m: "", d_13_17_f: "",
   d_18_24_m: "", d_18_24_f: "",
   d_25_34_m: "", d_25_34_f: "",

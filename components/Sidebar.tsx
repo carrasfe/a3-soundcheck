@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", href: "/" },
   { label: "New Evaluation", href: "/evaluations/new" },
   { label: "Artists", href: "/artists" },
+  { label: "Contacts", href: "/contacts" },
 ];
 
 const ADMIN_ITEMS = [{ label: "Admin Settings", href: "/admin" }];
