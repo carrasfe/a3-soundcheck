@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Input, Select } from "../ui";
+import Link from "next/link";
+import { Select } from "../ui";
 import type { EvalFormData, StepProps, ManagerSelection, AgentSelection } from "../types";
 import {
   getContactsForForm,
@@ -9,7 +10,12 @@ import {
   createManager,
   createAgency,
   createAgent,
+  getKnownArtistsForManagerIds,
+  getKnownArtistsForAgentIds,
+  addKnownArtists,
+  removeKnownArtist,
 } from "@/app/contacts/actions";
+import type { KnownArtistRow } from "@/app/contacts/actions";
 
 const GENRES = [
   "Rock / Alt / Indie", "Country / Americana", "Metal / Hard Rock", "Pop",
@@ -34,16 +40,21 @@ const AGENT_ROLES = ["Primary", "Secondary", "Festivals"];
 
 // ─── Inline create form ───────────────────────────────────────
 
-interface InlineCreateProps {
+function InlineCreate({
+  label,
+  fields,
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
   label: string;
   fields: { name: string; placeholder: string; type?: string }[];
   onSave: (values: Record<string, string>) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
   error: string | null;
-}
-
-function InlineCreate({ label, fields, onSave, onCancel, saving, error }: InlineCreateProps) {
+}) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(fields.map((f) => [f.name, ""]))
   );
@@ -84,16 +95,6 @@ function InlineCreate({ label, fields, onSave, onCancel, saving, error }: Inline
 
 // ─── Combobox ─────────────────────────────────────────────────
 
-interface ComboboxProps {
-  label: string;
-  value: string; // ID of selected item
-  options: { id: string; name: string }[];
-  placeholder?: string;
-  onChange: (id: string, name: string) => void;
-  onAddNew: () => void;
-  showAddNew?: boolean;
-}
-
 function Combobox({
   label,
   value,
@@ -101,47 +102,33 @@ function Combobox({
   placeholder = "Search or select…",
   onChange,
   onAddNew,
-  showAddNew = true,
-}: ComboboxProps) {
+}: {
+  label: string;
+  value: string;
+  options: { id: string; name: string }[];
+  placeholder?: string;
+  onChange: (id: string, name: string) => void;
+  onAddNew: () => void;
+}) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   const selectedOption = options.find((o) => o.id === value);
-  const displayValue = selectedOption?.name ?? "";
 
   const filtered = query
     ? options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
     : options;
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onOut(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
         if (!selectedOption) setQuery("");
       }
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", onOut);
+    return () => document.removeEventListener("mousedown", onOut);
   }, [selectedOption]);
-
-  const handleFocus = () => {
-    setOpen(true);
-    if (selectedOption) setQuery("");
-  };
-
-  const handleSelect = (opt: { id: string; name: string }) => {
-    onChange(opt.id, opt.name);
-    setQuery("");
-    setOpen(false);
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange("", "");
-    setQuery("");
-    setOpen(false);
-  };
 
   return (
     <div className="flex flex-col gap-1" ref={ref}>
@@ -149,16 +136,16 @@ function Combobox({
       <div className="relative">
         <input
           type="text"
-          value={open ? query : displayValue}
+          value={open ? query : (selectedOption?.name ?? "")}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={handleFocus}
+          onFocus={() => { setOpen(true); if (selectedOption) setQuery(""); }}
           placeholder={placeholder}
           className="w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
         />
         {value && (
           <button
             type="button"
-            onClick={handleClear}
+            onClick={() => { onChange("", ""); setQuery(""); }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             ✕
@@ -171,7 +158,7 @@ function Combobox({
                 <li key={opt.id}>
                   <button
                     type="button"
-                    onMouseDown={() => handleSelect(opt)}
+                    onMouseDown={() => { onChange(opt.id, opt.name); setQuery(""); setOpen(false); }}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-[#1B2A4A]/5"
                   >
                     {opt.name}
@@ -182,17 +169,15 @@ function Combobox({
                 <li className="px-3 py-2 text-sm text-gray-400 italic">No matches</li>
               )}
             </ul>
-            {showAddNew && (
-              <div className="border-t border-gray-100 p-1">
-                <button
-                  type="button"
-                  onMouseDown={() => { setOpen(false); onAddNew(); }}
-                  className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C0392B] hover:bg-[#C0392B]/5"
-                >
-                  + Add New{query ? ` "${query}"` : ""}
-                </button>
-              </div>
-            )}
+            <div className="border-t border-gray-100 p-1">
+              <button
+                type="button"
+                onMouseDown={() => { setOpen(false); onAddNew(); }}
+                className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C0392B] hover:bg-[#C0392B]/5"
+              >
+                + Add New{query ? ` "${query}"` : ""}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -200,21 +185,7 @@ function Combobox({
   );
 }
 
-// ─── Manager multi-select ─────────────────────────────────────
-
-interface PersonSelectProps {
-  label: string;
-  companyId: string;
-  allPersons: { id: string; name: string; company_id: string | null }[];
-  selections: { id: string; name: string; role: string }[];
-  roles: string[];
-  defaultRole: string;
-  maxSelections: number;
-  onAdd: (id: string, name: string) => void;
-  onRemove: (id: string) => void;
-  onRoleChange: (id: string, role: string) => void;
-  onAddNew: () => void;
-}
+// ─── Person multi-select ──────────────────────────────────────
 
 function PersonSelect({
   label,
@@ -222,42 +193,46 @@ function PersonSelect({
   allPersons,
   selections,
   roles,
-  defaultRole,
   maxSelections,
   onAdd,
   onRemove,
   onRoleChange,
   onAddNew,
-}: PersonSelectProps) {
+}: {
+  label: string;
+  companyId: string;
+  allPersons: { id: string; name: string; company_id: string | null }[];
+  selections: { id: string; name: string; role: string }[];
+  roles: string[];
+  maxSelections: number;
+  onAdd: (id: string, name: string) => void;
+  onRemove: (id: string) => void;
+  onRoleChange: (id: string, role: string) => void;
+  onAddNew: () => void;
+}) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const inCompany = companyId
+  const inScope = companyId
     ? allPersons.filter((p) => p.company_id === companyId)
     : allPersons;
-
-  const available = inCompany.filter(
-    (p) => !selections.find((s) => s.id === p.id)
-  );
-
+  const available = inScope.filter((p) => !selections.find((s) => s.id === p.id));
   const filtered = query
     ? available.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
     : available;
 
   useEffect(() => {
-    function onOutside(e: MouseEvent) {
+    function onOut(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
+    document.addEventListener("mousedown", onOut);
+    return () => document.removeEventListener("mousedown", onOut);
   }, []);
 
   return (
     <div className="flex flex-col gap-2" ref={ref}>
       <label className="text-sm font-medium text-gray-700">{label}</label>
-
-      {/* Selected chips */}
       {selections.map((s) => (
         <div key={s.id} className="flex items-center gap-2 rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2">
           <span className="flex-1 text-sm font-medium text-[#1B2A4A]">{s.name}</span>
@@ -268,17 +243,9 @@ function PersonSelect({
           >
             {roles.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
-          <button
-            type="button"
-            onClick={() => onRemove(s.id)}
-            className="text-gray-400 hover:text-[#C0392B]"
-          >
-            ✕
-          </button>
+          <button type="button" onClick={() => onRemove(s.id)} className="text-gray-400 hover:text-[#C0392B]">✕</button>
         </div>
       ))}
-
-      {/* Add more */}
       {selections.length < maxSelections && (
         <div className="relative">
           <input
@@ -286,7 +253,7 @@ function PersonSelect({
             value={query}
             onFocus={() => setOpen(true)}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-            placeholder={companyId ? "Add a person…" : "Select a company first to filter, or search all…"}
+            placeholder={companyId ? "Add a person…" : "Select a company/agency first, or search all…"}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
           />
           {open && (
@@ -296,11 +263,7 @@ function PersonSelect({
                   <li key={p.id}>
                     <button
                       type="button"
-                      onMouseDown={() => {
-                        onAdd(p.id, p.name);
-                        setQuery("");
-                        setOpen(false);
-                      }}
+                      onMouseDown={() => { onAdd(p.id, p.name); setQuery(""); setOpen(false); }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-[#1B2A4A]/5"
                     >
                       {p.name}
@@ -324,10 +287,107 @@ function PersonSelect({
           )}
         </div>
       )}
-
       {selections.length >= maxSelections && (
-        <p className="text-xs text-gray-400">Maximum {maxSelections} selections reached.</p>
+        <p className="text-xs text-gray-400">Maximum {maxSelections} reached.</p>
       )}
+    </div>
+  );
+}
+
+// ─── Known Artists inline section ────────────────────────────
+
+function KnownArtistsInline({
+  items,
+  onAdd,
+  onRemove,
+  adding,
+  addError,
+}: {
+  items: KnownArtistRow[];
+  onAdd: (input: string) => Promise<void>;
+  onRemove: (id: string) => void;
+  adding: boolean;
+  addError: string | null;
+}) {
+  const [input, setInput] = useState("");
+
+  async function submit() {
+    if (!input.trim()) return;
+    await onAdd(input);
+    setInput("");
+  }
+
+  if (items.length === 0 && !adding) {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Other artists on their roster:</p>
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+            placeholder="e.g. Arctic Monkeys, Royal Blood"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+          />
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!input.trim()}
+            className="rounded bg-[#1B2A4A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243561] disabled:opacity-40"
+          >
+            Add
+          </button>
+        </div>
+        {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-gray-500">Other artists on their roster:</p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((item) => (
+          <span
+            key={item.id}
+            className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700"
+          >
+            {item.matched_artist_id ? (
+              <Link href={`/artists/${item.matched_artist_id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                {item.name}
+              </Link>
+            ) : (
+              <span>{item.name}</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onRemove(item.id)}
+              className="ml-0.5 text-gray-400 hover:text-[#C0392B]"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+          placeholder="Add more names (comma-separated)…"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+          disabled={adding}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={adding || !input.trim()}
+          className="rounded bg-[#1B2A4A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243561] disabled:opacity-40"
+        >
+          {adding ? "…" : "Add"}
+        </button>
+      </div>
+      {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
     </div>
   );
 }
@@ -339,12 +399,15 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       onChange({ [key]: e.target.value });
 
-  // Contact data
+  // Safe accessors — guard against undefined when loading old evaluations
+  const managerSelections: ManagerSelection[] = data.manager_selections ?? [];
+  const agentSelections: AgentSelection[] = data.agent_selections ?? [];
+
+  // Contact lookup data
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [agencies, setAgencies] = useState<{ id: string; name: string }[]>([]);
   const [managers, setManagers] = useState<{ id: string; name: string; company_id: string | null }[]>([]);
   const [agents, setAgents] = useState<{ id: string; name: string; company_id: string | null }[]>([]);
-  const [contactsLoaded, setContactsLoaded] = useState(false);
 
   useEffect(() => {
     getContactsForForm().then((d) => {
@@ -352,9 +415,33 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
       setAgencies(d.agencies);
       setManagers(d.managers.map((m) => ({ id: m.id, name: m.name, company_id: m.management_company_id })));
       setAgents(d.agents.map((a) => ({ id: a.id, name: a.name, company_id: a.agency_id })));
-      setContactsLoaded(true);
-    }).catch(() => setContactsLoaded(true));
+    }).catch(() => {});
   }, []);
+
+  // Known artists
+  const [mgmtKnownArtists, setMgmtKnownArtists] = useState<KnownArtistRow[]>([]);
+  const [agentKnownArtists, setAgentKnownArtists] = useState<KnownArtistRow[]>([]);
+  const [addingMgmt, setAddingMgmt] = useState(false);
+  const [addingAgent, setAddingAgent] = useState(false);
+  const [mgmtAddError, setMgmtAddError] = useState<string | null>(null);
+  const [agentAddError, setAgentAddError] = useState<string | null>(null);
+
+  // Fetch known artists when manager selections change
+  const mgmtKey = managerSelections.map((s) => s.manager_id).join(",");
+  useEffect(() => {
+    const ids = managerSelections.map((s) => s.manager_id);
+    if (ids.length === 0) { setMgmtKnownArtists([]); return; }
+    getKnownArtistsForManagerIds(ids).then(setMgmtKnownArtists).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mgmtKey]);
+
+  const agentKey = agentSelections.map((s) => s.agent_id).join(",");
+  useEffect(() => {
+    const ids = agentSelections.map((s) => s.agent_id);
+    if (ids.length === 0) { setAgentKnownArtists([]); return; }
+    getKnownArtistsForAgentIds(ids).then(setAgentKnownArtists).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentKey]);
 
   // Inline create states
   const [showNewCompany, setShowNewCompany] = useState(false);
@@ -364,85 +451,105 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   const [inlineSaving, setInlineSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
-  // Derived selected manager/agent objects for display
-  const selectedManagers: { id: string; name: string; role: string }[] =
-    data.manager_selections.map((s) => ({
-      id: s.manager_id,
-      name: managers.find((m) => m.id === s.manager_id)?.name ?? s.manager_id,
-      role: s.role,
-    }));
+  // Derived: selected person objects for display
+  const selectedManagers = managerSelections.map((s) => ({
+    id: s.manager_id,
+    name: managers.find((m) => m.id === s.manager_id)?.name ?? s.manager_id,
+    role: s.role,
+  }));
+  const selectedAgents = agentSelections.map((s) => ({
+    id: s.agent_id,
+    name: agents.find((a) => a.id === s.agent_id)?.name ?? s.agent_id,
+    role: s.role,
+  }));
 
-  const selectedAgents: { id: string; name: string; role: string }[] =
-    data.agent_selections.map((s) => ({
-      id: s.agent_id,
-      name: agents.find((a) => a.id === s.agent_id)?.name ?? s.agent_id,
-      role: s.role,
-    }));
+  // ── Known artists handlers ─────────────────────────────────
 
-  // ── Company actions ────────────────────────────────────────
+  async function handleAddMgmtKnownArtists(input: string) {
+    const names = input.split(",").map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    setAddingMgmt(true);
+    setMgmtAddError(null);
+    const results: KnownArtistRow[] = [];
+    for (const sel of managerSelections) {
+      const { items, error } = await addKnownArtists(names, { managerId: sel.manager_id });
+      if (error) { setMgmtAddError(error); setAddingMgmt(false); return; }
+      results.push(...items);
+    }
+    // Deduplicate by id
+    setMgmtKnownArtists((prev) => {
+      const existing = new Set(prev.map((i) => i.id));
+      return [...prev, ...results.filter((i) => !existing.has(i.id))];
+    });
+    setAddingMgmt(false);
+  }
+
+  async function handleAddAgentKnownArtists(input: string) {
+    const names = input.split(",").map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    setAddingAgent(true);
+    setAgentAddError(null);
+    const results: KnownArtistRow[] = [];
+    for (const sel of agentSelections) {
+      const { items, error } = await addKnownArtists(names, { agentId: sel.agent_id });
+      if (error) { setAgentAddError(error); setAddingAgent(false); return; }
+      results.push(...items);
+    }
+    setAgentKnownArtists((prev) => {
+      const existing = new Set(prev.map((i) => i.id));
+      return [...prev, ...results.filter((i) => !existing.has(i.id))];
+    });
+    setAddingAgent(false);
+  }
+
+  // ── Person create handlers ─────────────────────────────────
 
   async function handleCreateCompany(values: Record<string, string>) {
-    setInlineSaving(true);
-    setInlineError(null);
+    setInlineSaving(true); setInlineError(null);
     const { id, error } = await createManagementCompany({ name: values.name, website: values.website });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    const newCo = { id: id!, name: values.name };
-    setCompanies((prev) => [...prev, newCo].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ management_company_id: id!, management_company: values.name });
-    setShowNewCompany(false);
-    setInlineError(null);
+    setCompanies((prev) => [...prev, { id: id!, name: values.name }].sort((a, b) => a.name.localeCompare(b.name)));
+    onChange({ management_company_id: id!, management_company: values.name, manager_selections: [] });
+    setShowNewCompany(false); setInlineError(null);
   }
 
   async function handleCreateManager(values: Record<string, string>) {
-    setInlineSaving(true);
-    setInlineError(null);
+    setInlineSaving(true); setInlineError(null);
     const { id, error } = await createManager({
       name: values.name,
       management_company_id: data.management_company_id || null,
-      email: values.email,
-      phone: values.phone,
+      email: values.email, phone: values.phone,
     });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    const newM = { id: id!, name: values.name, company_id: data.management_company_id || null };
-    setManagers((prev) => [...prev, newM].sort((a, b) => a.name.localeCompare(b.name)));
-    const newSel: ManagerSelection = { manager_id: id!, role: "Lead" };
-    onChange({ manager_selections: [...data.manager_selections, newSel] });
-    setShowNewManager(false);
-    setInlineError(null);
+    setManagers((prev) => [...prev, { id: id!, name: values.name, company_id: data.management_company_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
+    onChange({ manager_selections: [...managerSelections, { manager_id: id!, role: "Lead" }] });
+    setShowNewManager(false); setInlineError(null);
   }
 
   async function handleCreateAgency(values: Record<string, string>) {
-    setInlineSaving(true);
-    setInlineError(null);
+    setInlineSaving(true); setInlineError(null);
     const { id, error } = await createAgency({ name: values.name, website: values.website });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    const newAg = { id: id!, name: values.name };
-    setAgencies((prev) => [...prev, newAg].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ booking_agency_id: id!, booking_agent: values.name });
-    setShowNewAgency(false);
-    setInlineError(null);
+    setAgencies((prev) => [...prev, { id: id!, name: values.name }].sort((a, b) => a.name.localeCompare(b.name)));
+    onChange({ booking_agency_id: id!, booking_agent: values.name, agent_selections: [] });
+    setShowNewAgency(false); setInlineError(null);
   }
 
   async function handleCreateAgent(values: Record<string, string>) {
-    setInlineSaving(true);
-    setInlineError(null);
+    setInlineSaving(true); setInlineError(null);
     const { id, error } = await createAgent({
       name: values.name,
       agency_id: data.booking_agency_id || null,
-      email: values.email,
-      phone: values.phone,
+      email: values.email, phone: values.phone,
     });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    const newA = { id: id!, name: values.name, company_id: data.booking_agency_id || null };
-    setAgents((prev) => [...prev, newA].sort((a, b) => a.name.localeCompare(b.name)));
-    const newSel: AgentSelection = { agent_id: id!, role: "Primary" };
-    onChange({ agent_selections: [...data.agent_selections, newSel] });
-    setShowNewAgent(false);
-    setInlineError(null);
+    setAgents((prev) => [...prev, { id: id!, name: values.name, company_id: data.booking_agency_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
+    onChange({ agent_selections: [...agentSelections, { agent_id: id!, role: "Primary" }] });
+    setShowNewAgent(false); setInlineError(null);
   }
 
   return (
@@ -453,14 +560,18 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Artist Identity
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Artist Name"
-            required
-            value={data.artist_name}
-            onChange={set("artist_name")}
-            placeholder="e.g. The Marias"
-            error={errors.artist_name}
-          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Artist Name<span className="ml-0.5 text-[#C0392B]">*</span>
+            </label>
+            <input
+              value={data.artist_name}
+              onChange={set("artist_name")}
+              placeholder="e.g. The Marias"
+              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${errors.artist_name ? "border-[#C0392B]" : "border-gray-300"}`}
+            />
+            {errors.artist_name && <p className="text-xs text-[#C0392B]">{errors.artist_name}</p>}
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
               Genre<span className="ml-0.5 text-[#C0392B]">*</span>
@@ -468,14 +579,10 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             <select
               value={data.genre}
               onChange={set("genre")}
-              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${
-                errors.genre ? "border-red-400" : "border-gray-300"
-              }`}
+              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${errors.genre ? "border-red-400" : "border-gray-300"}`}
             >
               <option value="">Select genre…</option>
-              {GENRES.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
+              {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
             {errors.genre && <p className="text-xs text-[#C0392B]">{errors.genre}</p>}
           </div>
@@ -488,23 +595,14 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Management
         </h3>
         <div className="space-y-4">
-          {/* Company combobox */}
           <Combobox
             label="Management Company"
-            value={data.management_company_id}
+            value={data.management_company_id ?? ""}
             options={companies}
             placeholder="Search companies…"
-            onChange={(id, name) => {
-              onChange({
-                management_company_id: id,
-                management_company: name,
-                // Clear managers when company changes
-                manager_selections: [],
-              });
-            }}
+            onChange={(id, name) => onChange({ management_company_id: id, management_company: name, manager_selections: [] })}
             onAddNew={() => { setShowNewCompany(true); setInlineError(null); }}
           />
-
           {showNewCompany && (
             <InlineCreate
               label="New Management Company"
@@ -519,35 +617,21 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             />
           )}
 
-          {/* Manager multi-select */}
           <PersonSelect
             label="Manager(s)"
-            companyId={data.management_company_id}
+            companyId={data.management_company_id ?? ""}
             allPersons={managers}
             selections={selectedManagers}
             roles={MANAGER_ROLES}
-            defaultRole="Lead"
             maxSelections={3}
             onAdd={(id, name) => {
-              if (data.manager_selections.length >= 3) return;
-              const sel: ManagerSelection = { manager_id: id, role: "Lead" };
-              onChange({ manager_selections: [...data.manager_selections, sel] });
+              if (managerSelections.length >= 3) return;
+              onChange({ manager_selections: [...managerSelections, { manager_id: id, role: "Lead" }] });
             }}
-            onRemove={(id) =>
-              onChange({
-                manager_selections: data.manager_selections.filter((s) => s.manager_id !== id),
-              })
-            }
-            onRoleChange={(id, role) =>
-              onChange({
-                manager_selections: data.manager_selections.map((s) =>
-                  s.manager_id === id ? { ...s, role } : s
-                ),
-              })
-            }
+            onRemove={(id) => onChange({ manager_selections: managerSelections.filter((s) => s.manager_id !== id) })}
+            onRoleChange={(id, role) => onChange({ manager_selections: managerSelections.map((s) => s.manager_id === id ? { ...s, role } : s) })}
             onAddNew={() => { setShowNewManager(true); setInlineError(null); }}
           />
-
           {showNewManager && (
             <InlineCreate
               label="New Manager"
@@ -563,13 +647,19 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             />
           )}
 
-          {/* Legacy other artists field */}
-          <Input
-            label="Other Artists on Roster"
-            value={data.other_mgmt_artists}
-            onChange={set("other_mgmt_artists")}
-            placeholder="e.g. Kings of Leon, Cage the Elephant"
-          />
+          {/* Known artists for this manager — replaces free-text field */}
+          {managerSelections.length > 0 && (
+            <KnownArtistsInline
+              items={mgmtKnownArtists}
+              onAdd={handleAddMgmtKnownArtists}
+              onRemove={(id) => {
+                setMgmtKnownArtists((prev) => prev.filter((i) => i.id !== id));
+                removeKnownArtist(id).catch(() => {});
+              }}
+              adding={addingMgmt}
+              addError={mgmtAddError}
+            />
+          )}
         </div>
       </section>
 
@@ -579,22 +669,14 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Booking
         </h3>
         <div className="space-y-4">
-          {/* Agency combobox */}
           <Combobox
             label="Booking Agency"
-            value={data.booking_agency_id}
+            value={data.booking_agency_id ?? ""}
             options={agencies}
             placeholder="Search agencies…"
-            onChange={(id, name) => {
-              onChange({
-                booking_agency_id: id,
-                booking_agent: name,
-                agent_selections: [],
-              });
-            }}
+            onChange={(id, name) => onChange({ booking_agency_id: id, booking_agent: name, agent_selections: [] })}
             onAddNew={() => { setShowNewAgency(true); setInlineError(null); }}
           />
-
           {showNewAgency && (
             <InlineCreate
               label="New Booking Agency"
@@ -609,35 +691,21 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             />
           )}
 
-          {/* Agent multi-select */}
           <PersonSelect
             label="Agent(s)"
-            companyId={data.booking_agency_id}
+            companyId={data.booking_agency_id ?? ""}
             allPersons={agents}
             selections={selectedAgents}
             roles={AGENT_ROLES}
-            defaultRole="Primary"
             maxSelections={3}
             onAdd={(id, name) => {
-              if (data.agent_selections.length >= 3) return;
-              const sel: AgentSelection = { agent_id: id, role: "Primary" };
-              onChange({ agent_selections: [...data.agent_selections, sel] });
+              if (agentSelections.length >= 3) return;
+              onChange({ agent_selections: [...agentSelections, { agent_id: id, role: "Primary" }] });
             }}
-            onRemove={(id) =>
-              onChange({
-                agent_selections: data.agent_selections.filter((s) => s.agent_id !== id),
-              })
-            }
-            onRoleChange={(id, role) =>
-              onChange({
-                agent_selections: data.agent_selections.map((s) =>
-                  s.agent_id === id ? { ...s, role } : s
-                ),
-              })
-            }
+            onRemove={(id) => onChange({ agent_selections: agentSelections.filter((s) => s.agent_id !== id) })}
+            onRoleChange={(id, role) => onChange({ agent_selections: agentSelections.map((s) => s.agent_id === id ? { ...s, role } : s) })}
             onAddNew={() => { setShowNewAgent(true); setInlineError(null); }}
           />
-
           {showNewAgent && (
             <InlineCreate
               label="New Agent"
@@ -653,13 +721,18 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             />
           )}
 
-          {/* Legacy other artists field */}
-          <Input
-            label="Other Booked Artists"
-            value={data.other_agent_artists}
-            onChange={set("other_agent_artists")}
-            placeholder="e.g. Paramore, 21 Pilots"
-          />
+          {agentSelections.length > 0 && (
+            <KnownArtistsInline
+              items={agentKnownArtists}
+              onAdd={handleAddAgentKnownArtists}
+              onRemove={(id) => {
+                setAgentKnownArtists((prev) => prev.filter((i) => i.id !== id));
+                removeKnownArtist(id).catch(() => {});
+              }}
+              adding={addingAgent}
+              addError={agentAddError}
+            />
+          )}
         </div>
       </section>
 
@@ -669,20 +742,17 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Merch & VIP
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Current Merch Provider"
-            value={data.merch_provider}
-            onChange={set("merch_provider")}
-            placeholder="e.g. Bravado, Live Nation Merchandise"
-          />
-          <Select
-            label="VIP / M&G Program"
-            value={data.vip_level}
-            onChange={set("vip_level")}
-          >
-            {VIP_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Current Merch Provider</label>
+            <input
+              value={data.merch_provider}
+              onChange={set("merch_provider")}
+              placeholder="e.g. Bravado, Live Nation Merchandise"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+            />
+          </div>
+          <Select label="VIP / M&G Program" value={data.vip_level} onChange={set("vip_level")}>
+            {VIP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
         </div>
       </section>

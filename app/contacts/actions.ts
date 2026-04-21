@@ -4,6 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 
 // ─── Types ────────────────────────────────────────────────────
 
+export interface KnownArtistRow {
+  id: string;
+  name: string;
+  manager_id: string | null;
+  agent_id: string | null;
+  management_company_id: string | null;
+  agency_id: string | null;
+  matched_artist_id: string | null; // computed: matching artist in artists table
+}
+
 export interface LinkedArtistRow {
   id: string;
   name: string;
@@ -719,4 +729,165 @@ export async function getAgentDetail(id: string): Promise<{
     },
     error: null,
   };
+}
+
+// ─── known_artists helpers ────────────────────────────────────
+
+async function matchArtistIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  names: string[]
+): Promise<Map<string, string>> {
+  if (names.length === 0) return new Map();
+  const { data } = await supabase.from("artists").select("id, name");
+  const lower = new Set(names.map((n) => n.toLowerCase()));
+  const result = new Map<string, string>();
+  for (const a of data ?? []) {
+    if (lower.has(a.name.toLowerCase())) result.set(a.name.toLowerCase(), a.id);
+  }
+  return result;
+}
+
+function annotateMatches(
+  rows: { id: string; name: string; manager_id: string | null; agent_id: string | null; management_company_id: string | null; agency_id: string | null }[],
+  nameToId: Map<string, string>
+): KnownArtistRow[] {
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    manager_id: r.manager_id,
+    agent_id: r.agent_id,
+    management_company_id: r.management_company_id,
+    agency_id: r.agency_id,
+    matched_artist_id: nameToId.get(r.name.toLowerCase()) ?? null,
+  }));
+}
+
+// ─── known_artists queries ────────────────────────────────────
+
+export async function getKnownArtistsForManager(managerId: string): Promise<KnownArtistRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("known_artists").select("*").eq("manager_id", managerId).order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+export async function getKnownArtistsForAgent(agentId: string): Promise<KnownArtistRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("known_artists").select("*").eq("agent_id", agentId).order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+export async function getKnownArtistsForManagerIds(managerIds: string[]): Promise<KnownArtistRow[]> {
+  if (managerIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("known_artists").select("*").in("manager_id", managerIds).order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+export async function getKnownArtistsForAgentIds(agentIds: string[]): Promise<KnownArtistRow[]> {
+  if (agentIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("known_artists").select("*").in("agent_id", agentIds).order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+export async function getKnownArtistsForCompany(companyId: string): Promise<KnownArtistRow[]> {
+  const supabase = await createClient();
+  const { data: mgrs } = await supabase.from("managers").select("id").eq("management_company_id", companyId);
+  const managerIds = (mgrs ?? []).map((m) => m.id);
+
+  let query = supabase.from("known_artists").select("*");
+  if (managerIds.length > 0) {
+    query = query.or(`management_company_id.eq.${companyId},manager_id.in.(${managerIds.join(",")})`);
+  } else {
+    query = query.eq("management_company_id", companyId);
+  }
+  const { data } = await query.order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+export async function getKnownArtistsForAgency(agencyId: string): Promise<KnownArtistRow[]> {
+  const supabase = await createClient();
+  const { data: ags } = await supabase.from("agents").select("id").eq("agency_id", agencyId);
+  const agentIds = (ags ?? []).map((a) => a.id);
+
+  let query = supabase.from("known_artists").select("*");
+  if (agentIds.length > 0) {
+    query = query.or(`agency_id.eq.${agencyId},agent_id.in.(${agentIds.join(",")})`);
+  } else {
+    query = query.eq("agency_id", agencyId);
+  }
+  const { data } = await query.order("name");
+  const rows = data ?? [];
+  return annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name)));
+}
+
+// ─── known_artists mutations ──────────────────────────────────
+
+export async function addKnownArtists(
+  names: string[],
+  opts: {
+    managerId?: string;
+    agentId?: string;
+    managementCompanyId?: string;
+    agencyId?: string;
+  }
+): Promise<{ items: KnownArtistRow[]; error: string | null }> {
+  const trimmed = names.map((n) => n.trim()).filter(Boolean);
+  if (trimmed.length === 0) return { items: [], error: null };
+  const supabase = await createClient();
+
+  const records = trimmed.map((name) => ({
+    name,
+    manager_id: opts.managerId ?? null,
+    agent_id: opts.agentId ?? null,
+    management_company_id: opts.managementCompanyId ?? null,
+    agency_id: opts.agencyId ?? null,
+  }));
+
+  const { data, error } = await supabase.from("known_artists").insert(records).select("*");
+  if (error) return { items: [], error: error.message };
+  const rows = data ?? [];
+  return { items: annotateMatches(rows, await matchArtistIds(supabase, rows.map((r) => r.name))), error: null };
+}
+
+export async function removeKnownArtist(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("known_artists").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+// ─── Auto-create known_artist for evaluated artist ────────────
+
+export async function ensureKnownArtistForEval(
+  artistName: string,
+  managerIds: string[],
+  agentIds: string[]
+): Promise<void> {
+  if (!artistName.trim()) return;
+  const supabase = await createClient();
+  const name = artistName.trim();
+
+  for (const managerId of managerIds) {
+    const { data: existing } = await supabase
+      .from("known_artists").select("id").eq("manager_id", managerId).ilike("name", name).limit(1);
+    if (!existing || existing.length === 0) {
+      await supabase.from("known_artists").insert({ name, manager_id: managerId });
+    }
+  }
+  for (const agentId of agentIds) {
+    const { data: existing } = await supabase
+      .from("known_artists").select("id").eq("agent_id", agentId).ilike("name", name).limit(1);
+    if (!existing || existing.length === 0) {
+      await supabase.from("known_artists").insert({ name, agent_id: agentId });
+    }
+  }
 }

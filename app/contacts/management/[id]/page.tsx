@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getManagementCompanyDetail } from "../../actions";
+import { getManagementCompanyDetail, getKnownArtistsForCompany } from "../../actions";
+import KnownArtistsSection from "../../KnownArtistsSection";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -27,7 +28,10 @@ export default async function ManagementCompanyDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { company, error } = await getManagementCompanyDetail(params.id);
+  const [{ company, error }, knownArtists] = await Promise.all([
+    getManagementCompanyDetail(params.id),
+    getKnownArtistsForCompany(params.id),
+  ]);
   if (error || !company) notFound();
 
   const allArtists = company.managers.flatMap((m) =>
@@ -35,9 +39,10 @@ export default async function ManagementCompanyDetailPage({
   );
   const uniqueArtists = Array.from(new Map(allArtists.map((a) => [a.id, a])).values());
 
+  const managerOptions = company.managers.map((m) => ({ id: m.id, name: m.name }));
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/contacts" className="hover:text-[#1B2A4A]">Contacts</Link>
         <span>/</span>
@@ -59,20 +64,17 @@ export default async function ManagementCompanyDetailPage({
             {company.website}
           </a>
         )}
-        {company.notes && (
-          <p className="mt-2 text-sm text-gray-600">{company.notes}</p>
-        )}
+        {company.notes && <p className="mt-2 text-sm text-gray-600">{company.notes}</p>}
         <div className="mt-3 flex gap-4 text-sm text-gray-500">
           <span>{company.managers.length} manager{company.managers.length !== 1 ? "s" : ""}</span>
-          <span>{uniqueArtists.length} artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+          <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+          <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
       {/* Managers */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-          Managers
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Managers</h2>
         {company.managers.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No managers yet.</p>
         ) : (
@@ -81,44 +83,30 @@ export default async function ManagementCompanyDetailPage({
               <div key={m.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <Link
-                      href={`/contacts/managers/${m.id}`}
-                      className="text-base font-semibold text-[#1B2A4A] hover:underline"
-                    >
+                    <Link href={`/contacts/managers/${m.id}`} className="text-base font-semibold text-[#1B2A4A] hover:underline">
                       {m.name}
                     </Link>
                     {!m.is_active && (
-                      <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-                        Inactive
-                      </span>
+                      <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
                     )}
                     <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
-                      {m.email && (
-                        <a href={`mailto:${m.email}`} className="hover:text-[#C0392B]">
-                          {m.email}
-                        </a>
-                      )}
+                      {m.email && <a href={`mailto:${m.email}`} className="hover:text-[#C0392B]">{m.email}</a>}
                       {m.phone && <span>{m.phone}</span>}
                     </div>
                   </div>
                 </div>
                 {m.artists.length > 0 && (
                   <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-gray-500">Artists</p>
+                    <p className="mb-2 text-xs font-medium text-gray-500">Soundcheck Artists</p>
                     <div className="space-y-1.5">
                       {m.artists.map((a) => (
                         <div key={a.id} className="flex items-center gap-3">
-                          <Link
-                            href={`/artists/${a.id}`}
-                            className="text-sm font-medium text-[#1B2A4A] hover:underline"
-                          >
+                          <Link href={`/artists/${a.id}`} className="text-sm font-medium text-[#1B2A4A] hover:underline">
                             {a.name}
                           </Link>
                           <span className="text-xs text-gray-400">{a.role}</span>
                           {a.latest_score !== null && (
-                            <span className="text-xs font-semibold text-gray-600">
-                              {a.latest_score.toFixed(1)}
-                            </span>
+                            <span className="text-xs font-semibold text-gray-600">{a.latest_score.toFixed(1)}</span>
                           )}
                           <TierBadge tier={a.latest_tier} />
                         </div>
@@ -132,26 +120,19 @@ export default async function ManagementCompanyDetailPage({
         )}
       </section>
 
-      {/* All Artists summary */}
+      {/* Soundcheck Artists summary */}
       {uniqueArtists.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-            All Artists
-          </h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">All Soundcheck Artists</h2>
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
             {uniqueArtists.map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-5 py-3">
-                <Link
-                  href={`/artists/${a.id}`}
-                  className="flex-1 text-sm font-medium text-[#1B2A4A] hover:underline"
-                >
+                <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-medium text-[#1B2A4A] hover:underline">
                   {a.name}
                 </Link>
                 <span className="text-xs text-gray-400">{a.managerName}</span>
                 {a.latest_score !== null && (
-                  <span className="text-xs font-semibold text-gray-600">
-                    {a.latest_score.toFixed(1)}
-                  </span>
+                  <span className="text-xs font-semibold text-gray-600">{a.latest_score.toFixed(1)}</span>
                 )}
                 <TierBadge tier={a.latest_tier} />
               </div>
@@ -159,6 +140,14 @@ export default async function ManagementCompanyDetailPage({
           </div>
         </section>
       )}
+
+      {/* Known Artists across all managers */}
+      <KnownArtistsSection
+        initialItems={knownArtists}
+        managementCompanyId={params.id}
+        personOptions={managerOptions}
+        personType="manager"
+      />
     </div>
   );
 }

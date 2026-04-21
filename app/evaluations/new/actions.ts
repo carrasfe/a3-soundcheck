@@ -33,7 +33,7 @@ import { createClient } from "@/lib/supabase/server";
 import { calculateScore } from "@/lib/scoring-engine";
 import { buildScoringInputs, getAgeProfileLabel } from "./types";
 import type { EvalFormData } from "./types";
-import { saveArtistManagers, saveArtistAgents } from "@/app/contacts/actions";
+import { saveArtistManagers, saveArtistAgents, ensureKnownArtistForEval } from "@/app/contacts/actions";
 
 export interface SaveResult {
   id: string | null;
@@ -190,19 +190,23 @@ export async function saveEvaluation(
     return { id: null, error: error.message, debugInfo: dbg };
   }
 
-  // Save junction records (artist_managers / artist_agents) — fire and forget
+  // Save junction records + ensure known_artist entries — fire and forget
   if (artistId && status === "complete") {
-    if (fd.manager_selections && fd.manager_selections.length > 0) {
-      saveArtistManagers(artistId, fd.manager_selections.map((s) => ({
-        manager_id: s.manager_id,
-        role: s.role,
+    const managerIds = (fd.manager_selections ?? []).map((s) => s.manager_id);
+    const agentIds   = (fd.agent_selections   ?? []).map((s) => s.agent_id);
+
+    if (managerIds.length > 0) {
+      saveArtistManagers(artistId, (fd.manager_selections ?? []).map((s) => ({
+        manager_id: s.manager_id, role: s.role,
       }))).catch(() => {});
     }
-    if (fd.agent_selections && fd.agent_selections.length > 0) {
-      saveArtistAgents(artistId, fd.agent_selections.map((s) => ({
-        agent_id: s.agent_id,
-        role: s.role,
+    if (agentIds.length > 0) {
+      saveArtistAgents(artistId, (fd.agent_selections ?? []).map((s) => ({
+        agent_id: s.agent_id, role: s.role,
       }))).catch(() => {});
+    }
+    if (fd.artist_name?.trim()) {
+      ensureKnownArtistForEval(fd.artist_name.trim(), managerIds, agentIds).catch(() => {});
     }
   }
 

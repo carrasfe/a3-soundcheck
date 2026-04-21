@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAgencyDetail } from "../../actions";
+import { getAgencyDetail, getKnownArtistsForAgency } from "../../actions";
+import KnownArtistsSection from "../../KnownArtistsSection";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -27,13 +28,17 @@ export default async function AgencyDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { agency, error } = await getAgencyDetail(params.id);
+  const [{ agency, error }, knownArtists] = await Promise.all([
+    getAgencyDetail(params.id),
+    getKnownArtistsForAgency(params.id),
+  ]);
   if (error || !agency) notFound();
 
   const allArtists = agency.agents.flatMap((a) =>
     a.artists.map((ar) => ({ ...ar, agentName: a.name }))
   );
   const uniqueArtists = Array.from(new Map(allArtists.map((a) => [a.id, a])).values());
+  const agentOptions = agency.agents.map((a) => ({ id: a.id, name: a.name }));
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -60,7 +65,8 @@ export default async function AgencyDetailPage({
         {agency.notes && <p className="mt-2 text-sm text-gray-600">{agency.notes}</p>}
         <div className="mt-3 flex gap-4 text-sm text-gray-500">
           <span>{agency.agents.length} agent{agency.agents.length !== 1 ? "s" : ""}</span>
-          <span>{uniqueArtists.length} artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+          <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+          <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
@@ -84,7 +90,7 @@ export default async function AgencyDetailPage({
                 </div>
                 {a.artists.length > 0 && (
                   <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-gray-500">Artists</p>
+                    <p className="mb-2 text-xs font-medium text-gray-500">Soundcheck Artists</p>
                     <div className="space-y-1.5">
                       {a.artists.map((ar) => (
                         <div key={ar.id} className="flex items-center gap-3">
@@ -109,7 +115,7 @@ export default async function AgencyDetailPage({
 
       {uniqueArtists.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">All Artists</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">All Soundcheck Artists</h2>
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
             {uniqueArtists.map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-5 py-3">
@@ -126,6 +132,13 @@ export default async function AgencyDetailPage({
           </div>
         </section>
       )}
+
+      <KnownArtistsSection
+        initialItems={knownArtists}
+        agencyId={params.id}
+        personOptions={agentOptions}
+        personType="agent"
+      />
     </div>
   );
 }
