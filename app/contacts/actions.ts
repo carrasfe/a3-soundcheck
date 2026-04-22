@@ -20,6 +20,7 @@ export interface LinkedArtistRow {
   role: string;
   latest_score: number | null;
   latest_tier: string | null;
+  is_a3_client?: boolean;
 }
 
 export interface ManagerRow {
@@ -629,12 +630,12 @@ export async function getManagerDetail(id: string): Promise<{
     .eq("manager_id", id);
 
   const artistIds = (links ?? []).map((l) => l.artist_id);
-  let artistMap = new Map<string, { name: string }>();
+  let artistMap = new Map<string, { name: string; is_a3_client: boolean }>();
   let evalMap = new Map<string, { score_total: number | null; tier: string | null }>();
 
   if (artistIds.length > 0) {
-    const { data: artistRows } = await supabase.from("artists").select("id, name").in("id", artistIds);
-    for (const a of artistRows ?? []) artistMap.set(a.id, { name: a.name });
+    const { data: artistRows } = await supabase.from("artists").select("id, name, is_a3_client").in("id", artistIds);
+    for (const a of artistRows ?? []) artistMap.set(a.id, { name: a.name, is_a3_client: a.is_a3_client ?? false });
     const { data: evalRows } = await supabase
       .from("evaluations")
       .select("artist_id, score_total, tier, evaluated_at")
@@ -665,6 +666,7 @@ export async function getManagerDetail(id: string): Promise<{
         role: l.role,
         latest_score: evalMap.get(l.artist_id)?.score_total ?? null,
         latest_tier: evalMap.get(l.artist_id)?.tier ?? null,
+        is_a3_client: artistMap.get(l.artist_id)?.is_a3_client ?? false,
       })),
     },
     error: null,
@@ -689,12 +691,12 @@ export async function getAgentDetail(id: string): Promise<{
     .eq("agent_id", id);
 
   const artistIds = (links ?? []).map((l) => l.artist_id);
-  let artistMap = new Map<string, { name: string }>();
+  let artistMap = new Map<string, { name: string; is_a3_client: boolean }>();
   let evalMap = new Map<string, { score_total: number | null; tier: string | null }>();
 
   if (artistIds.length > 0) {
-    const { data: artistRows } = await supabase.from("artists").select("id, name").in("id", artistIds);
-    for (const ar of artistRows ?? []) artistMap.set(ar.id, { name: ar.name });
+    const { data: artistRows } = await supabase.from("artists").select("id, name, is_a3_client").in("id", artistIds);
+    for (const ar of artistRows ?? []) artistMap.set(ar.id, { name: ar.name, is_a3_client: ar.is_a3_client ?? false });
     const { data: evalRows } = await supabase
       .from("evaluations")
       .select("artist_id, score_total, tier, evaluated_at")
@@ -725,6 +727,7 @@ export async function getAgentDetail(id: string): Promise<{
         role: l.role,
         latest_score: evalMap.get(l.artist_id)?.score_total ?? null,
         latest_tier: evalMap.get(l.artist_id)?.tier ?? null,
+        is_a3_client: artistMap.get(l.artist_id)?.is_a3_client ?? false,
       })),
     },
     error: null,
@@ -1144,6 +1147,7 @@ export async function getRosterCrossoverForAgent(agentId: string): Promise<Roste
 
 // ─── Roster crossover — agency ────────────────────────────────
 
+
 export interface AgencyCrossoverEntry {
   artist_id: string | null;
   artist_name: string;
@@ -1269,4 +1273,87 @@ export async function ensureKnownArtistForEval(
       await supabase.from("known_artists").insert({ name, agent_id: agentId });
     }
   }
+}
+
+// ─── A3 Relationship helpers ──────────────────────────────────
+
+export async function getA3RelationshipForPersons(opts: {
+  managerIds: string[];
+  agentIds: string[];
+}): Promise<{
+  managers: Record<string, string[]>;
+  agents: Record<string, string[]>;
+}> {
+  const supabase = await createClient();
+  const result = { managers: {} as Record<string, string[]>, agents: {} as Record<string, string[]> };
+
+  if (opts.managerIds.length > 0) {
+    const { data: amLinks } = await supabase
+      .from("artist_managers").select("manager_id, artist_id")
+      .in("manager_id", opts.managerIds);
+    const artistIds = Array.from(new Set((amLinks ?? []).map((l) => l.artist_id)));
+    if (artistIds.length > 0) {
+      const { data: a3 } = await supabase
+        .from("artists").select("id, name")
+        .in("id", artistIds).eq("is_a3_client", true);
+      const a3Map = new Map((a3 ?? []).map((a) => [a.id, a.name]));
+      for (const link of (amLinks ?? [])) {
+        if (a3Map.has(link.artist_id)) {
+          if (!result.managers[link.manager_id]) result.managers[link.manager_id] = [];
+          result.managers[link.manager_id].push(a3Map.get(link.artist_id)!);
+        }
+      }
+    }
+  }
+
+  if (opts.agentIds.length > 0) {
+    const { data: aaLinks } = await supabase
+      .from("artist_agents").select("agent_id, artist_id")
+      .in("agent_id", opts.agentIds);
+    const artistIds = Array.from(new Set((aaLinks ?? []).map((l) => l.artist_id)));
+    if (artistIds.length > 0) {
+      const { data: a3 } = await supabase
+        .from("artists").select("id, name")
+        .in("id", artistIds).eq("is_a3_client", true);
+      const a3Map = new Map((a3 ?? []).map((a) => [a.id, a.name]));
+      for (const link of (aaLinks ?? [])) {
+        if (a3Map.has(link.artist_id)) {
+          if (!result.agents[link.agent_id]) result.agents[link.agent_id] = [];
+          result.agents[link.agent_id].push(a3Map.get(link.artist_id)!);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+export async function getArtistIdsWithA3Relationship(): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data: a3Artists } = await supabase
+    .from("artists").select("id").eq("is_a3_client", true);
+  const a3ArtistIds = (a3Artists ?? []).map((a) => a.id);
+  if (a3ArtistIds.length === 0) return new Set();
+
+  const [{ data: amLinks }, { data: aaLinks }] = await Promise.all([
+    supabase.from("artist_managers").select("manager_id").in("artist_id", a3ArtistIds),
+    supabase.from("artist_agents").select("agent_id").in("artist_id", a3ArtistIds),
+  ]);
+
+  const a3ManagerIds = (amLinks ?? []).map((l) => l.manager_id);
+  const a3AgentIds = (aaLinks ?? []).map((l) => l.agent_id);
+  const result = new Set<string>();
+
+  await Promise.all([
+    a3ManagerIds.length > 0
+      ? supabase.from("artist_managers").select("artist_id").in("manager_id", a3ManagerIds)
+          .then(({ data }) => (data ?? []).forEach((l) => result.add(l.artist_id)))
+      : Promise.resolve(),
+    a3AgentIds.length > 0
+      ? supabase.from("artist_agents").select("artist_id").in("agent_id", a3AgentIds)
+          .then(({ data }) => (data ?? []).forEach((l) => result.add(l.artist_id)))
+      : Promise.resolve(),
+  ]);
+
+  return result;
 }

@@ -19,6 +19,8 @@ export interface ScorecardData {
   evaluationId: string | null;
   results: ScoringResult;
   inputs: EvalFormData;
+  a3MgmtNote?: string | null;
+  a3AgentNote?: string | null;
 }
 
 // ─── Fixed page layout — all Y positions locked ───────────────────────────────
@@ -63,6 +65,7 @@ const BGINFO:  RGB = [237, 241, 248];
 const BGROW:   RGB = [248, 249, 252];
 const DIV:     RGB = [205, 211, 222];
 const GREEN:   RGB = [18,  130,  55];
+const GREEN_A3: RGB = [39, 174, 96];
 const BLUE:    RGB = [37,   99, 200];
 const AMBER:   RGB = [175, 115,   0];
 const SCORERED:RGB = [175,  35,  35];
@@ -221,6 +224,12 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
     ly += 4;
   }
 
+  // Row 1c: A3 relationship note for management
+  if (d.a3MgmtNote) {
+    t(doc, `★ A3 relationship via ${d.a3MgmtNote}`, ML + 24, ly, { sz: 5.5, color: GREEN_A3, maxW: LW - 26 });
+    ly += 3.5;
+  }
+
   // Row 2: Agent label + agency — agent names
   const agentVal = [inp.booking_agent].filter(Boolean).join(" — ") || "—";
   t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
@@ -231,6 +240,12 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   if (inp.other_agent_artists) {
     t(doc, "Other booked:", ML + 24, ly, { sz: 5.5, color: LT });
     t(doc, inp.other_agent_artists, ML + 49, ly, { sz: 5.5, color: MD, maxW: LW - 51 });
+    ly += 4;
+  }
+
+  // Row 2c: A3 relationship note for booking
+  if (d.a3AgentNote) {
+    t(doc, `★ A3 relationship via ${d.a3AgentNote}`, ML + 24, ly, { sz: 5.5, color: GREEN_A3, maxW: LW - 26 });
   }
 
   // ── Divider ───────────────────────────────────────────────────

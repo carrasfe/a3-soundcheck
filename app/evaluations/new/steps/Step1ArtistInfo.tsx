@@ -15,6 +15,7 @@ import {
   addKnownArtists,
   removeKnownArtist,
   getArtistContactsByName,
+  getA3RelationshipForPersons,
 } from "@/app/contacts/actions";
 import type { KnownArtistRow } from "@/app/contacts/actions";
 
@@ -199,6 +200,8 @@ function PersonSelect({
   onRemove,
   onRoleChange,
   onAddNew,
+  a3Artists,
+  a3Label,
 }: {
   label: string;
   companyId: string;
@@ -210,6 +213,8 @@ function PersonSelect({
   onRemove: (id: string) => void;
   onRoleChange: (id: string, role: string) => void;
   onAddNew: () => void;
+  a3Artists?: Record<string, string[]>;
+  a3Label?: string;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -234,19 +239,30 @@ function PersonSelect({
   return (
     <div className="flex flex-col gap-2" ref={ref}>
       <label className="text-sm font-medium text-gray-700">{label}</label>
-      {selections.map((s) => (
-        <div key={s.id} className="flex items-center gap-2 rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2">
-          <span className="flex-1 text-sm font-medium text-[#1B2A4A]">{s.name}</span>
-          <select
-            value={s.role}
-            onChange={(e) => onRoleChange(s.id, e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C0392B]"
-          >
-            {roles.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <button type="button" onClick={() => onRemove(s.id)} className="text-gray-400 hover:text-[#C0392B]">✕</button>
-        </div>
-      ))}
+      {selections.map((s) => {
+        const relArtists = a3Artists?.[s.id];
+        return (
+          <div key={s.id} className="rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm font-medium text-[#1B2A4A]">{s.name}</span>
+              {relArtists && relArtists.length > 0 && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
+              )}
+              <select
+                value={s.role}
+                onChange={(e) => onRoleChange(s.id, e.target.value)}
+                className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C0392B]"
+              >
+                {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <button type="button" onClick={() => onRemove(s.id)} className="text-gray-400 hover:text-[#C0392B]">✕</button>
+            </div>
+            {relArtists && relArtists.length > 0 && (
+              <p className="mt-1 text-xs text-[#27AE60]">{a3Label ?? "Also works with"}: {relArtists.join(", ")}</p>
+            )}
+          </div>
+        );
+      })}
       {selections.length < maxSelections && (
         <div className="relative">
           <input
@@ -443,6 +459,17 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     getKnownArtistsForAgentIds(ids).then(setAgentKnownArtists).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentKey]);
+
+  // A3 relationship data for selected managers/agents
+  const [a3Rel, setA3Rel] = useState<{ managers: Record<string, string[]>; agents: Record<string, string[]> }>({ managers: {}, agents: {} });
+
+  useEffect(() => {
+    const managerIds = managerSelections.map((s) => s.manager_id);
+    const agentIds = agentSelections.map((s) => s.agent_id);
+    if (managerIds.length === 0 && agentIds.length === 0) { setA3Rel({ managers: {}, agents: {} }); return; }
+    getA3RelationshipForPersons({ managerIds, agentIds }).then(setA3Rel).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mgmtKey, agentKey]);
 
   // Inline create states
   const [showNewCompany, setShowNewCompany] = useState(false);
@@ -698,6 +725,8 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             onRemove={(id) => onChange({ manager_selections: managerSelections.filter((s) => s.manager_id !== id) })}
             onRoleChange={(id, role) => onChange({ manager_selections: managerSelections.map((s) => s.manager_id === id ? { ...s, role } : s) })}
             onAddNew={() => { setShowNewManager(true); setInlineError(null); }}
+            a3Artists={a3Rel.managers}
+            a3Label="Also manages"
           />
           {showNewManager && (
             <InlineCreate
@@ -772,6 +801,8 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             onRemove={(id) => onChange({ agent_selections: agentSelections.filter((s) => s.agent_id !== id) })}
             onRoleChange={(id, role) => onChange({ agent_selections: agentSelections.map((s) => s.agent_id === id ? { ...s, role } : s) })}
             onAddNew={() => { setShowNewAgent(true); setInlineError(null); }}
+            a3Artists={a3Rel.agents}
+            a3Label="Also books"
           />
           {showNewAgent && (
             <InlineCreate

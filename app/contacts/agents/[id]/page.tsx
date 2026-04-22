@@ -84,9 +84,19 @@ export default async function AgentDetailPage({
 
       {/* Soundcheck Artists */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-          Soundcheck Artists ({agent.artists.length})
-        </h2>
+        <div className="mb-3 flex items-center gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Soundcheck Artists ({agent.artists.length})
+          </h2>
+          {(() => {
+            const a3Count = agent.artists.filter((a) => a.is_a3_client).length;
+            return a3Count > 0 ? (
+              <span className="text-xs font-medium text-[#27AE60]">
+                {a3Count} of {agent.artists.length} {a3Count === 1 ? "is an" : "are"} A3 client{a3Count !== 1 ? "s" : ""}
+              </span>
+            ) : null;
+          })()}
+        </div>
         {agent.artists.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No evaluations linked yet.</p>
         ) : (
@@ -96,6 +106,9 @@ export default async function AgentDetailPage({
                 <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-semibold text-[#1B2A4A] hover:underline">
                   {a.name}
                 </Link>
+                {a.is_a3_client && (
+                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#C0392B] text-white">A3 CLIENT</span>
+                )}
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">{a.role}</span>
                 {a.latest_score !== null && (
                   <span className="text-sm font-semibold text-gray-700">{a.latest_score.toFixed(1)}</span>

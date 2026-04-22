@@ -522,13 +522,21 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                     onClick={() => (window.location.href = `/evaluations/${ev.id}`)}
                   >
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/evaluations/${ev.id}`}
-                        className="font-semibold text-[#1B2A4A] hover:text-[#C0392B] hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {ev.artist_name}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        {ev.has_a3_relationship && (
+                          <span
+                            title="Manager or agent also works with an A3 client"
+                            className="h-2 w-2 rounded-full flex-shrink-0 bg-[#27AE60]"
+                          />
+                        )}
+                        <Link
+                          href={`/evaluations/${ev.id}`}
+                          className="font-semibold text-[#1B2A4A] hover:text-[#C0392B] hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {ev.artist_name}
+                        </Link>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{ev.genre || "—"}</td>
                     <td className="px-4 py-3 text-center">

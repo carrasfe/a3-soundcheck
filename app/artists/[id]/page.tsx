@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ArtistDetailClient from "@/components/ArtistDetailClient";
-import { getArtistLinkedContacts, fuzzyMatchArtistContacts } from "@/app/contacts/actions";
+import { getArtistLinkedContacts, fuzzyMatchArtistContacts, getA3RelationshipForPersons } from "@/app/contacts/actions";
 
 export type ArtistEvaluation = {
   id: string;
@@ -34,6 +34,11 @@ export type ArtistDetail = {
   fuzzy_agents: { id: string; name: string }[];
   unmatched_agency_text: string | null;
   unmatched_agent_names: string[];
+  // A3 relationship: which A3 client artists each linked/fuzzy contact also works with
+  a3_relationships: {
+    managers: Record<string, string[]>;
+    agents: Record<string, string[]>;
+  };
 };
 
 export default async function ArtistDetailPage({
@@ -98,7 +103,18 @@ export default async function ArtistDetailPage({
     fuzzy_agents: [],
     unmatched_agency_text: null,
     unmatched_agent_names: [],
+    a3_relationships: { managers: {}, agents: {} },
   };
+
+  // A3 relationship: fetch for all linked contacts
+  const a3ManagerIds = artistDetail.linked_managers.map((m) => m.id);
+  const a3AgentIds = artistDetail.linked_agents.map((a) => a.id);
+  if (a3ManagerIds.length > 0 || a3AgentIds.length > 0) {
+    artistDetail.a3_relationships = await getA3RelationshipForPersons({
+      managerIds: a3ManagerIds,
+      agentIds: a3AgentIds,
+    });
+  }
 
   // Fuzzy-match legacy text fields for any contact dimension without junction links
   const needsMgmtFuzzy = !linkedContacts.managementCompany && !!artist.management_company;

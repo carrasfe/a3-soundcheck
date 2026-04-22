@@ -2,15 +2,18 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "@/components/DashboardClient";
 import type { ScoringResult } from "@/lib/scoring-engine";
+import { getArtistIdsWithA3Relationship } from "@/app/contacts/actions";
 
 export type EvaluationRow = {
   id: string;
+  artist_id: string;
   artist_name: string;
   genre: string | null;
   results: ScoringResult | null;
   inputs: Record<string, unknown> | null;
   created_at: string;
   evaluator_name: string;
+  has_a3_relationship: boolean;
 };
 
 export type DraftRow = {
@@ -41,7 +44,7 @@ export default async function DashboardPage() {
     // Denormalized columns (score_total, tier, etc.) remain as fallback.
     const { data: evals, error: evalsError } = await supabase
       .from("evaluations")
-      .select("id, results, inputs, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
+      .select("id, artist_id, results, inputs, score_total, score_p1, score_p2, score_p3, score_p4, tier, action, revenue_tier, evaluated_at, evaluated_by, pillar_weights, artists(name, genre)")
       .eq("status", "complete")
       .order("evaluated_at", { ascending: false });
 
@@ -58,6 +61,8 @@ export default async function DashboardPage() {
           .in("id", evaluatorRefs);
         (profiles ?? []).forEach((p) => profileMap.set(p.id, p.full_name || p.email || p.id));
       }
+
+      const a3RelSet = await getArtistIdsWithA3Relationship().catch(() => new Set<string>());
 
       evaluations = evals.map((ev) => {
         const artist = ev.artists as unknown as { name: string; genre: string | null } | null;
@@ -85,12 +90,14 @@ export default async function DashboardPage() {
 
         return {
           id: ev.id,
+          artist_id: ev.artist_id,
           artist_name: artist?.name ?? "",
           genre: artist?.genre ?? null,
           results: finalResult,
           inputs: (ev as unknown as { inputs: Record<string, unknown> | null }).inputs ?? null,
           created_at: ev.evaluated_at,
           evaluator_name: profileMap.get(ev.evaluated_by) ?? ev.evaluated_by ?? "Unknown",
+          has_a3_relationship: a3RelSet.has(ev.artist_id),
         };
       });
     }

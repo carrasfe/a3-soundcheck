@@ -166,14 +166,25 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                 <dd className="mt-0.5 text-sm">
                   {artist.linked_managers.length > 0 ? (
                     <div className="flex flex-col gap-1">
-                      {artist.linked_managers.map((m) => (
-                        <div key={m.id} className="flex items-center gap-1.5">
-                          <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                            {m.name}
-                          </Link>
-                          <span className="text-xs text-gray-400">({m.role})</span>
-                        </div>
-                      ))}
+                      {artist.linked_managers.map((m) => {
+                        const a3Artists = artist.a3_relationships.managers[m.id];
+                        return (
+                          <div key={m.id} className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                {m.name}
+                              </Link>
+                              <span className="text-xs text-gray-400">({m.role})</span>
+                              {a3Artists?.length > 0 && (
+                                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
+                              )}
+                            </div>
+                            {a3Artists?.length > 0 && (
+                              <p className="text-xs text-gray-500 ml-0.5">Also manages: {a3Artists.join(", ")}</p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : artist.fuzzy_managers.length > 0 ? (
                     <div className="flex flex-col gap-1">
@@ -223,14 +234,25 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                 <dd className="mt-0.5 text-sm">
                   {artist.linked_agents.length > 0 ? (
                     <div className="flex flex-col gap-1">
-                      {artist.linked_agents.map((a) => (
-                        <div key={a.id} className="flex items-center gap-1.5">
-                          <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                            {a.name}
-                          </Link>
-                          <span className="text-xs text-gray-400">({a.role})</span>
-                        </div>
-                      ))}
+                      {artist.linked_agents.map((a) => {
+                        const a3Artists = artist.a3_relationships.agents[a.id];
+                        return (
+                          <div key={a.id} className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                {a.name}
+                              </Link>
+                              <span className="text-xs text-gray-400">({a.role})</span>
+                              {a3Artists?.length > 0 && (
+                                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
+                              )}
+                            </div>
+                            {a3Artists?.length > 0 && (
+                              <p className="text-xs text-gray-500 ml-0.5">Also books: {a3Artists.join(", ")}</p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (artist.fuzzy_agents.length > 0 || artist.unmatched_agent_names.length > 0) ? (
                     <div className="flex flex-col gap-1">
