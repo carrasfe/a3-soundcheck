@@ -865,6 +865,303 @@ export async function removeKnownArtist(id: string): Promise<{ error: string | n
   return { error: error?.message ?? null };
 }
 
+// ─── Artist linked contacts (from junction tables) ────────────
+
+export interface ArtistLinkedContacts {
+  managementCompany: { id: string; name: string } | null;
+  managers: { id: string; name: string; role: string }[];
+  bookingAgency: { id: string; name: string } | null;
+  agents: { id: string; name: string; role: string }[];
+}
+
+export async function getArtistLinkedContacts(artistId: string): Promise<ArtistLinkedContacts> {
+  const supabase = await createClient();
+  const [{ data: amLinks }, { data: aaLinks }] = await Promise.all([
+    supabase.from("artist_managers").select("manager_id, role").eq("artist_id", artistId),
+    supabase.from("artist_agents").select("agent_id, role").eq("artist_id", artistId),
+  ]);
+
+  const managerIds = (amLinks ?? []).map((l) => l.manager_id);
+  const agentIds = (aaLinks ?? []).map((l) => l.agent_id);
+  const roleByManager = new Map((amLinks ?? []).map((l) => [l.manager_id, l.role]));
+  const roleByAgent = new Map((aaLinks ?? []).map((l) => [l.agent_id, l.role]));
+
+  let managementCompany: { id: string; name: string } | null = null;
+  let managers: { id: string; name: string; role: string }[] = [];
+  let bookingAgency: { id: string; name: string } | null = null;
+  let agents: { id: string; name: string; role: string }[] = [];
+
+  if (managerIds.length > 0) {
+    const { data: mgrRows } = await supabase
+      .from("managers").select("id, name, management_company_id").in("id", managerIds);
+    managers = (mgrRows ?? []).map((m) => ({
+      id: m.id, name: m.name, role: roleByManager.get(m.id) ?? "Lead",
+    }));
+    const companyId = (mgrRows ?? []).find((m) => m.management_company_id)?.management_company_id;
+    if (companyId) {
+      const { data: c } = await supabase
+        .from("management_companies").select("id, name").eq("id", companyId).single();
+      if (c) managementCompany = { id: c.id, name: c.name };
+    }
+  }
+
+  if (agentIds.length > 0) {
+    const { data: agentRows } = await supabase
+      .from("agents").select("id, name, agency_id").in("id", agentIds);
+    agents = (agentRows ?? []).map((a) => ({
+      id: a.id, name: a.name, role: roleByAgent.get(a.id) ?? "Primary",
+    }));
+    const agencyId = (agentRows ?? []).find((a) => a.agency_id)?.agency_id;
+    if (agencyId) {
+      const { data: ag } = await supabase
+        .from("agencies").select("id, name").eq("id", agencyId).single();
+      if (ag) bookingAgency = { id: ag.id, name: ag.name };
+    }
+  }
+
+  return { managementCompany, managers, bookingAgency, agents };
+}
+
+// ─── Artist contacts by name (for Step 1 auto-load) ──────────
+
+export async function getArtistContactsByName(name: string): Promise<{
+  artistId: string | null;
+  managementCompanyId: string | null;
+  managementCompanyName: string | null;
+  managerSelections: { manager_id: string; role: string }[];
+  bookingAgencyId: string | null;
+  bookingAgencyName: string | null;
+  agentSelections: { agent_id: string; role: string }[];
+  hasContacts: boolean;
+}> {
+  const empty = {
+    artistId: null, managementCompanyId: null, managementCompanyName: null,
+    managerSelections: [], bookingAgencyId: null, bookingAgencyName: null,
+    agentSelections: [], hasContacts: false,
+  };
+  if (!name.trim()) return empty;
+  const supabase = await createClient();
+  const { data: artist } = await supabase
+    .from("artists").select("id").ilike("name", name.trim()).limit(1).maybeSingle();
+  if (!artist) return empty;
+  const contacts = await getArtistLinkedContacts(artist.id);
+  const hasContacts = !!(
+    contacts.managementCompany || contacts.managers.length > 0 ||
+    contacts.bookingAgency || contacts.agents.length > 0
+  );
+  return {
+    artistId: artist.id,
+    managementCompanyId: contacts.managementCompany?.id ?? null,
+    managementCompanyName: contacts.managementCompany?.name ?? null,
+    managerSelections: contacts.managers.map((m) => ({ manager_id: m.id, role: m.role })),
+    bookingAgencyId: contacts.bookingAgency?.id ?? null,
+    bookingAgencyName: contacts.bookingAgency?.name ?? null,
+    agentSelections: contacts.agents.map((a) => ({ agent_id: a.id, role: a.role })),
+    hasContacts,
+  };
+}
+
+// ─── Roster crossover — agent ─────────────────────────────────
+
+export interface RosterCrossoverEntry {
+  artist_id: string | null;
+  artist_name: string;
+  other_agents: { id: string; name: string; agency_id: string | null; agency_name: string | null }[];
+}
+
+export async function getRosterCrossoverForAgent(agentId: string): Promise<RosterCrossoverEntry[]> {
+  const supabase = await createClient();
+  const [{ data: myLinks }, { data: myKnown }] = await Promise.all([
+    supabase.from("artist_agents").select("artist_id").eq("agent_id", agentId),
+    supabase.from("known_artists").select("name").eq("agent_id", agentId),
+  ]);
+
+  const myArtistIds = (myLinks ?? []).map((l) => l.artist_id);
+  const crossovers: RosterCrossoverEntry[] = [];
+
+  if (myArtistIds.length > 0) {
+    const { data: otherLinks } = await supabase
+      .from("artist_agents").select("artist_id, agent_id")
+      .in("artist_id", myArtistIds).neq("agent_id", agentId);
+
+    if (otherLinks && otherLinks.length > 0) {
+      const { data: artists } = await supabase
+        .from("artists").select("id, name").in("id", myArtistIds);
+      const artistNameMap = new Map((artists ?? []).map((a) => [a.id, a.name]));
+
+      const otherAgentIds = Array.from(new Set(otherLinks.map((l) => l.agent_id)));
+      const { data: otherAgents } = await supabase
+        .from("agents").select("id, name, agency_id, agencies(name)").in("id", otherAgentIds);
+      const otherAgentMap = new Map((otherAgents ?? []).map((a) => [a.id, a]));
+
+      const byArtist = new Map<string, string[]>();
+      for (const l of otherLinks) {
+        if (!byArtist.has(l.artist_id)) byArtist.set(l.artist_id, []);
+        if (!byArtist.get(l.artist_id)!.includes(l.agent_id))
+          byArtist.get(l.artist_id)!.push(l.agent_id);
+      }
+
+      for (const [artistId, agentIds] of Array.from(byArtist)) {
+        crossovers.push({
+          artist_id: artistId,
+          artist_name: artistNameMap.get(artistId) ?? "Unknown",
+          other_agents: agentIds.map((id: string) => {
+            const a = otherAgentMap.get(id);
+            if (!a) return { id, name: "Unknown", agency_id: null, agency_name: null };
+            return {
+              id: a.id, name: a.name, agency_id: a.agency_id ?? null,
+              agency_name: (a.agencies as unknown as { name: string } | null)?.name ?? null,
+            };
+          }),
+        });
+      }
+    }
+  }
+
+  const knownNames = (myKnown ?? []).map((k) => k.name);
+  if (knownNames.length > 0) {
+    const { data: crossoverKnown } = await supabase
+      .from("known_artists").select("name, agent_id")
+      .in("name", knownNames).neq("agent_id", agentId).not("agent_id", "is", null);
+
+    if (crossoverKnown && crossoverKnown.length > 0) {
+      const otherAgentIds = Array.from(new Set(
+        crossoverKnown.map((k) => k.agent_id).filter((id): id is string => !!id)
+      ));
+      const { data: otherAgents } = await supabase
+        .from("agents").select("id, name, agency_id, agencies(name)").in("id", otherAgentIds);
+      const otherAgentMap = new Map((otherAgents ?? []).map((a) => [a.id, a]));
+
+      const byName = new Map<string, string[]>();
+      for (const k of crossoverKnown) {
+        if (!k.agent_id) continue;
+        if (!byName.has(k.name)) byName.set(k.name, []);
+        if (!byName.get(k.name)!.includes(k.agent_id)) byName.get(k.name)!.push(k.agent_id);
+      }
+
+      for (const [name, agentIds] of Array.from(byName)) {
+        if (!crossovers.find((c) => c.artist_name.toLowerCase() === name.toLowerCase())) {
+          crossovers.push({
+            artist_id: null, artist_name: name,
+            other_agents: agentIds.map((id: string) => {
+              const a = otherAgentMap.get(id);
+              if (!a) return { id, name: "Unknown", agency_id: null, agency_name: null };
+              return {
+                id: a.id, name: a.name, agency_id: a.agency_id ?? null,
+                agency_name: (a.agencies as unknown as { name: string } | null)?.name ?? null,
+              };
+            }),
+          });
+        }
+      }
+    }
+  }
+
+  return crossovers.sort((a, b) => a.artist_name.localeCompare(b.artist_name));
+}
+
+// ─── Roster crossover — agency ────────────────────────────────
+
+export interface AgencyCrossoverEntry {
+  artist_id: string | null;
+  artist_name: string;
+  other_agencies: { id: string; name: string }[];
+}
+
+export async function getRosterCrossoverForAgency(agencyId: string): Promise<AgencyCrossoverEntry[]> {
+  const supabase = await createClient();
+  const [{ data: agencyAgents }, { data: myKnown }] = await Promise.all([
+    supabase.from("agents").select("id").eq("agency_id", agencyId),
+    supabase.from("known_artists").select("name").eq("agency_id", agencyId),
+  ]);
+
+  const myAgentIds = (agencyAgents ?? []).map((a) => a.id);
+  const myAgentSet = new Set(myAgentIds);
+  const crossovers: AgencyCrossoverEntry[] = [];
+
+  if (myAgentIds.length > 0) {
+    const { data: myLinks } = await supabase
+      .from("artist_agents").select("artist_id").in("agent_id", myAgentIds);
+    const myArtistIds = Array.from(new Set((myLinks ?? []).map((l) => l.artist_id)));
+
+    if (myArtistIds.length > 0) {
+      const { data: allLinks } = await supabase
+        .from("artist_agents").select("artist_id, agent_id").in("artist_id", myArtistIds);
+      const filteredLinks = (allLinks ?? []).filter((l) => !myAgentSet.has(l.agent_id));
+
+      if (filteredLinks.length > 0) {
+        const { data: artists } = await supabase
+          .from("artists").select("id, name").in("id", myArtistIds);
+        const artistNameMap = new Map((artists ?? []).map((a) => [a.id, a.name]));
+
+        const otherAgentIds = Array.from(new Set(filteredLinks.map((l) => l.agent_id)));
+        const { data: otherAgents } = await supabase
+          .from("agents").select("id, agency_id, agencies(id, name)").in("id", otherAgentIds);
+
+        const agentToAgency = new Map<string, { id: string; name: string }>();
+        for (const a of otherAgents ?? []) {
+          if (a.agency_id) {
+            const ag = a.agencies as unknown as { id: string; name: string } | null;
+            if (ag) agentToAgency.set(a.id, { id: ag.id, name: ag.name });
+          }
+        }
+
+        const byArtist = new Map<string, Map<string, { id: string; name: string }>>();
+        for (const link of filteredLinks) {
+          const agency = agentToAgency.get(link.agent_id);
+          if (!agency) continue;
+          if (!byArtist.has(link.artist_id)) byArtist.set(link.artist_id, new Map());
+          byArtist.get(link.artist_id)!.set(agency.id, agency);
+        }
+
+        for (const [artistId, agenciesMap] of Array.from(byArtist)) {
+          crossovers.push({
+            artist_id: artistId,
+            artist_name: artistNameMap.get(artistId) ?? "Unknown",
+            other_agencies: Array.from(agenciesMap.values()),
+          });
+        }
+      }
+    }
+  }
+
+  const knownNames = (myKnown ?? []).map((k) => k.name);
+  if (knownNames.length > 0) {
+    const { data: crossoverKnown } = await supabase
+      .from("known_artists").select("name, agency_id")
+      .in("name", knownNames).neq("agency_id", agencyId).not("agency_id", "is", null);
+
+    if (crossoverKnown && crossoverKnown.length > 0) {
+      const otherAgencyIds = Array.from(new Set(
+        crossoverKnown.map((k) => k.agency_id).filter((id): id is string => !!id)
+      ));
+      const { data: otherAgencies } = await supabase
+        .from("agencies").select("id, name").in("id", otherAgencyIds);
+      const agencyInfoMap = new Map((otherAgencies ?? []).map((a) => [a.id, a]));
+
+      const byName = new Map<string, Map<string, { id: string; name: string }>>();
+      for (const k of crossoverKnown) {
+        if (!k.agency_id) continue;
+        const ag = agencyInfoMap.get(k.agency_id);
+        if (!ag) continue;
+        if (!byName.has(k.name)) byName.set(k.name, new Map());
+        byName.get(k.name)!.set(ag.id, { id: ag.id, name: ag.name });
+      }
+
+      for (const [name, agenciesMap] of Array.from(byName)) {
+        if (!crossovers.find((c) => c.artist_name.toLowerCase() === name.toLowerCase())) {
+          crossovers.push({
+            artist_id: null, artist_name: name,
+            other_agencies: Array.from(agenciesMap.values()),
+          });
+        }
+      }
+    }
+  }
+
+  return crossovers.sort((a, b) => a.artist_name.localeCompare(b.artist_name));
+}
+
 // ─── Auto-create known_artist for evaluated artist ────────────
 
 export async function ensureKnownArtistForEval(

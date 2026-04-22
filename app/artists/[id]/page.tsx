@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ArtistDetailClient from "@/components/ArtistDetailClient";
+import { getArtistLinkedContacts } from "@/app/contacts/actions";
 
 export type ArtistEvaluation = {
   id: string;
@@ -22,6 +23,10 @@ export type ArtistDetail = {
   is_a3_client: boolean;
   is_archived: boolean;
   evaluations: ArtistEvaluation[];
+  linked_management_company: { id: string; name: string } | null;
+  linked_managers: { id: string; name: string; role: string }[];
+  linked_booking_agency: { id: string; name: string } | null;
+  linked_agents: { id: string; name: string; role: string }[];
 };
 
 export default async function ArtistDetailPage({
@@ -33,20 +38,22 @@ export default async function ArtistDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: artist, error } = await supabase
-    .from("artists")
-    .select("id, name, genre, merch_provider:current_merch_provider, management_company, manager_names, booking_agent, is_a3_client, is_archived")
-    .eq("id", params.id)
-    .single();
+  const [{ data: artist, error }, { data: evals }, linkedContacts] = await Promise.all([
+    supabase
+      .from("artists")
+      .select("id, name, genre, merch_provider:current_merch_provider, management_company, manager_names, booking_agent, is_a3_client, is_archived")
+      .eq("id", params.id)
+      .single(),
+    supabase
+      .from("evaluations")
+      .select("id, score_total, tier, evaluated_at, evaluated_by")
+      .eq("artist_id", params.id)
+      .eq("status", "complete")
+      .order("evaluated_at", { ascending: false }),
+    getArtistLinkedContacts(params.id),
+  ]);
 
   if (error || !artist) notFound();
-
-  const { data: evals } = await supabase
-    .from("evaluations")
-    .select("id, score_total, tier, evaluated_at, evaluated_by")
-    .eq("artist_id", artist.id)
-    .eq("status", "complete")
-    .order("evaluated_at", { ascending: false });
 
   const evalRows = evals ?? [];
 
@@ -74,6 +81,10 @@ export default async function ArtistDetailPage({
       tier_label: ev.tier ?? null,
       revenue_tier: null,
     })),
+    linked_management_company: linkedContacts.managementCompany,
+    linked_managers: linkedContacts.managers,
+    linked_booking_agency: linkedContacts.bookingAgency,
+    linked_agents: linkedContacts.agents,
   };
 
   return <ArtistDetailClient artist={artistDetail} />;

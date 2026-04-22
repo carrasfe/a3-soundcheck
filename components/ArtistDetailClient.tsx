@@ -107,18 +107,81 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
               Artist Info
             </h2>
             <dl className="grid gap-4 sm:grid-cols-2">
-              {[
-                { label: "Management Company", value: artist.management_company },
-                { label: "Manager(s)",          value: artist.manager_names },
-                { label: "Booking Agent",       value: artist.booking_agent },
-                { label: "Merch Provider",      value: artist.merch_provider },
-                { label: "Genre",               value: artist.genre },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</dt>
-                  <dd className="mt-0.5 text-sm text-gray-800">{value || "—"}</dd>
-                </div>
-              ))}
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Management Company</dt>
+                <dd className="mt-0.5 text-sm">
+                  {artist.linked_management_company ? (
+                    <Link href={`/contacts/management/${artist.linked_management_company.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                      {artist.linked_management_company.name}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-800">{artist.management_company || "—"}</span>
+                  )}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Manager(s)</dt>
+                <dd className="mt-0.5 text-sm">
+                  {artist.linked_managers.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {artist.linked_managers.map((m) => (
+                        <div key={m.id} className="flex items-center gap-1.5">
+                          <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                            {m.name}
+                          </Link>
+                          <span className="text-xs text-gray-400">({m.role})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-800">{artist.manager_names || "—"}</span>
+                  )}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Booking Agency</dt>
+                <dd className="mt-0.5 text-sm">
+                  {artist.linked_booking_agency ? (
+                    <Link href={`/contacts/agencies/${artist.linked_booking_agency.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                      {artist.linked_booking_agency.name}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-800">{artist.booking_agent || "—"}</span>
+                  )}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Agent(s)</dt>
+                <dd className="mt-0.5 text-sm">
+                  {artist.linked_agents.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {artist.linked_agents.map((a) => (
+                        <div key={a.id} className="flex items-center gap-1.5">
+                          <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                            {a.name}
+                          </Link>
+                          <span className="text-xs text-gray-400">({a.role})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-800">{artist.booking_agent || "—"}</span>
+                  )}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Merch Provider</dt>
+                <dd className="mt-0.5 text-sm text-gray-800">{artist.merch_provider || "—"}</dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Genre</dt>
+                <dd className="mt-0.5 text-sm text-gray-800">{artist.genre || "—"}</dd>
+              </div>
             </dl>
           </section>
 

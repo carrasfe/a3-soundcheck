@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Select } from "../ui";
 import type { EvalFormData, StepProps, ManagerSelection, AgentSelection } from "../types";
@@ -14,6 +14,7 @@ import {
   getKnownArtistsForAgentIds,
   addKnownArtists,
   removeKnownArtist,
+  getArtistContactsByName,
 } from "@/app/contacts/actions";
 import type { KnownArtistRow } from "@/app/contacts/actions";
 
@@ -451,6 +452,52 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   const [inlineSaving, setInlineSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
+  // Auto-load contacts from previous evaluation when artist name matches
+  type SavedContacts = Awaited<ReturnType<typeof getArtistContactsByName>>;
+  const [savedContacts, setSavedContacts] = useState<SavedContacts | null>(null);
+  const [contactsBannerDismissed, setContactsBannerDismissed] = useState(false);
+  const autoLoadedForRef = useRef<string>("");
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const applyContacts = useCallback((c: SavedContacts) => {
+    onChange({
+      management_company_id: c.managementCompanyId ?? "",
+      management_company: c.managementCompanyName ?? "",
+      manager_selections: c.managerSelections,
+      booking_agency_id: c.bookingAgencyId ?? "",
+      booking_agent: c.bookingAgencyName ?? "",
+      agent_selections: c.agentSelections,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const name = data.artist_name.trim();
+    if (name.length < 2) {
+      setSavedContacts(null);
+      setContactsBannerDismissed(false);
+      return;
+    }
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(async () => {
+      const result = await getArtistContactsByName(name).catch(() => null);
+      if (result?.hasContacts) {
+        setSavedContacts(result);
+        setContactsBannerDismissed(false);
+        const formIsEmpty = !data.management_company_id && !data.booking_agency_id &&
+          managerSelections.length === 0 && agentSelections.length === 0;
+        if (formIsEmpty && autoLoadedForRef.current !== name) {
+          autoLoadedForRef.current = name;
+          applyContacts(result);
+        }
+      } else {
+        setSavedContacts(null);
+      }
+    }, 600);
+    return () => { if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.artist_name]);
+
   // Derived: selected person objects for display
   const selectedManagers = managerSelections.map((s) => ({
     id: s.manager_id,
@@ -587,6 +634,26 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             {errors.genre && <p className="text-xs text-[#C0392B]">{errors.genre}</p>}
           </div>
         </div>
+        {savedContacts && !contactsBannerDismissed && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2 text-sm">
+            <span className="flex-1 text-[#1B2A4A]">Contacts loaded from previous evaluation.</span>
+            <button
+              type="button"
+              onClick={() => applyContacts(savedContacts)}
+              className="text-xs font-semibold text-[#C0392B] hover:underline"
+            >
+              Reload saved
+            </button>
+            <button
+              type="button"
+              onClick={() => setContactsBannerDismissed(true)}
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Management */}

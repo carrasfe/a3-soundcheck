@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAgencyDetail, getKnownArtistsForAgency } from "../../actions";
+import { getAgencyDetail, getKnownArtistsForAgency, getRosterCrossoverForAgency } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
 
 function TierBadge({ tier }: { tier: string | null }) {
@@ -28,9 +28,10 @@ export default async function AgencyDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ agency, error }, knownArtists] = await Promise.all([
+  const [{ agency, error }, knownArtists, crossovers] = await Promise.all([
     getAgencyDetail(params.id),
     getKnownArtistsForAgency(params.id),
+    getRosterCrossoverForAgency(params.id),
   ]);
   if (error || !agency) notFound();
 
@@ -127,6 +128,38 @@ export default async function AgencyDetailPage({
                   <span className="text-xs font-semibold text-gray-600">{a.latest_score.toFixed(1)}</span>
                 )}
                 <TierBadge tier={a.latest_tier} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {crossovers.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Shared Roster ({crossovers.length})
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+            {crossovers.map((entry, i) => (
+              <div key={i} className="px-5 py-3 text-sm">
+                <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
+                  {entry.artist_id ? (
+                    <Link href={`/artists/${entry.artist_id}`} className="font-semibold text-[#1B2A4A] hover:underline">
+                      {entry.artist_name}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-gray-700">{entry.artist_name}</span>
+                  )}
+                  <span className="text-gray-400">— also at:</span>
+                  {entry.other_agencies.map((oa, j) => (
+                    <span key={oa.id} className="inline-flex items-baseline gap-x-1">
+                      {j > 0 && <span className="text-gray-300">,</span>}
+                      <Link href={`/contacts/agencies/${oa.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                        {oa.name}
+                      </Link>
+                    </span>
+                  ))}
+                </span>
               </div>
             ))}
           </div>
