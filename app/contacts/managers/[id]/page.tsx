@@ -109,7 +109,6 @@ export default async function ManagerDetailPage({
         )}
       </section>
 
-      {/* Other Known Artists */}
       <KnownArtistsSection
         initialItems={knownArtists}
         managerId={params.id}

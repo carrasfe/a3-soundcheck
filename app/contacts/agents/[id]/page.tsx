@@ -153,7 +153,6 @@ export default async function AgentDetailPage({
         </section>
       )}
 
-      {/* Other Known Artists */}
       <KnownArtistsSection
         initialItems={knownArtists}
         agentId={params.id}
