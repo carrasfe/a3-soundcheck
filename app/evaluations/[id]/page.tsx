@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import EvaluationDetail from "./EvaluationDetail";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import type { EvalFormData } from "@/app/evaluations/new/types";
+import { getA3RelationshipForPersons } from "@/app/contacts/actions";
 
 export type EvaluationRecord = {
   id: string;
@@ -12,6 +13,8 @@ export type EvaluationRecord = {
   inputs: EvalFormData;
   created_at: string;
   evaluator_name: string;
+  a3MgmtNote: string | null;
+  a3AgentNote: string | null;
 };
 
 export default async function EvaluationDetailPage({
@@ -80,15 +83,31 @@ export default async function EvaluationDetailPage({
     p4: { sub_scores: {}, weighted_score: row.score_p4 ?? 0, final_score: row.score_p4 ?? 0 },
   } as ScoringResult);
 
+  const evalInputs = (row.inputs as EvalFormData | null) ?? ({} as EvalFormData);
+  const mgmtIds = (evalInputs.manager_selections ?? []).map((s) => s.manager_id).filter(Boolean);
+  const bookingIds = (evalInputs.agent_selections ?? []).map((s) => s.agent_id).filter(Boolean);
+
+  let a3MgmtNote: string | null = null;
+  let a3AgentNote: string | null = null;
+  if (mgmtIds.length > 0 || bookingIds.length > 0) {
+    const a3Rel = await getA3RelationshipForPersons({ managerIds: mgmtIds, agentIds: bookingIds });
+    const mgmtArtists = Array.from(new Set(Object.values(a3Rel.managers).flat()));
+    const agentArtists = Array.from(new Set(Object.values(a3Rel.agents).flat()));
+    if (mgmtArtists.length > 0) a3MgmtNote = mgmtArtists.join(", ");
+    if (agentArtists.length > 0) a3AgentNote = agentArtists.join(", ");
+  }
+
   const evaluation: EvaluationRecord = {
     id: row.id,
     artist_name: artist?.name ?? "",
     genre: artist?.genre ?? null,
     results: finalResult,
-    inputs: (row.inputs as EvalFormData | null) ?? ({} as EvalFormData),
+    inputs: evalInputs,
     created_at: row.evaluated_at,
     evaluator_name:
       evaluatorProfile?.full_name || evaluatorProfile?.email || row.evaluated_by || "Unknown",
+    a3MgmtNote,
+    a3AgentNote,
   };
 
   return (

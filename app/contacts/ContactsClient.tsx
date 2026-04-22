@@ -57,6 +57,9 @@ function ArtistChip({ artist }: { artist: LinkedArtistRow }) {
       className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-[#1B2A4A] hover:border-[#1B2A4A]/30 hover:bg-white transition"
     >
       <span className="font-medium">{artist.name}</span>
+      {artist.is_a3_client && (
+        <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-[#C0392B] text-white leading-none">A3</span>
+      )}
       <span className="text-gray-400">·</span>
       <ScorePill score={artist.latest_score} />
       {artist.latest_tier && <TierBadge tier={artist.latest_tier} />}
@@ -130,6 +133,7 @@ function PersonRow({
     type === "manager"
       ? `/contacts/managers/${person.id}`
       : `/contacts/agents/${person.id}`;
+  const hasA3Rel = person.artists.some((a) => a.is_a3_client);
   return (
     <div className="border-t border-gray-100 px-4 py-3">
       <div className="flex items-start justify-between gap-3">
@@ -137,10 +141,13 @@ function PersonRow({
           <div className="flex items-center gap-2 flex-wrap">
             <Link
               href={detailHref}
-              className="text-sm font-semibold text-[#1B2A4A] hover:underline"
+              className={`text-sm font-semibold hover:underline ${hasA3Rel ? "text-[#27AE60]" : "text-[#1B2A4A]"}`}
             >
               {person.name}
             </Link>
+            {hasA3Rel && (
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-bold bg-[#27AE60] text-white leading-none tracking-wide">A3</span>
+            )}
             {!person.is_active && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
                 Inactive
@@ -212,12 +219,19 @@ function CompanyCard({
 
   const personLabel = type === "management" ? "manager" : "agent";
   const artistCount = Array.from(new Set(persons.flatMap((p) => p.artists.map((a) => a.id)))).length;
+  const hasA3Rel = persons.some((p) => p.artists.some((a) => a.is_a3_client));
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between px-5 py-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {hasA3Rel && (
+              <span
+                title="A3 relationship — one or more contacts work with an A3 client"
+                className="h-2 w-2 rounded-full flex-shrink-0 bg-[#27AE60]"
+              />
+            )}
             <Link
               href={detailHref}
               className="text-base font-semibold text-[#1B2A4A] hover:underline"

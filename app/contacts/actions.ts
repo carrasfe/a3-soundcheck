@@ -106,17 +106,17 @@ export async function getContactsPageData(): Promise<{
       ])
     );
 
-    let artistMap = new Map<string, { name: string }>();
+    let artistMap = new Map<string, { name: string; is_a3_client: boolean }>();
     let evalMap = new Map<string, { score_total: number | null; tier: string | null }>();
 
     if (artistIds.length > 0) {
       const { data: artistRows } = await supabase
         .from("artists")
-        .select("id, name")
+        .select("id, name, is_a3_client")
         .in("id", artistIds);
 
       for (const a of artistRows ?? []) {
-        artistMap.set(a.id, { name: a.name });
+        artistMap.set(a.id, { name: a.name, is_a3_client: a.is_a3_client ?? false });
       }
 
       const { data: evalRows } = await supabase
@@ -148,6 +148,7 @@ export async function getContactsPageData(): Promise<{
         role: l.role,
         latest_score: evalMap.get(l.artist_id)?.score_total ?? null,
         latest_tier: evalMap.get(l.artist_id)?.tier ?? null,
+        is_a3_client: artistMap.get(l.artist_id)?.is_a3_client ?? false,
       }));
       return {
         id: m.id as string,
@@ -172,6 +173,7 @@ export async function getContactsPageData(): Promise<{
         role: l.role,
         latest_score: evalMap.get(l.artist_id)?.score_total ?? null,
         latest_tier: evalMap.get(l.artist_id)?.tier ?? null,
+        is_a3_client: artistMap.get(l.artist_id)?.is_a3_client ?? false,
       }));
       return {
         id: a.id as string,

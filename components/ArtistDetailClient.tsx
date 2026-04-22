@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ArtistDetail } from "@/app/artists/[id]/page";
@@ -46,12 +46,18 @@ const TIER_STYLES: Record<string, string> = {
 export default function ArtistDetailClient({ artist }: { artist: ArtistDetail }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
   const latestEval = artist.evaluations[0] ?? null;
 
   const toggle = (action: Parameters<typeof updateArtistFlags>[1]) => {
+    setActionError(null);
     startTransition(async () => {
-      await updateArtistFlags([artist.id], action);
-      router.refresh();
+      const result = await updateArtistFlags([artist.id], action);
+      if (result.error) {
+        setActionError(result.error);
+      } else {
+        router.refresh();
+      }
     });
   };
 
@@ -127,6 +133,13 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
           </div>
         </div>
       </div>
+
+      {actionError && (
+        <div className="shrink-0 bg-[#C0392B]/10 border-b border-[#C0392B]/30 px-6 py-2 text-sm text-[#C0392B] flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="ml-4 font-bold hover:opacity-70">✕</button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
