@@ -41,6 +41,12 @@ export interface SaveResult {
   debugInfo?: string | null;
 }
 
+const A3_MERCH_NAMES = new Set(["a3", "a3 merch", "a3 merchandise", "a3merch"]);
+
+function isA3MerchProvider(provider: string | null | undefined): boolean {
+  return !!provider && A3_MERCH_NAMES.has(provider.trim().toLowerCase());
+}
+
 function buildDebugInfo(
   op: string,
   err: { message?: string; details?: string; hint?: string; code?: string },
@@ -127,6 +133,12 @@ export async function saveEvaluation(
       }
       artistId = inserted?.id ?? null;
     }
+  }
+
+  // Auto-set is_a3_client when merch provider is a known A3 variant.
+  // Only ever sets true — never clears a flag that was set for other reasons.
+  if (artistId && isA3MerchProvider(fd.merch_provider)) {
+    await supabase.from("artists").update({ is_a3_client: true }).eq("id", artistId);
   }
 
   const payload = {
