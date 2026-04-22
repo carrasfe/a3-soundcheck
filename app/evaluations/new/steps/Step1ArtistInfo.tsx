@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Select } from "../ui";
-import type { EvalFormData, StepProps, ManagerSelection, AgentSelection } from "../types";
+import type { EvalFormData, StepProps, ManagerSelection, AgentSelection, ManagementEntry, BookingEntry } from "../types";
 import {
   getContactsForForm,
   createManagementCompany,
@@ -39,6 +39,8 @@ const VIP_OPTIONS = [
 
 const MANAGER_ROLES = ["Lead", "Day-to-Day", "A&R"];
 const AGENT_ROLES = ["Primary", "Secondary", "Festivals"];
+
+const MAX_SLOTS = 3;
 
 // ─── Inline create form ───────────────────────────────────────
 
@@ -409,16 +411,21 @@ function KnownArtistsInline({
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────
+
+function emptyMgmtEntry(): ManagementEntry {
+  return { company_id: "", company_name: "", manager_selections: [] };
+}
+function emptyBookingEntry(): BookingEntry {
+  return { agency_id: "", agency_name: "", agent_selections: [] };
+}
+
 // ─── Main component ───────────────────────────────────────────
 
 export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   const set = (key: keyof EvalFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       onChange({ [key]: e.target.value });
-
-  // Safe accessors — guard against undefined when loading old evaluations
-  const managerSelections: ManagerSelection[] = data.manager_selections ?? [];
-  const agentSelections: AgentSelection[] = data.agent_selections ?? [];
 
   // Contact lookup data
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
@@ -435,7 +442,89 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     }).catch(() => {});
   }, []);
 
-  // Known artists
+  // ── Resolve entries (with legacy migration) ────────────────
+  // If the form has management_entries, use them.
+  // Otherwise, migrate from old single-company fields for backward compat display.
+  const resolvedMgmtEntries: ManagementEntry[] = (() => {
+    if (data.management_entries && data.management_entries.length > 0) return data.management_entries;
+    const legacy: ManagementEntry = {
+      company_id: data.management_company_id ?? "",
+      company_name: data.management_company ?? "",
+      manager_selections: (data.manager_selections ?? []).map((s) => ({
+        ...s,
+        manager_name: s.manager_name ?? managers.find((m) => m.id === s.manager_id)?.name ?? "",
+      })),
+    };
+    return [legacy];
+  })();
+
+  const resolvedBookingEntries: BookingEntry[] = (() => {
+    if (data.booking_entries && data.booking_entries.length > 0) return data.booking_entries;
+    const legacy: BookingEntry = {
+      agency_id: data.booking_agency_id ?? "",
+      agency_name: data.booking_agent ?? "",
+      agent_selections: (data.agent_selections ?? []).map((s) => ({
+        ...s,
+        agent_name: s.agent_name ?? agents.find((a) => a.id === s.agent_id)?.name ?? "",
+      })),
+    };
+    return [legacy];
+  })();
+
+  // ── Entry setters (sync legacy fields too) ─────────────────
+
+  function setMgmtEntries(entries: ManagementEntry[]) {
+    const allSelections = entries.flatMap((e) => e.manager_selections);
+    onChange({
+      management_entries: entries,
+      management_company_id: entries[0]?.company_id ?? "",
+      management_company: entries[0]?.company_name ?? "",
+      manager_selections: allSelections,
+      manager_names: allSelections.map((s) => s.manager_name ?? "").filter(Boolean).join(", "),
+    });
+  }
+
+  function setBookingEntries(entries: BookingEntry[]) {
+    const allSelections = entries.flatMap((e) => e.agent_selections);
+    onChange({
+      booking_entries: entries,
+      booking_agency_id: entries[0]?.agency_id ?? "",
+      booking_agent: entries[0]?.agency_name ?? "",
+      agent_selections: allSelections,
+    });
+  }
+
+  function updateMgmtEntry(idx: number, patch: Partial<ManagementEntry>) {
+    const next = resolvedMgmtEntries.map((e, i) => i === idx ? { ...e, ...patch } : e);
+    setMgmtEntries(next);
+  }
+
+  function updateBookingEntry(idx: number, patch: Partial<BookingEntry>) {
+    const next = resolvedBookingEntries.map((e, i) => i === idx ? { ...e, ...patch } : e);
+    setBookingEntries(next);
+  }
+
+  function addMgmtSlot() {
+    setMgmtEntries([...resolvedMgmtEntries, emptyMgmtEntry()]);
+  }
+
+  function removeMgmtSlot(idx: number) {
+    setMgmtEntries(resolvedMgmtEntries.filter((_, i) => i !== idx));
+  }
+
+  function addBookingSlot() {
+    setBookingEntries([...resolvedBookingEntries, emptyBookingEntry()]);
+  }
+
+  function removeBookingSlot(idx: number) {
+    setBookingEntries(resolvedBookingEntries.filter((_, i) => i !== idx));
+  }
+
+  // ── Derived flat lists (for known artists / A3 rel) ────────
+  const allManagerSelections = resolvedMgmtEntries.flatMap((e) => e.manager_selections);
+  const allAgentSelections = resolvedBookingEntries.flatMap((e) => e.agent_selections);
+
+  // ── Known artists ──────────────────────────────────────────
   const [mgmtKnownArtists, setMgmtKnownArtists] = useState<KnownArtistRow[]>([]);
   const [agentKnownArtists, setAgentKnownArtists] = useState<KnownArtistRow[]>([]);
   const [addingMgmt, setAddingMgmt] = useState(false);
@@ -443,43 +532,42 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   const [mgmtAddError, setMgmtAddError] = useState<string | null>(null);
   const [agentAddError, setAgentAddError] = useState<string | null>(null);
 
-  // Fetch known artists when manager selections change
-  const mgmtKey = managerSelections.map((s) => s.manager_id).join(",");
+  const mgmtKey = allManagerSelections.map((s) => s.manager_id).join(",");
   useEffect(() => {
-    const ids = managerSelections.map((s) => s.manager_id);
+    const ids = allManagerSelections.map((s) => s.manager_id);
     if (ids.length === 0) { setMgmtKnownArtists([]); return; }
     getKnownArtistsForManagerIds(ids).then(setMgmtKnownArtists).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mgmtKey]);
 
-  const agentKey = agentSelections.map((s) => s.agent_id).join(",");
+  const agentKey = allAgentSelections.map((s) => s.agent_id).join(",");
   useEffect(() => {
-    const ids = agentSelections.map((s) => s.agent_id);
+    const ids = allAgentSelections.map((s) => s.agent_id);
     if (ids.length === 0) { setAgentKnownArtists([]); return; }
     getKnownArtistsForAgentIds(ids).then(setAgentKnownArtists).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentKey]);
 
-  // A3 relationship data for selected managers/agents
+  // ── A3 relationship ────────────────────────────────────────
   const [a3Rel, setA3Rel] = useState<{ managers: Record<string, string[]>; agents: Record<string, string[]> }>({ managers: {}, agents: {} });
 
   useEffect(() => {
-    const managerIds = managerSelections.map((s) => s.manager_id);
-    const agentIds = agentSelections.map((s) => s.agent_id);
+    const managerIds = allManagerSelections.map((s) => s.manager_id);
+    const agentIds = allAgentSelections.map((s) => s.agent_id);
     if (managerIds.length === 0 && agentIds.length === 0) { setA3Rel({ managers: {}, agents: {} }); return; }
     getA3RelationshipForPersons({ managerIds, agentIds }).then(setA3Rel).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mgmtKey, agentKey]);
 
-  // Inline create states
-  const [showNewCompany, setShowNewCompany] = useState(false);
-  const [showNewManager, setShowNewManager] = useState(false);
-  const [showNewAgency, setShowNewAgency] = useState(false);
-  const [showNewAgent, setShowNewAgent] = useState(false);
+  // ── Inline create states (per slot index) ─────────────────
+  const [showNewCompanyForSlot, setShowNewCompanyForSlot] = useState<number | null>(null);
+  const [showNewManagerForSlot, setShowNewManagerForSlot] = useState<number | null>(null);
+  const [showNewAgencyForSlot, setShowNewAgencyForSlot] = useState<number | null>(null);
+  const [showNewAgentForSlot, setShowNewAgentForSlot] = useState<number | null>(null);
   const [inlineSaving, setInlineSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
-  // Auto-load contacts from previous evaluation when artist name matches
+  // ── Auto-load contacts from previous evaluation ───────────
   type SavedContacts = Awaited<ReturnType<typeof getArtistContactsByName>>;
   const [savedContacts, setSavedContacts] = useState<SavedContacts | null>(null);
   const [contactsBannerDismissed, setContactsBannerDismissed] = useState(false);
@@ -487,13 +575,30 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const applyContacts = useCallback((c: SavedContacts) => {
+    const newMgmtEntries: ManagementEntry[] = c.managementEntries.length > 0
+      ? c.managementEntries
+      : (c.managementCompanyId || c.managerSelections.length > 0)
+        ? [{ company_id: c.managementCompanyId ?? "", company_name: c.managementCompanyName ?? "", manager_selections: c.managerSelections.map((s) => ({ manager_id: s.manager_id, role: s.role, manager_name: "" })) }]
+        : [emptyMgmtEntry()];
+
+    const newBookingEntries: BookingEntry[] = c.bookingEntries.length > 0
+      ? c.bookingEntries
+      : (c.bookingAgencyId || c.agentSelections.length > 0)
+        ? [{ agency_id: c.bookingAgencyId ?? "", agency_name: c.bookingAgencyName ?? "", agent_selections: c.agentSelections.map((s) => ({ agent_id: s.agent_id, role: s.role, agent_name: "" })) }]
+        : [emptyBookingEntry()];
+
+    const allMgrSels = newMgmtEntries.flatMap((e) => e.manager_selections);
+    const allAgentSels = newBookingEntries.flatMap((e) => e.agent_selections);
+
     onChange({
-      management_company_id: c.managementCompanyId ?? "",
-      management_company: c.managementCompanyName ?? "",
-      manager_selections: c.managerSelections,
-      booking_agency_id: c.bookingAgencyId ?? "",
-      booking_agent: c.bookingAgencyName ?? "",
-      agent_selections: c.agentSelections,
+      management_entries: newMgmtEntries,
+      booking_entries: newBookingEntries,
+      management_company_id: newMgmtEntries[0]?.company_id ?? "",
+      management_company: newMgmtEntries[0]?.company_name ?? "",
+      manager_selections: allMgrSels,
+      booking_agency_id: newBookingEntries[0]?.agency_id ?? "",
+      booking_agent: newBookingEntries[0]?.agency_name ?? "",
+      agent_selections: allAgentSels,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -511,8 +616,11 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
       if (result?.hasContacts) {
         setSavedContacts(result);
         setContactsBannerDismissed(false);
-        const formIsEmpty = !data.management_company_id && !data.booking_agency_id &&
-          managerSelections.length === 0 && agentSelections.length === 0;
+        const formIsEmpty =
+          (!data.management_entries || data.management_entries.every((e) => !e.company_id && e.manager_selections.length === 0)) &&
+          (!data.booking_entries || data.booking_entries.every((e) => !e.agency_id && e.agent_selections.length === 0)) &&
+          !data.management_company_id && !data.booking_agency_id &&
+          (data.manager_selections?.length ?? 0) === 0 && (data.agent_selections?.length ?? 0) === 0;
         if (formIsEmpty && autoLoadedForRef.current !== name) {
           autoLoadedForRef.current = name;
           applyContacts(result);
@@ -525,18 +633,6 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.artist_name]);
 
-  // Derived: selected person objects for display
-  const selectedManagers = managerSelections.map((s) => ({
-    id: s.manager_id,
-    name: managers.find((m) => m.id === s.manager_id)?.name ?? s.manager_id,
-    role: s.role,
-  }));
-  const selectedAgents = agentSelections.map((s) => ({
-    id: s.agent_id,
-    name: agents.find((a) => a.id === s.agent_id)?.name ?? s.agent_id,
-    role: s.role,
-  }));
-
   // ── Known artists handlers ─────────────────────────────────
 
   async function handleAddMgmtKnownArtists(input: string) {
@@ -545,12 +641,11 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     setAddingMgmt(true);
     setMgmtAddError(null);
     const results: KnownArtistRow[] = [];
-    for (const sel of managerSelections) {
+    for (const sel of allManagerSelections) {
       const { items, error } = await addKnownArtists(names, { managerId: sel.manager_id });
       if (error) { setMgmtAddError(error); setAddingMgmt(false); return; }
       results.push(...items);
     }
-    // Deduplicate by id
     setMgmtKnownArtists((prev) => {
       const existing = new Set(prev.map((i) => i.id));
       return [...prev, ...results.filter((i) => !existing.has(i.id))];
@@ -564,7 +659,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     setAddingAgent(true);
     setAgentAddError(null);
     const results: KnownArtistRow[] = [];
-    for (const sel of agentSelections) {
+    for (const sel of allAgentSelections) {
       const { items, error } = await addKnownArtists(names, { agentId: sel.agent_id });
       if (error) { setAgentAddError(error); setAddingAgent(false); return; }
       results.push(...items);
@@ -576,55 +671,81 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     setAddingAgent(false);
   }
 
-  // ── Person create handlers ─────────────────────────────────
+  // ── Inline create handlers ─────────────────────────────────
 
-  async function handleCreateCompany(values: Record<string, string>) {
+  async function handleCreateCompany(values: Record<string, string>, slotIdx: number) {
     setInlineSaving(true); setInlineError(null);
     const { id, error } = await createManagementCompany({ name: values.name, website: values.website });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
     setCompanies((prev) => [...prev, { id: id!, name: values.name }].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ management_company_id: id!, management_company: values.name, manager_selections: [] });
-    setShowNewCompany(false); setInlineError(null);
+    updateMgmtEntry(slotIdx, { company_id: id!, company_name: values.name, manager_selections: [] });
+    setShowNewCompanyForSlot(null); setInlineError(null);
   }
 
-  async function handleCreateManager(values: Record<string, string>) {
+  async function handleCreateManager(values: Record<string, string>, slotIdx: number) {
     setInlineSaving(true); setInlineError(null);
+    const entry = resolvedMgmtEntries[slotIdx];
     const { id, error } = await createManager({
       name: values.name,
-      management_company_id: data.management_company_id || null,
+      management_company_id: entry?.company_id || null,
       email: values.email, phone: values.phone,
     });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    setManagers((prev) => [...prev, { id: id!, name: values.name, company_id: data.management_company_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ manager_selections: [...managerSelections, { manager_id: id!, role: "Lead" }] });
-    setShowNewManager(false); setInlineError(null);
+    setManagers((prev) => [...prev, { id: id!, name: values.name, company_id: entry?.company_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
+    const newSel: ManagerSelection = { manager_id: id!, role: "Lead", manager_name: values.name };
+    updateMgmtEntry(slotIdx, { manager_selections: [...(entry?.manager_selections ?? []), newSel] });
+    setShowNewManagerForSlot(null); setInlineError(null);
   }
 
-  async function handleCreateAgency(values: Record<string, string>) {
+  async function handleCreateAgency(values: Record<string, string>, slotIdx: number) {
     setInlineSaving(true); setInlineError(null);
     const { id, error } = await createAgency({ name: values.name, website: values.website });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
     setAgencies((prev) => [...prev, { id: id!, name: values.name }].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ booking_agency_id: id!, booking_agent: values.name, agent_selections: [] });
-    setShowNewAgency(false); setInlineError(null);
+    updateBookingEntry(slotIdx, { agency_id: id!, agency_name: values.name, agent_selections: [] });
+    setShowNewAgencyForSlot(null); setInlineError(null);
   }
 
-  async function handleCreateAgent(values: Record<string, string>) {
+  async function handleCreateAgent(values: Record<string, string>, slotIdx: number) {
     setInlineSaving(true); setInlineError(null);
+    const entry = resolvedBookingEntries[slotIdx];
     const { id, error } = await createAgent({
       name: values.name,
-      agency_id: data.booking_agency_id || null,
+      agency_id: entry?.agency_id || null,
       email: values.email, phone: values.phone,
     });
     setInlineSaving(false);
     if (error) { setInlineError(error); return; }
-    setAgents((prev) => [...prev, { id: id!, name: values.name, company_id: data.booking_agency_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
-    onChange({ agent_selections: [...agentSelections, { agent_id: id!, role: "Primary" }] });
-    setShowNewAgent(false); setInlineError(null);
+    setAgents((prev) => [...prev, { id: id!, name: values.name, company_id: entry?.agency_id || null }].sort((a, b) => a.name.localeCompare(b.name)));
+    const newSel: AgentSelection = { agent_id: id!, role: "Primary", agent_name: values.name };
+    updateBookingEntry(slotIdx, { agent_selections: [...(entry?.agent_selections ?? []), newSel] });
+    setShowNewAgentForSlot(null); setInlineError(null);
   }
+
+  // ── Derived display objects for PersonSelect ───────────────
+
+  function mgmtSelectedPersons(entry: ManagementEntry) {
+    return entry.manager_selections.map((s) => ({
+      id: s.manager_id,
+      name: s.manager_name ?? managers.find((m) => m.id === s.manager_id)?.name ?? s.manager_id,
+      role: s.role,
+    }));
+  }
+
+  function bookingSelectedPersons(entry: BookingEntry) {
+    return entry.agent_selections.map((s) => ({
+      id: s.agent_id,
+      name: s.agent_name ?? agents.find((a) => a.id === s.agent_id)?.name ?? s.agent_id,
+      role: s.role,
+    }));
+  }
+
+  // Count total managers/agents already selected (to enforce global max across all slots)
+  const totalManagersSelected = allManagerSelections.length;
+  const totalAgentsSelected = allAgentSelections.length;
 
   return (
     <div className="space-y-8">
@@ -689,62 +810,102 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Management
         </h3>
         <div className="space-y-4">
-          <Combobox
-            label="Management Company"
-            value={data.management_company_id ?? ""}
-            options={companies}
-            placeholder="Search companies…"
-            onChange={(id, name) => onChange({ management_company_id: id, management_company: name, manager_selections: [] })}
-            onAddNew={() => { setShowNewCompany(true); setInlineError(null); }}
-          />
-          {showNewCompany && (
-            <InlineCreate
-              label="New Management Company"
-              fields={[
-                { name: "name", placeholder: "Company name *" },
-                { name: "website", placeholder: "Website (optional)" },
-              ]}
-              onSave={handleCreateCompany}
-              onCancel={() => { setShowNewCompany(false); setInlineError(null); }}
-              saving={inlineSaving}
-              error={inlineError}
-            />
+          {resolvedMgmtEntries.map((entry, slotIdx) => {
+            const selectedPersons = mgmtSelectedPersons(entry);
+            const slotManagerCount = entry.manager_selections.length;
+            return (
+              <div
+                key={slotIdx}
+                className={`space-y-3 ${resolvedMgmtEntries.length > 1 ? "rounded-lg border border-gray-200 p-4 bg-gray-50/50" : ""}`}
+              >
+                {resolvedMgmtEntries.length > 1 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Management {slotIdx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeMgmtSlot(slotIdx)}
+                      className="text-xs text-gray-400 hover:text-[#C0392B] transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <Combobox
+                  label="Management Company"
+                  value={entry.company_id}
+                  options={companies}
+                  placeholder="Search companies…"
+                  onChange={(id, name) => updateMgmtEntry(slotIdx, { company_id: id, company_name: name, manager_selections: [] })}
+                  onAddNew={() => { setShowNewCompanyForSlot(slotIdx); setInlineError(null); }}
+                />
+                {showNewCompanyForSlot === slotIdx && (
+                  <InlineCreate
+                    label="New Management Company"
+                    fields={[
+                      { name: "name", placeholder: "Company name *" },
+                      { name: "website", placeholder: "Website (optional)" },
+                    ]}
+                    onSave={(v) => handleCreateCompany(v, slotIdx)}
+                    onCancel={() => { setShowNewCompanyForSlot(null); setInlineError(null); }}
+                    saving={inlineSaving}
+                    error={inlineError}
+                  />
+                )}
+
+                <PersonSelect
+                  label="Manager(s)"
+                  companyId={entry.company_id}
+                  allPersons={managers}
+                  selections={selectedPersons}
+                  roles={MANAGER_ROLES}
+                  maxSelections={3}
+                  onAdd={(id, name) => {
+                    if (slotManagerCount >= 3) return;
+                    const newSel: ManagerSelection = { manager_id: id, role: "Lead", manager_name: name };
+                    updateMgmtEntry(slotIdx, { manager_selections: [...entry.manager_selections, newSel] });
+                  }}
+                  onRemove={(id) => updateMgmtEntry(slotIdx, {
+                    manager_selections: entry.manager_selections.filter((s) => s.manager_id !== id),
+                  })}
+                  onRoleChange={(id, role) => updateMgmtEntry(slotIdx, {
+                    manager_selections: entry.manager_selections.map((s) => s.manager_id === id ? { ...s, role } : s),
+                  })}
+                  onAddNew={() => { setShowNewManagerForSlot(slotIdx); setInlineError(null); }}
+                  a3Artists={a3Rel.managers}
+                  a3Label="Also manages"
+                />
+                {showNewManagerForSlot === slotIdx && (
+                  <InlineCreate
+                    label="New Manager"
+                    fields={[
+                      { name: "name", placeholder: "Full name *" },
+                      { name: "email", placeholder: "Email (optional)", type: "email" },
+                      { name: "phone", placeholder: "Phone (optional)" },
+                    ]}
+                    onSave={(v) => handleCreateManager(v, slotIdx)}
+                    onCancel={() => { setShowNewManagerForSlot(null); setInlineError(null); }}
+                    saving={inlineSaving}
+                    error={inlineError}
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {resolvedMgmtEntries.length < MAX_SLOTS && (
+            <button
+              type="button"
+              onClick={addMgmtSlot}
+              className="text-xs font-semibold text-[#1B2A4A] hover:text-[#C0392B] transition"
+            >
+              + Add Another Management Company
+            </button>
           )}
 
-          <PersonSelect
-            label="Manager(s)"
-            companyId={data.management_company_id ?? ""}
-            allPersons={managers}
-            selections={selectedManagers}
-            roles={MANAGER_ROLES}
-            maxSelections={3}
-            onAdd={(id, name) => {
-              if (managerSelections.length >= 3) return;
-              onChange({ manager_selections: [...managerSelections, { manager_id: id, role: "Lead" }] });
-            }}
-            onRemove={(id) => onChange({ manager_selections: managerSelections.filter((s) => s.manager_id !== id) })}
-            onRoleChange={(id, role) => onChange({ manager_selections: managerSelections.map((s) => s.manager_id === id ? { ...s, role } : s) })}
-            onAddNew={() => { setShowNewManager(true); setInlineError(null); }}
-            a3Artists={a3Rel.managers}
-            a3Label="Also manages"
-          />
-          {showNewManager && (
-            <InlineCreate
-              label="New Manager"
-              fields={[
-                { name: "name", placeholder: "Full name *" },
-                { name: "email", placeholder: "Email (optional)", type: "email" },
-                { name: "phone", placeholder: "Phone (optional)" },
-              ]}
-              onSave={handleCreateManager}
-              onCancel={() => { setShowNewManager(false); setInlineError(null); }}
-              saving={inlineSaving}
-              error={inlineError}
-            />
-          )}
-
-          {/* Known artists for this manager — replaces free-text field */}
-          {managerSelections.length > 0 && (
+          {totalManagersSelected > 0 && (
             <KnownArtistsInline
               items={mgmtKnownArtists}
               onAdd={handleAddMgmtKnownArtists}
@@ -765,61 +926,102 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
           Booking
         </h3>
         <div className="space-y-4">
-          <Combobox
-            label="Booking Agency"
-            value={data.booking_agency_id ?? ""}
-            options={agencies}
-            placeholder="Search agencies…"
-            onChange={(id, name) => onChange({ booking_agency_id: id, booking_agent: name, agent_selections: [] })}
-            onAddNew={() => { setShowNewAgency(true); setInlineError(null); }}
-          />
-          {showNewAgency && (
-            <InlineCreate
-              label="New Booking Agency"
-              fields={[
-                { name: "name", placeholder: "Agency name *" },
-                { name: "website", placeholder: "Website (optional)" },
-              ]}
-              onSave={handleCreateAgency}
-              onCancel={() => { setShowNewAgency(false); setInlineError(null); }}
-              saving={inlineSaving}
-              error={inlineError}
-            />
+          {resolvedBookingEntries.map((entry, slotIdx) => {
+            const selectedPersons = bookingSelectedPersons(entry);
+            const slotAgentCount = entry.agent_selections.length;
+            return (
+              <div
+                key={slotIdx}
+                className={`space-y-3 ${resolvedBookingEntries.length > 1 ? "rounded-lg border border-gray-200 p-4 bg-gray-50/50" : ""}`}
+              >
+                {resolvedBookingEntries.length > 1 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Agency {slotIdx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeBookingSlot(slotIdx)}
+                      className="text-xs text-gray-400 hover:text-[#C0392B] transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <Combobox
+                  label="Booking Agency"
+                  value={entry.agency_id}
+                  options={agencies}
+                  placeholder="Search agencies…"
+                  onChange={(id, name) => updateBookingEntry(slotIdx, { agency_id: id, agency_name: name, agent_selections: [] })}
+                  onAddNew={() => { setShowNewAgencyForSlot(slotIdx); setInlineError(null); }}
+                />
+                {showNewAgencyForSlot === slotIdx && (
+                  <InlineCreate
+                    label="New Booking Agency"
+                    fields={[
+                      { name: "name", placeholder: "Agency name *" },
+                      { name: "website", placeholder: "Website (optional)" },
+                    ]}
+                    onSave={(v) => handleCreateAgency(v, slotIdx)}
+                    onCancel={() => { setShowNewAgencyForSlot(null); setInlineError(null); }}
+                    saving={inlineSaving}
+                    error={inlineError}
+                  />
+                )}
+
+                <PersonSelect
+                  label="Agent(s)"
+                  companyId={entry.agency_id}
+                  allPersons={agents}
+                  selections={selectedPersons}
+                  roles={AGENT_ROLES}
+                  maxSelections={3}
+                  onAdd={(id, name) => {
+                    if (slotAgentCount >= 3) return;
+                    const newSel: AgentSelection = { agent_id: id, role: "Primary", agent_name: name };
+                    updateBookingEntry(slotIdx, { agent_selections: [...entry.agent_selections, newSel] });
+                  }}
+                  onRemove={(id) => updateBookingEntry(slotIdx, {
+                    agent_selections: entry.agent_selections.filter((s) => s.agent_id !== id),
+                  })}
+                  onRoleChange={(id, role) => updateBookingEntry(slotIdx, {
+                    agent_selections: entry.agent_selections.map((s) => s.agent_id === id ? { ...s, role } : s),
+                  })}
+                  onAddNew={() => { setShowNewAgentForSlot(slotIdx); setInlineError(null); }}
+                  a3Artists={a3Rel.agents}
+                  a3Label="Also books"
+                />
+                {showNewAgentForSlot === slotIdx && (
+                  <InlineCreate
+                    label="New Agent"
+                    fields={[
+                      { name: "name", placeholder: "Full name *" },
+                      { name: "email", placeholder: "Email (optional)", type: "email" },
+                      { name: "phone", placeholder: "Phone (optional)" },
+                    ]}
+                    onSave={(v) => handleCreateAgent(v, slotIdx)}
+                    onCancel={() => { setShowNewAgentForSlot(null); setInlineError(null); }}
+                    saving={inlineSaving}
+                    error={inlineError}
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {resolvedBookingEntries.length < MAX_SLOTS && (
+            <button
+              type="button"
+              onClick={addBookingSlot}
+              className="text-xs font-semibold text-[#1B2A4A] hover:text-[#C0392B] transition"
+            >
+              + Add Another Agency
+            </button>
           )}
 
-          <PersonSelect
-            label="Agent(s)"
-            companyId={data.booking_agency_id ?? ""}
-            allPersons={agents}
-            selections={selectedAgents}
-            roles={AGENT_ROLES}
-            maxSelections={3}
-            onAdd={(id, name) => {
-              if (agentSelections.length >= 3) return;
-              onChange({ agent_selections: [...agentSelections, { agent_id: id, role: "Primary" }] });
-            }}
-            onRemove={(id) => onChange({ agent_selections: agentSelections.filter((s) => s.agent_id !== id) })}
-            onRoleChange={(id, role) => onChange({ agent_selections: agentSelections.map((s) => s.agent_id === id ? { ...s, role } : s) })}
-            onAddNew={() => { setShowNewAgent(true); setInlineError(null); }}
-            a3Artists={a3Rel.agents}
-            a3Label="Also books"
-          />
-          {showNewAgent && (
-            <InlineCreate
-              label="New Agent"
-              fields={[
-                { name: "name", placeholder: "Full name *" },
-                { name: "email", placeholder: "Email (optional)", type: "email" },
-                { name: "phone", placeholder: "Phone (optional)" },
-              ]}
-              onSave={handleCreateAgent}
-              onCancel={() => { setShowNewAgent(false); setInlineError(null); }}
-              saving={inlineSaving}
-              error={inlineError}
-            />
-          )}
-
-          {agentSelections.length > 0 && (
+          {totalAgentsSelected > 0 && (
             <KnownArtistsInline
               items={agentKnownArtists}
               onAdd={handleAddAgentKnownArtists}

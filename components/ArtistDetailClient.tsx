@@ -150,54 +150,40 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
               Artist Info
             </h2>
             <dl className="grid gap-4 sm:grid-cols-2">
-              {/* Management Company — junction > fuzzy > text + Add */}
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Management Company</dt>
-                <dd className="mt-0.5 text-sm">
-                  {artist.linked_management_company ? (
-                    <Link href={`/contacts/management/${artist.linked_management_company.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                      {artist.linked_management_company.name}
-                    </Link>
-                  ) : artist.fuzzy_management_company ? (
-                    <Link href={`/contacts/management/${artist.fuzzy_management_company.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                      {artist.fuzzy_management_company.name}
-                    </Link>
-                  ) : artist.management_company ? (
-                    <span className="inline-flex items-center gap-0.5">
-                      <span className="text-gray-800">{artist.management_company}</span>
-                      <AddToContactsButton artistId={artist.id} field="management_company" text={artist.management_company} />
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </dd>
-              </div>
-
-              {/* Manager(s) — junction > fuzzy > text + Add */}
+              {/* Manager(s) — grouped by company */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Manager(s)</dt>
                 <dd className="mt-0.5 text-sm">
-                  {artist.linked_managers.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      {artist.linked_managers.map((m) => {
-                        const a3Artists = artist.a3_relationships.managers[m.id];
-                        return (
-                          <div key={m.id} className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                                {m.name}
-                              </Link>
-                              <span className="text-xs text-gray-400">({m.role})</span>
-                              {a3Artists?.length > 0 && (
-                                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
-                              )}
-                            </div>
-                            {a3Artists?.length > 0 && (
-                              <p className="text-xs text-gray-500 ml-0.5">Also manages: {a3Artists.join(", ")}</p>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {artist.management_groups.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {artist.management_groups.map((group, gi) => (
+                        <div key={gi} className="flex flex-col gap-0.5">
+                          {group.company && (
+                            <Link href={`/contacts/management/${group.company.id}`} className="text-xs font-semibold text-gray-500 hover:underline">
+                              {group.company.name}
+                            </Link>
+                          )}
+                          {group.managers.map((m) => {
+                            const a3Artists = artist.a3_relationships.managers[m.id];
+                            return (
+                              <div key={m.id} className="flex flex-col gap-0.5 ml-2">
+                                <div className="flex items-center gap-1.5">
+                                  <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                    {m.name}
+                                  </Link>
+                                  <span className="text-xs text-gray-400">({m.role})</span>
+                                  {a3Artists?.length > 0 && (
+                                    <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
+                                  )}
+                                </div>
+                                {a3Artists?.length > 0 && (
+                                  <p className="text-xs text-gray-500 ml-0.5">Also manages: {a3Artists.join(", ")}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   ) : artist.fuzzy_managers.length > 0 ? (
                     <div className="flex flex-col gap-1">
@@ -218,54 +204,40 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                 </dd>
               </div>
 
-              {/* Booking Agency — junction > fuzzy > parsed text + Add */}
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Booking Agency</dt>
-                <dd className="mt-0.5 text-sm">
-                  {artist.linked_booking_agency ? (
-                    <Link href={`/contacts/agencies/${artist.linked_booking_agency.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                      {artist.linked_booking_agency.name}
-                    </Link>
-                  ) : artist.fuzzy_booking_agency ? (
-                    <Link href={`/contacts/agencies/${artist.fuzzy_booking_agency.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                      {artist.fuzzy_booking_agency.name}
-                    </Link>
-                  ) : artist.unmatched_agency_text ? (
-                    <span className="inline-flex items-center gap-0.5">
-                      <span className="text-gray-800">{artist.unmatched_agency_text}</span>
-                      <AddToContactsButton artistId={artist.id} field="booking_agent" text={artist.booking_agent ?? ""} />
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </dd>
-              </div>
-
-              {/* Agent(s) — junction > fuzzy + unmatched mix > full text + Add */}
+              {/* Agent(s) — grouped by agency */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Agent(s)</dt>
                 <dd className="mt-0.5 text-sm">
-                  {artist.linked_agents.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      {artist.linked_agents.map((a) => {
-                        const a3Artists = artist.a3_relationships.agents[a.id];
-                        return (
-                          <div key={a.id} className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
-                                {a.name}
-                              </Link>
-                              <span className="text-xs text-gray-400">({a.role})</span>
-                              {a3Artists?.length > 0 && (
-                                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
-                              )}
-                            </div>
-                            {a3Artists?.length > 0 && (
-                              <p className="text-xs text-gray-500 ml-0.5">Also books: {a3Artists.join(", ")}</p>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {artist.booking_groups.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {artist.booking_groups.map((group, gi) => (
+                        <div key={gi} className="flex flex-col gap-0.5">
+                          {group.agency && (
+                            <Link href={`/contacts/agencies/${group.agency.id}`} className="text-xs font-semibold text-gray-500 hover:underline">
+                              {group.agency.name}
+                            </Link>
+                          )}
+                          {group.agents.map((a) => {
+                            const a3Artists = artist.a3_relationships.agents[a.id];
+                            return (
+                              <div key={a.id} className="flex flex-col gap-0.5 ml-2">
+                                <div className="flex items-center gap-1.5">
+                                  <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                    {a.name}
+                                  </Link>
+                                  <span className="text-xs text-gray-400">({a.role})</span>
+                                  {a3Artists?.length > 0 && (
+                                    <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
+                                  )}
+                                </div>
+                                {a3Artists?.length > 0 && (
+                                  <p className="text-xs text-gray-500 ml-0.5">Also books: {a3Artists.join(", ")}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   ) : (artist.fuzzy_agents.length > 0 || artist.unmatched_agent_names.length > 0) ? (
                     <div className="flex flex-col gap-1">
@@ -282,7 +254,6 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                       )}
                     </div>
                   ) : artist.booking_agent && !artist.unmatched_agency_text ? (
-                    // Whole booking_agent text is agents (no agency part parsed)
                     <span className="inline-flex items-center gap-0.5">
                       <span className="text-gray-800">{artist.booking_agent}</span>
                       <AddToContactsButton artistId={artist.id} field="booking_agent" text={artist.booking_agent} />

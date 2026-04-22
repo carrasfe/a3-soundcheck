@@ -211,8 +211,21 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   const LW = 130;  // left column width
   let ly = Y + 4.5;
 
-  // Row 1: Management label + company — managers
-  const mgmtVal = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
+  // Build management display string — prefer management_entries (multi-company), fall back to legacy text
+  let mgmtVal: string;
+  if (inp.management_entries && inp.management_entries.length > 0) {
+    const parts = inp.management_entries
+      .filter((e) => e.company_name || e.manager_selections.length > 0)
+      .map((e) => {
+        const names = e.manager_selections.map((s) => s.manager_name ?? "").filter(Boolean).join(", ");
+        return e.company_name ? `${e.company_name}${names ? " — " + names : ""}` : names;
+      })
+      .filter(Boolean);
+    mgmtVal = parts.join("  /  ") || "—";
+  } else {
+    mgmtVal = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
+  }
+
   t(doc, "MANAGEMENT", ML, ly, { sz: 6, bold: true, color: LT });
   t(doc, mgmtVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
   ly += 4.5;
@@ -230,8 +243,21 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
     ly += 3.5;
   }
 
-  // Row 2: Agent label + agency — agent names
-  const agentVal = [inp.booking_agent].filter(Boolean).join(" — ") || "—";
+  // Build booking display string — prefer booking_entries, fall back to legacy text
+  let agentVal: string;
+  if (inp.booking_entries && inp.booking_entries.length > 0) {
+    const parts = inp.booking_entries
+      .filter((e) => e.agency_name || e.agent_selections.length > 0)
+      .map((e) => {
+        const names = e.agent_selections.map((s) => s.agent_name ?? "").filter(Boolean).join(", ");
+        return e.agency_name ? `${e.agency_name}${names ? " — " + names : ""}` : names;
+      })
+      .filter(Boolean);
+    agentVal = parts.join("  /  ") || "—";
+  } else {
+    agentVal = inp.booking_agent || "—";
+  }
+
   t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
   t(doc, agentVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
   ly += 4.5;

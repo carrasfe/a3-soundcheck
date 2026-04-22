@@ -204,16 +204,24 @@ export async function saveEvaluation(
 
   // Save junction records + ensure known_artist entries — fire and forget
   if (artistId && status === "complete") {
-    const managerIds = (fd.manager_selections ?? []).map((s) => s.manager_id);
-    const agentIds   = (fd.agent_selections   ?? []).map((s) => s.agent_id);
+    // Prefer the richer management_entries/booking_entries (multi-company); fall back to legacy flat lists
+    const allManagerSelections = (fd.management_entries ?? []).length > 0
+      ? fd.management_entries.flatMap((e) => e.manager_selections)
+      : (fd.manager_selections ?? []);
+    const allAgentSelections = (fd.booking_entries ?? []).length > 0
+      ? fd.booking_entries.flatMap((e) => e.agent_selections)
+      : (fd.agent_selections ?? []);
+
+    const managerIds = allManagerSelections.map((s) => s.manager_id);
+    const agentIds   = allAgentSelections.map((s) => s.agent_id);
 
     if (managerIds.length > 0) {
-      saveArtistManagers(artistId, (fd.manager_selections ?? []).map((s) => ({
+      saveArtistManagers(artistId, allManagerSelections.map((s) => ({
         manager_id: s.manager_id, role: s.role,
       }))).catch(() => {});
     }
     if (agentIds.length > 0) {
-      saveArtistAgents(artistId, (fd.agent_selections ?? []).map((s) => ({
+      saveArtistAgents(artistId, allAgentSelections.map((s) => ({
         agent_id: s.agent_id, role: s.role,
       }))).catch(() => {});
     }

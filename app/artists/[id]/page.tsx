@@ -23,10 +23,15 @@ export type ArtistDetail = {
   is_a3_client: boolean;
   is_archived: boolean;
   evaluations: ArtistEvaluation[];
-  linked_management_company: { id: string; name: string } | null;
+  // Grouped contacts (new — managers grouped by company, agents by agency)
+  management_groups: { company: { id: string; name: string } | null; managers: { id: string; name: string; role: string }[] }[];
+  booking_groups: { agency: { id: string; name: string } | null; agents: { id: string; name: string; role: string }[] }[];
+  // Flat lists kept for A3 relationship lookup
   linked_managers: { id: string; name: string; role: string }[];
-  linked_booking_agency: { id: string; name: string } | null;
   linked_agents: { id: string; name: string; role: string }[];
+  // Legacy single-company fields (kept for backward compat display fallback)
+  linked_management_company: { id: string; name: string } | null;
+  linked_booking_agency: { id: string; name: string } | null;
   // Fuzzy-matched contacts (fallback for legacy text data)
   fuzzy_management_company: { id: string; name: string } | null;
   fuzzy_managers: { id: string; name: string }[];
@@ -34,7 +39,7 @@ export type ArtistDetail = {
   fuzzy_agents: { id: string; name: string }[];
   unmatched_agency_text: string | null;
   unmatched_agent_names: string[];
-  // A3 relationship: which A3 client artists each linked/fuzzy contact also works with
+  // A3 relationship: which A3 client artists each linked contact also works with
   a3_relationships: {
     managers: Record<string, string[]>;
     agents: Record<string, string[]>;
@@ -93,10 +98,12 @@ export default async function ArtistDetailPage({
       tier_label: ev.tier ?? null,
       revenue_tier: null,
     })),
-    linked_management_company: linkedContacts.managementCompany,
+    management_groups: linkedContacts.managementEntries,
+    booking_groups: linkedContacts.bookingEntries,
     linked_managers: linkedContacts.managers,
-    linked_booking_agency: linkedContacts.bookingAgency,
     linked_agents: linkedContacts.agents,
+    linked_management_company: linkedContacts.managementCompany,
+    linked_booking_agency: linkedContacts.bookingAgency,
     fuzzy_management_company: null,
     fuzzy_managers: [],
     fuzzy_booking_agency: null,

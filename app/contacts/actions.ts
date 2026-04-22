@@ -955,6 +955,10 @@ export async function fuzzyMatchArtistContacts(inputs: {
 // ─── Artist linked contacts (from junction tables) ────────────
 
 export interface ArtistLinkedContacts {
+  // Grouped by company/agency (new)
+  managementEntries: { company: { id: string; name: string } | null; managers: { id: string; name: string; role: string }[] }[];
+  bookingEntries: { agency: { id: string; name: string } | null; agents: { id: string; name: string; role: string }[] }[];
+  // Flat legacy fields (first company/all persons)
   managementCompany: { id: string; name: string } | null;
   managers: { id: string; name: string; role: string }[];
   bookingAgency: { id: string; name: string } | null;
@@ -973,46 +977,111 @@ export async function getArtistLinkedContacts(artistId: string): Promise<ArtistL
   const roleByManager = new Map((amLinks ?? []).map((l) => [l.manager_id, l.role]));
   const roleByAgent = new Map((aaLinks ?? []).map((l) => [l.agent_id, l.role]));
 
-  let managementCompany: { id: string; name: string } | null = null;
+  const managementEntries: ArtistLinkedContacts["managementEntries"] = [];
+  const bookingEntries: ArtistLinkedContacts["bookingEntries"] = [];
   let managers: { id: string; name: string; role: string }[] = [];
-  let bookingAgency: { id: string; name: string } | null = null;
   let agents: { id: string; name: string; role: string }[] = [];
 
   if (managerIds.length > 0) {
     const { data: mgrRows } = await supabase
       .from("managers").select("id, name, management_company_id").in("id", managerIds);
+
     managers = (mgrRows ?? []).map((m) => ({
       id: m.id, name: m.name, role: roleByManager.get(m.id) ?? "Lead",
     }));
-    const companyId = (mgrRows ?? []).find((m) => m.management_company_id)?.management_company_id;
-    if (companyId) {
-      const { data: c } = await supabase
-        .from("management_companies").select("id, name").eq("id", companyId).single();
-      if (c) managementCompany = { id: c.id, name: c.name };
+
+    // Group managers by their management_company_id
+    const companyIds = Array.from(new Set(
+      (mgrRows ?? []).map((m) => m.management_company_id).filter(Boolean) as string[]
+    ));
+    const companyMap = new Map<string, string>();
+    if (companyIds.length > 0) {
+      const { data: companies } = await supabase
+        .from("management_companies").select("id, name").in("id", companyIds);
+      for (const c of companies ?? []) companyMap.set(c.id, c.name);
+    }
+
+    // Build entries: one per distinct company (null company last)
+    const byCompany = new Map<string | null, { id: string; name: string; role: string }[]>();
+    for (const m of mgrRows ?? []) {
+      const key = m.management_company_id ?? null;
+      if (!byCompany.has(key)) byCompany.set(key, []);
+      byCompany.get(key)!.push({ id: m.id, name: m.name, role: roleByManager.get(m.id) ?? "Lead" });
+    }
+    // Companies first, then null-company managers
+    for (const compId of companyIds) {
+      const mgrs = byCompany.get(compId) ?? [];
+      if (mgrs.length > 0) {
+        managementEntries.push({
+          company: { id: compId, name: companyMap.get(compId) ?? compId },
+          managers: mgrs,
+        });
+      }
+    }
+    const noCompany = byCompany.get(null);
+    if (noCompany && noCompany.length > 0) {
+      managementEntries.push({ company: null, managers: noCompany });
     }
   }
 
   if (agentIds.length > 0) {
     const { data: agentRows } = await supabase
       .from("agents").select("id, name, agency_id").in("id", agentIds);
+
     agents = (agentRows ?? []).map((a) => ({
       id: a.id, name: a.name, role: roleByAgent.get(a.id) ?? "Primary",
     }));
-    const agencyId = (agentRows ?? []).find((a) => a.agency_id)?.agency_id;
-    if (agencyId) {
-      const { data: ag } = await supabase
-        .from("agencies").select("id, name").eq("id", agencyId).single();
-      if (ag) bookingAgency = { id: ag.id, name: ag.name };
+
+    // Group agents by agency_id
+    const agencyIds = Array.from(new Set(
+      (agentRows ?? []).map((a) => a.agency_id).filter(Boolean) as string[]
+    ));
+    const agencyMap = new Map<string, string>();
+    if (agencyIds.length > 0) {
+      const { data: ags } = await supabase
+        .from("agencies").select("id, name").in("id", agencyIds);
+      for (const ag of ags ?? []) agencyMap.set(ag.id, ag.name);
+    }
+
+    const byAgency = new Map<string | null, { id: string; name: string; role: string }[]>();
+    for (const a of agentRows ?? []) {
+      const key = a.agency_id ?? null;
+      if (!byAgency.has(key)) byAgency.set(key, []);
+      byAgency.get(key)!.push({ id: a.id, name: a.name, role: roleByAgent.get(a.id) ?? "Primary" });
+    }
+    for (const agId of agencyIds) {
+      const ags = byAgency.get(agId) ?? [];
+      if (ags.length > 0) {
+        bookingEntries.push({
+          agency: { id: agId, name: agencyMap.get(agId) ?? agId },
+          agents: ags,
+        });
+      }
+    }
+    const noAgency = byAgency.get(null);
+    if (noAgency && noAgency.length > 0) {
+      bookingEntries.push({ agency: null, agents: noAgency });
     }
   }
 
-  return { managementCompany, managers, bookingAgency, agents };
+  return {
+    managementEntries,
+    bookingEntries,
+    managementCompany: managementEntries[0]?.company ?? null,
+    managers,
+    bookingAgency: bookingEntries[0]?.agency ?? null,
+    agents,
+  };
 }
 
 // ─── Artist contacts by name (for Step 1 auto-load) ──────────
 
 export async function getArtistContactsByName(name: string): Promise<{
   artistId: string | null;
+  // Multi-entry format (new)
+  managementEntries: { company_id: string; company_name: string; manager_selections: { manager_id: string; role: string; manager_name: string }[] }[];
+  bookingEntries: { agency_id: string; agency_name: string; agent_selections: { agent_id: string; role: string; agent_name: string }[] }[];
+  // Legacy flat fields
   managementCompanyId: string | null;
   managementCompanyName: string | null;
   managerSelections: { manager_id: string; role: string }[];
@@ -1022,7 +1091,9 @@ export async function getArtistContactsByName(name: string): Promise<{
   hasContacts: boolean;
 }> {
   const empty = {
-    artistId: null, managementCompanyId: null, managementCompanyName: null,
+    artistId: null,
+    managementEntries: [], bookingEntries: [],
+    managementCompanyId: null, managementCompanyName: null,
     managerSelections: [], bookingAgencyId: null, bookingAgencyName: null,
     agentSelections: [], hasContacts: false,
   };
@@ -1033,11 +1104,22 @@ export async function getArtistContactsByName(name: string): Promise<{
   if (!artist) return empty;
   const contacts = await getArtistLinkedContacts(artist.id);
   const hasContacts = !!(
-    contacts.managementCompany || contacts.managers.length > 0 ||
-    contacts.bookingAgency || contacts.agents.length > 0
+    contacts.managementEntries.length > 0 || contacts.bookingEntries.length > 0
   );
+  const managementEntries = contacts.managementEntries.map((e) => ({
+    company_id: e.company?.id ?? "",
+    company_name: e.company?.name ?? "",
+    manager_selections: e.managers.map((m) => ({ manager_id: m.id, role: m.role, manager_name: m.name })),
+  }));
+  const bookingEntries = contacts.bookingEntries.map((e) => ({
+    agency_id: e.agency?.id ?? "",
+    agency_name: e.agency?.name ?? "",
+    agent_selections: e.agents.map((a) => ({ agent_id: a.id, role: a.role, agent_name: a.name })),
+  }));
   return {
     artistId: artist.id,
+    managementEntries,
+    bookingEntries,
     managementCompanyId: contacts.managementCompany?.id ?? null,
     managementCompanyName: contacts.managementCompany?.name ?? null,
     managerSelections: contacts.managers.map((m) => ({ manager_id: m.id, role: m.role })),

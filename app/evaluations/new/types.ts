@@ -26,11 +26,25 @@ export interface StepProps {
 export interface ManagerSelection {
   manager_id: string;
   role: string;
+  manager_name?: string; // stored for PDF display
 }
 
 export interface AgentSelection {
   agent_id: string;
   role: string;
+  agent_name?: string; // stored for PDF display
+}
+
+export interface ManagementEntry {
+  company_id: string;
+  company_name: string;
+  manager_selections: ManagerSelection[];
+}
+
+export interface BookingEntry {
+  agency_id: string;
+  agency_name: string;
+  agent_selections: AgentSelection[];
 }
 
 export interface EvalFormData {
@@ -50,6 +64,9 @@ export interface EvalFormData {
   manager_selections: ManagerSelection[];
   booking_agency_id: string;
   agent_selections: AgentSelection[];
+  // Multi-company / multi-agency (replaces single company fields above for new evals)
+  management_entries: ManagementEntry[];
+  booking_entries: BookingEntry[];
 
   // ── Step 2: Demographics ──
   // Stored as Male % / Female % per bracket; scoring engine gets m+f sum
@@ -107,6 +124,7 @@ export const INITIAL_FORM_DATA: EvalFormData = {
   merch_provider: "", vip_level: "none",
   management_company_id: "", manager_selections: [],
   booking_agency_id: "", agent_selections: [],
+  management_entries: [], booking_entries: [],
   d_13_17_m: "", d_13_17_f: "",
   d_18_24_m: "", d_18_24_f: "",
   d_25_34_m: "", d_25_34_f: "",
