@@ -865,6 +865,88 @@ export async function removeKnownArtist(id: string): Promise<{ error: string | n
   return { error: error?.message ?? null };
 }
 
+// ─── Fuzzy match free-text fields against contacts DB ────────
+
+function parseBookingAgentText(raw: string): { agencyName: string | null; agentNames: string[] } {
+  const dashIdx = raw.indexOf(" - ");
+  if (dashIdx > -1) {
+    const agencyName = raw.substring(0, dashIdx).trim();
+    const agentNames = raw.substring(dashIdx + 3).split(/[/,]/).map((n) => n.trim()).filter(Boolean);
+    return { agencyName, agentNames };
+  }
+  // No dash — treat whole string as a potential agency name; also expose as agent names fallback
+  return { agencyName: null, agentNames: raw.split(/[/,]/).map((n) => n.trim()).filter(Boolean) };
+}
+
+export interface FuzzyMatchedContacts {
+  managementCompany: { id: string; name: string } | null;
+  managers: { id: string; name: string }[];
+  bookingAgency: { id: string; name: string } | null;
+  agents: { id: string; name: string }[];
+  unmatchedAgencyText: string | null;
+  unmatchedAgentNames: string[];
+}
+
+export async function fuzzyMatchArtistContacts(inputs: {
+  management_company: string | null;
+  manager_names: string | null;
+  booking_agent: string | null;
+}): Promise<FuzzyMatchedContacts> {
+  const supabase = await createClient();
+
+  let managementCompany: { id: string; name: string } | null = null;
+  const managers: { id: string; name: string }[] = [];
+  let bookingAgency: { id: string; name: string } | null = null;
+  const agents: { id: string; name: string }[] = [];
+  let unmatchedAgencyText: string | null = null;
+  const unmatchedAgentNames: string[] = [];
+
+  if (inputs.management_company?.trim()) {
+    const { data } = await supabase
+      .from("management_companies").select("id, name")
+      .ilike("name", inputs.management_company.trim()).limit(1);
+    if (data?.[0]) managementCompany = { id: data[0].id, name: data[0].name };
+  }
+
+  if (inputs.manager_names?.trim()) {
+    const names = inputs.manager_names.trim().split(/[/,]/).map((n) => n.trim()).filter(Boolean);
+    for (const name of names) {
+      const { data } = await supabase
+        .from("managers").select("id, name").ilike("name", name).limit(1);
+      if (data?.[0]) managers.push({ id: data[0].id, name: data[0].name });
+    }
+  }
+
+  if (inputs.booking_agent?.trim()) {
+    const raw = inputs.booking_agent.trim();
+    const { agencyName, agentNames } = parseBookingAgentText(raw);
+
+    if (agencyName) {
+      const { data } = await supabase
+        .from("agencies").select("id, name").ilike("name", agencyName).limit(1);
+      if (data?.[0]) bookingAgency = { id: data[0].id, name: data[0].name };
+      else unmatchedAgencyText = agencyName;
+    }
+
+    if (agentNames.length > 0) {
+      for (const name of agentNames) {
+        const { data } = await supabase
+          .from("agents").select("id, name").ilike("name", name).limit(1);
+        if (data?.[0]) agents.push({ id: data[0].id, name: data[0].name });
+        else unmatchedAgentNames.push(name);
+      }
+    } else if (!agencyName) {
+      // No dash, no split — try whole string as agency name
+      const { data } = await supabase
+        .from("agencies").select("id, name").ilike("name", raw).limit(1);
+      if (data?.[0]) bookingAgency = { id: data[0].id, name: data[0].name };
+      else unmatchedAgencyText = raw;
+    }
+  }
+
+  return { managementCompany, managers, bookingAgency, agents, unmatchedAgencyText, unmatchedAgentNames };
+}
+
 // ─── Artist linked contacts (from junction tables) ────────────
 
 export interface ArtistLinkedContacts {

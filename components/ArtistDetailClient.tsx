@@ -4,7 +4,37 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ArtistDetail } from "@/app/artists/[id]/page";
-import { updateArtistFlags } from "@/app/artists/actions";
+import { updateArtistFlags, linkLegacyTextField } from "@/app/artists/actions";
+
+function AddToContactsButton({
+  artistId,
+  field,
+  text,
+  label = "+ Add to Contacts",
+}: {
+  artistId: string;
+  field: "management_company" | "manager_names" | "booking_agent";
+  text: string;
+  label?: string;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          await linkLegacyTextField(artistId, field, text);
+          router.refresh();
+        })
+      }
+      className="ml-1.5 rounded border border-dashed border-[#1B2A4A]/40 px-1.5 py-0.5 text-[10px] font-medium text-[#1B2A4A]/60 transition hover:border-[#1B2A4A] hover:text-[#1B2A4A] disabled:opacity-40"
+    >
+      {pending ? "Adding…" : label}
+    </button>
+  );
+}
 
 const TIER_STYLES: Record<string, string> = {
   Priority: "bg-[#C0392B] text-white",
@@ -107,6 +137,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
               Artist Info
             </h2>
             <dl className="grid gap-4 sm:grid-cols-2">
+              {/* Management Company — junction > fuzzy > text + Add */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Management Company</dt>
                 <dd className="mt-0.5 text-sm">
@@ -114,12 +145,22 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                     <Link href={`/contacts/management/${artist.linked_management_company.id}`} className="font-medium text-[#1B2A4A] hover:underline">
                       {artist.linked_management_company.name}
                     </Link>
+                  ) : artist.fuzzy_management_company ? (
+                    <Link href={`/contacts/management/${artist.fuzzy_management_company.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                      {artist.fuzzy_management_company.name}
+                    </Link>
+                  ) : artist.management_company ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="text-gray-800">{artist.management_company}</span>
+                      <AddToContactsButton artistId={artist.id} field="management_company" text={artist.management_company} />
+                    </span>
                   ) : (
-                    <span className="text-gray-800">{artist.management_company || "—"}</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </dd>
               </div>
 
+              {/* Manager(s) — junction > fuzzy > text + Add */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Manager(s)</dt>
                 <dd className="mt-0.5 text-sm">
@@ -134,12 +175,26 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                         </div>
                       ))}
                     </div>
+                  ) : artist.fuzzy_managers.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {artist.fuzzy_managers.map((m) => (
+                        <Link key={m.id} href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                          {m.name}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : artist.manager_names ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="text-gray-800">{artist.manager_names}</span>
+                      <AddToContactsButton artistId={artist.id} field="manager_names" text={artist.manager_names} />
+                    </span>
                   ) : (
-                    <span className="text-gray-800">{artist.manager_names || "—"}</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </dd>
               </div>
 
+              {/* Booking Agency — junction > fuzzy > parsed text + Add */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Booking Agency</dt>
                 <dd className="mt-0.5 text-sm">
@@ -147,12 +202,22 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                     <Link href={`/contacts/agencies/${artist.linked_booking_agency.id}`} className="font-medium text-[#1B2A4A] hover:underline">
                       {artist.linked_booking_agency.name}
                     </Link>
+                  ) : artist.fuzzy_booking_agency ? (
+                    <Link href={`/contacts/agencies/${artist.fuzzy_booking_agency.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                      {artist.fuzzy_booking_agency.name}
+                    </Link>
+                  ) : artist.unmatched_agency_text ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="text-gray-800">{artist.unmatched_agency_text}</span>
+                      <AddToContactsButton artistId={artist.id} field="booking_agent" text={artist.booking_agent ?? ""} />
+                    </span>
                   ) : (
-                    <span className="text-gray-800">{artist.booking_agent || "—"}</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </dd>
               </div>
 
+              {/* Agent(s) — junction > fuzzy + unmatched mix > full text + Add */}
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Agent(s)</dt>
                 <dd className="mt-0.5 text-sm">
@@ -167,8 +232,28 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                         </div>
                       ))}
                     </div>
+                  ) : (artist.fuzzy_agents.length > 0 || artist.unmatched_agent_names.length > 0) ? (
+                    <div className="flex flex-col gap-1">
+                      {artist.fuzzy_agents.map((a) => (
+                        <Link key={a.id} href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                          {a.name}
+                        </Link>
+                      ))}
+                      {artist.unmatched_agent_names.length > 0 && (
+                        <span className="inline-flex items-center gap-0.5">
+                          <span className="text-gray-800">{artist.unmatched_agent_names.join(", ")}</span>
+                          <AddToContactsButton artistId={artist.id} field="booking_agent" text={artist.booking_agent ?? ""} />
+                        </span>
+                      )}
+                    </div>
+                  ) : artist.booking_agent && !artist.unmatched_agency_text ? (
+                    // Whole booking_agent text is agents (no agency part parsed)
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="text-gray-800">{artist.booking_agent}</span>
+                      <AddToContactsButton artistId={artist.id} field="booking_agent" text={artist.booking_agent} />
+                    </span>
                   ) : (
-                    <span className="text-gray-800">{artist.booking_agent || "—"}</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </dd>
               </div>

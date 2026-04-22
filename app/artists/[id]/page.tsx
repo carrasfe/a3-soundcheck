@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ArtistDetailClient from "@/components/ArtistDetailClient";
-import { getArtistLinkedContacts } from "@/app/contacts/actions";
+import { getArtistLinkedContacts, fuzzyMatchArtistContacts } from "@/app/contacts/actions";
 
 export type ArtistEvaluation = {
   id: string;
@@ -27,6 +27,13 @@ export type ArtistDetail = {
   linked_managers: { id: string; name: string; role: string }[];
   linked_booking_agency: { id: string; name: string } | null;
   linked_agents: { id: string; name: string; role: string }[];
+  // Fuzzy-matched contacts (fallback for legacy text data)
+  fuzzy_management_company: { id: string; name: string } | null;
+  fuzzy_managers: { id: string; name: string }[];
+  fuzzy_booking_agency: { id: string; name: string } | null;
+  fuzzy_agents: { id: string; name: string }[];
+  unmatched_agency_text: string | null;
+  unmatched_agent_names: string[];
 };
 
 export default async function ArtistDetailPage({
@@ -85,7 +92,32 @@ export default async function ArtistDetailPage({
     linked_managers: linkedContacts.managers,
     linked_booking_agency: linkedContacts.bookingAgency,
     linked_agents: linkedContacts.agents,
+    fuzzy_management_company: null,
+    fuzzy_managers: [],
+    fuzzy_booking_agency: null,
+    fuzzy_agents: [],
+    unmatched_agency_text: null,
+    unmatched_agent_names: [],
   };
+
+  // Fuzzy-match legacy text fields for any contact dimension without junction links
+  const needsMgmtFuzzy = !linkedContacts.managementCompany && !!artist.management_company;
+  const needsMgrFuzzy  = linkedContacts.managers.length === 0 && !!artist.manager_names;
+  const needsBookingFuzzy = !linkedContacts.bookingAgency && linkedContacts.agents.length === 0 && !!artist.booking_agent;
+
+  if (needsMgmtFuzzy || needsMgrFuzzy || needsBookingFuzzy) {
+    const fuzzy = await fuzzyMatchArtistContacts({
+      management_company: needsMgmtFuzzy ? artist.management_company : null,
+      manager_names: needsMgrFuzzy ? artist.manager_names : null,
+      booking_agent: needsBookingFuzzy ? artist.booking_agent : null,
+    });
+    artistDetail.fuzzy_management_company = fuzzy.managementCompany;
+    artistDetail.fuzzy_managers = fuzzy.managers;
+    artistDetail.fuzzy_booking_agency = fuzzy.bookingAgency;
+    artistDetail.fuzzy_agents = fuzzy.agents;
+    artistDetail.unmatched_agency_text = fuzzy.unmatchedAgencyText;
+    artistDetail.unmatched_agent_names = fuzzy.unmatchedAgentNames;
+  }
 
   return <ArtistDetailClient artist={artistDetail} />;
 }
