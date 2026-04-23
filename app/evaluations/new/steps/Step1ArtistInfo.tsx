@@ -38,7 +38,7 @@ const VIP_OPTIONS = [
 ];
 
 const MANAGER_ROLES = ["Lead", "Day-to-Day", "A&R"];
-const AGENT_ROLES = ["Primary", "Secondary", "Festivals"];
+const AGENT_ROLES = ["US Booking", "UK/EU Booking", "Global", "Festivals", "Secondary", "Primary"];
 
 const MAX_SLOTS = 3;
 

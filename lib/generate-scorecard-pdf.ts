@@ -26,11 +26,11 @@ export interface ScorecardData {
 // ─── Fixed page layout — all Y positions locked ───────────────────────────────
 //
 //  0 ──────────── Header bar (navy)                           25 mm
-// 25 ──────────── Management / Agent strip (bg-info)         45 mm
-// 45 ──────────── Profile strip (white, dividers)            53 mm
-// 53 ──────────── Four pillar columns                       148 mm  (95 mm budget)
-//148 ──────────── Score composition table                   180 mm  (32 mm)
-//180 ──────────── Demographics (only if data entered)       192 mm  (12 mm)
+// 25 ──────────── Management / Agent strip (bg-info)         53 mm  (28 mm, 2-line wrap)
+// 53 ──────────── Profile strip (white, dividers)            61 mm
+// 61 ──────────── Four pillar columns                       156 mm  (95 mm budget)
+//156 ──────────── Score composition table                   188 mm  (32 mm)
+//188 ──────────── Demographics (only if data entered)       204 mm
 //204 ──────────── Footer
 //210 ──────────── Bottom of page
 
@@ -42,14 +42,14 @@ const CW = PW - ML - MR;   // 277 mm usable width
 
 const HDR_H      = 25;
 const MGMT_TOP   = HDR_H;          // 25
-const MGMT_H     = 20;
-const PROF_TOP   = MGMT_TOP + MGMT_H;  // 45
+const MGMT_H     = 28;             // enlarged from 20 to accommodate 2-line wrap
+const PROF_TOP   = MGMT_TOP + MGMT_H;  // 53
 const PROF_H     = 8;
-const PILLAR_TOP = PROF_TOP + PROF_H;  // 53  (fixed)
+const PILLAR_TOP = PROF_TOP + PROF_H;  // 61  (fixed)
 const PILLAR_H   = 95;                 // budget: never overflow this
-const SCORE_TOP  = PILLAR_TOP + PILLAR_H; // 148 (fixed)
+const SCORE_TOP  = PILLAR_TOP + PILLAR_H; // 156 (fixed)
 const SCORE_H    = 32;
-const DEMO_TOP   = SCORE_TOP + SCORE_H;  // 180 (fixed)
+const DEMO_TOP   = SCORE_TOP + SCORE_H;  // 188 (fixed)
 const FOOTER_Y   = 204;
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -202,22 +202,26 @@ function drawHeader(doc: jsPDF, d: ScorecardData): void {
 function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   const inp = d.inputs;
   const Y   = MGMT_TOP;
+  const LW  = 130;
+  const TEXT_X = ML + 24;
+  const MAX_TW = LW - 26;
+  const LINE_H = 4.5;
 
-  box(doc, 0, Y, PW, MGMT_H, BGINFO);
-  hl(doc, 0, PW, Y,            DIV, 0.35);
-  hl(doc, 0, PW, Y + MGMT_H,  DIV, 0.35);
-
-  // ── Left column: Management ──────────────────── (width ~130mm)
-  const LW = 130;  // left column width
-  let ly = Y + 4.5;
-
-  // Build management display string — prefer management_entries (multi-company), fall back to legacy text
+  // Build management display string — prefer management_entries (multi-company), fall back to legacy text.
+  // Include role in parens for non-default roles (Lead is default for managers).
   let mgmtVal: string;
   if (inp.management_entries && inp.management_entries.length > 0) {
     const parts = inp.management_entries
       .filter((e) => e.company_name || e.manager_selections.length > 0)
       .map((e) => {
-        const names = e.manager_selections.map((s) => s.manager_name ?? "").filter(Boolean).join(", ");
+        const names = e.manager_selections
+          .map((s) => {
+            const name = s.manager_name ?? "";
+            if (!name) return "";
+            return s.role && s.role !== "Lead" ? `${name} (${s.role})` : name;
+          })
+          .filter(Boolean)
+          .join(", ");
         return e.company_name ? `${e.company_name}${names ? " — " + names : ""}` : names;
       })
       .filter(Boolean);
@@ -226,30 +230,21 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
     mgmtVal = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
   }
 
-  t(doc, "MANAGEMENT", ML, ly, { sz: 6, bold: true, color: LT });
-  t(doc, mgmtVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
-  ly += 4.5;
-
-  // Row 1b: Other managed artists (indented, italic)
-  if (inp.other_mgmt_artists) {
-    t(doc, "Other managed:", ML + 24, ly, { sz: 5.5, color: LT });
-    t(doc, inp.other_mgmt_artists, ML + 51, ly, { sz: 5.5, color: MD, maxW: LW - 53 });
-    ly += 4;
-  }
-
-  // Row 1c: A3 relationship note for management
-  if (d.a3MgmtNote) {
-    t(doc, `★ A3 relationship via ${d.a3MgmtNote}`, ML + 24, ly, { sz: 5.5, color: GREEN_A3, maxW: LW - 26 });
-    ly += 3.5;
-  }
-
-  // Build booking display string — prefer booking_entries, fall back to legacy text
+  // Build booking display string — prefer booking_entries, fall back to legacy text.
+  // Include role in parens for non-default roles (Primary is default for agents).
   let agentVal: string;
   if (inp.booking_entries && inp.booking_entries.length > 0) {
     const parts = inp.booking_entries
       .filter((e) => e.agency_name || e.agent_selections.length > 0)
       .map((e) => {
-        const names = e.agent_selections.map((s) => s.agent_name ?? "").filter(Boolean).join(", ");
+        const names = e.agent_selections
+          .map((s) => {
+            const name = s.agent_name ?? "";
+            if (!name) return "";
+            return s.role && s.role !== "Primary" ? `${name} (${s.role})` : name;
+          })
+          .filter(Boolean)
+          .join(", ");
         return e.agency_name ? `${e.agency_name}${names ? " — " + names : ""}` : names;
       })
       .filter(Boolean);
@@ -258,18 +253,54 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
     agentVal = inp.booking_agent || "—";
   }
 
-  t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
-  t(doc, agentVal, ML + 24, ly, { sz: 6.5, color: DK, maxW: LW - 26 });
-  ly += 4.5;
+  // Pre-compute wrapped lines (cap at 2 lines each)
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  const rawMgmtLines = doc.splitTextToSize(mgmtVal, MAX_TW) as string[];
+  const rawAgentLines = doc.splitTextToSize(agentVal, MAX_TW) as string[];
+  function capLines(ls: string[]): string[] {
+    if (ls.length <= 2) return ls;
+    return [ls[0], ls[1].slice(0, ls[1].length - 1) + "…"];
+  }
+  const mgmtLines = capLines(rawMgmtLines);
+  const agentLines = capLines(rawAgentLines);
 
-  // Row 2b: Other booked artists
+  box(doc, 0, Y, PW, MGMT_H, BGINFO);
+  hl(doc, 0, PW, Y, DIV, 0.35);
+  hl(doc, 0, PW, Y + MGMT_H, DIV, 0.35);
+
+  let ly = Y + 4.5;
+
+  // ── Management rows ───────────────────────────────────────────
+  t(doc, "MANAGEMENT", ML, ly, { sz: 6, bold: true, color: LT });
+  mgmtLines.forEach((line, i) => {
+    t(doc, line, TEXT_X, ly + i * LINE_H, { sz: 6.5, color: DK });
+  });
+  ly += mgmtLines.length * LINE_H;
+
+  if (inp.other_mgmt_artists) {
+    t(doc, "Other managed:", ML + 24, ly, { sz: 5.5, color: LT });
+    t(doc, inp.other_mgmt_artists, ML + 51, ly, { sz: 5.5, color: MD, maxW: LW - 53 });
+    ly += 4;
+  }
+  if (d.a3MgmtNote) {
+    t(doc, `★ A3 relationship via ${d.a3MgmtNote}`, ML + 24, ly, { sz: 5.5, color: GREEN_A3, maxW: LW - 26 });
+    ly += 3.5;
+  }
+
+  // ── Agent rows ────────────────────────────────────────────────
+  ly += 1.5;  // gap between management and agent sections
+  t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
+  agentLines.forEach((line, i) => {
+    t(doc, line, TEXT_X, ly + i * LINE_H, { sz: 6.5, color: DK });
+  });
+  ly += agentLines.length * LINE_H;
+
   if (inp.other_agent_artists) {
     t(doc, "Other booked:", ML + 24, ly, { sz: 5.5, color: LT });
     t(doc, inp.other_agent_artists, ML + 49, ly, { sz: 5.5, color: MD, maxW: LW - 51 });
     ly += 4;
   }
-
-  // Row 2c: A3 relationship note for booking
   if (d.a3AgentNote) {
     t(doc, `★ A3 relationship via ${d.a3AgentNote}`, ML + 24, ly, { sz: 5.5, color: GREEN_A3, maxW: LW - 26 });
   }
