@@ -15,6 +15,9 @@ export type EvaluationRecord = {
   evaluator_name: string;
   a3MgmtNote: string | null;
   a3AgentNote: string | null;
+  a3ManagerIds: string[];
+  a3AgentIds: string[];
+  a3ClientNames: string[];
 };
 
 export default async function EvaluationDetailPage({
@@ -84,18 +87,33 @@ export default async function EvaluationDetailPage({
   } as ScoringResult);
 
   const evalInputs = (row.inputs as EvalFormData | null) ?? ({} as EvalFormData);
-  const mgmtIds = (evalInputs.manager_selections ?? []).map((s) => s.manager_id).filter(Boolean);
-  const bookingIds = (evalInputs.agent_selections ?? []).map((s) => s.agent_id).filter(Boolean);
+
+  // Gather all manager/agent IDs (prefer multi-entry arrays, fall back to legacy flat lists)
+  const allMgrSels = (evalInputs.management_entries ?? []).flatMap((e) => e.manager_selections).concat(evalInputs.manager_selections ?? []);
+  const allAgtSels = (evalInputs.booking_entries ?? []).flatMap((e) => e.agent_selections).concat(evalInputs.agent_selections ?? []);
+  const mgmtIds   = Array.from(new Set(allMgrSels.map((s) => s.manager_id).filter(Boolean)));
+  const bookingIds = Array.from(new Set(allAgtSels.map((s) => s.agent_id).filter(Boolean)));
 
   let a3MgmtNote: string | null = null;
   let a3AgentNote: string | null = null;
-  if (mgmtIds.length > 0 || bookingIds.length > 0) {
-    const a3Rel = await getA3RelationshipForPersons({ managerIds: mgmtIds, agentIds: bookingIds });
-    const mgmtArtists = Array.from(new Set(Object.values(a3Rel.managers).flat()));
-    const agentArtists = Array.from(new Set(Object.values(a3Rel.agents).flat()));
-    if (mgmtArtists.length > 0) a3MgmtNote = mgmtArtists.join(", ");
-    if (agentArtists.length > 0) a3AgentNote = agentArtists.join(", ");
-  }
+  let a3ManagerIds: string[] = [];
+  let a3AgentIds: string[] = [];
+  let a3ClientNames: string[] = [];
+
+  const [a3RelResult, a3ClientResult] = await Promise.all([
+    (mgmtIds.length > 0 || bookingIds.length > 0)
+      ? getA3RelationshipForPersons({ managerIds: mgmtIds, agentIds: bookingIds })
+      : Promise.resolve({ managers: {} as Record<string, string[]>, agents: {} as Record<string, string[]> }),
+    supabase.from("artists").select("name").eq("is_a3_client", true),
+  ]);
+
+  const mgmtArtists = Array.from(new Set(Object.values(a3RelResult.managers).flat()));
+  const agentArtists = Array.from(new Set(Object.values(a3RelResult.agents).flat()));
+  if (mgmtArtists.length > 0) a3MgmtNote = mgmtArtists.join(", ");
+  if (agentArtists.length > 0) a3AgentNote = agentArtists.join(", ");
+  a3ManagerIds = Object.entries(a3RelResult.managers).filter(([, v]) => v.length > 0).map(([k]) => k);
+  a3AgentIds   = Object.entries(a3RelResult.agents).filter(([, v]) => v.length > 0).map(([k]) => k);
+  a3ClientNames = (a3ClientResult.data ?? []).map((r) => r.name.toLowerCase());
 
   const evaluation: EvaluationRecord = {
     id: row.id,
@@ -108,6 +126,9 @@ export default async function EvaluationDetailPage({
       evaluatorProfile?.full_name || evaluatorProfile?.email || row.evaluated_by || "Unknown",
     a3MgmtNote,
     a3AgentNote,
+    a3ManagerIds,
+    a3AgentIds,
+    a3ClientNames,
   };
 
   return (

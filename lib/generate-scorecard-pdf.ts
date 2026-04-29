@@ -21,6 +21,10 @@ export interface ScorecardData {
   inputs: EvalFormData;
   a3MgmtNote?: string | null;
   a3AgentNote?: string | null;
+  // A3 relationship highlighting
+  a3ManagerIds?: string[];   // manager IDs that work with any is_a3_client artist
+  a3AgentIds?: string[];     // agent IDs that work with any is_a3_client artist
+  a3ClientNames?: string[];  // lowercase artist names with is_a3_client = true (for known-artist lists)
 }
 
 // ─── Fixed page layout — all Y positions locked ───────────────────────────────
@@ -108,6 +112,66 @@ function vl(doc: jsPDF, x: number, y1: number, y2: number, color: RGB = DIV, lw 
   doc.setLineWidth(lw);
   doc.setDrawColor(color[0], color[1], color[2]);
   doc.line(x, y1, x, y2);
+}
+
+// ─── Inline colored text helpers ─────────────────────────────────────────────
+
+type TextSeg = { text: string; color: RGB };
+
+// Render colored text segments inline with word-level wrapping. Returns lines used (capped at 2).
+function renderColoredLine(
+  doc: jsPDF,
+  segs: TextSeg[],
+  startX: number,
+  y: number,
+  sz: number,
+  maxW: number,
+  lineH: number
+): number {
+  doc.setFontSize(sz);
+  doc.setFont("helvetica", "normal");
+
+  // Expand each segment into atomic render units (word + trailing space as one unit)
+  const units: TextSeg[] = [];
+  for (const seg of segs) {
+    const parts = seg.text.match(/[^\s]+\s*|\s+/g) ?? [];
+    for (const p of parts) units.push({ text: p, color: seg.color });
+  }
+
+  let curX = startX;
+  let curY = y;
+  let linesUsed = 1;
+
+  for (const unit of units) {
+    const w = (doc.getStringUnitWidth(unit.text) * sz) / doc.internal.scaleFactor;
+    if (curX > startX && curX + w > startX + maxW) {
+      curY += lineH;
+      curX = startX;
+      linesUsed++;
+      if (linesUsed > 2) break;
+      if (!unit.text.trim()) continue; // skip leading whitespace at line start
+    }
+    const c = unit.color;
+    doc.setTextColor(c[0], c[1], c[2]);
+    doc.text(unit.text, curX, curY);
+    curX += w;
+  }
+
+  return linesUsed;
+}
+
+// Render colored text segments inline without wrapping (clips at right edge, same as maxW behaviour).
+function tSegs(doc: jsPDF, segs: TextSeg[], x: number, y: number, sz: number): void {
+  doc.setFontSize(sz);
+  doc.setFont("helvetica", "normal");
+  let curX = x;
+  for (const seg of segs) {
+    if (!seg.text) continue;
+    const c = seg.color;
+    doc.setTextColor(c[0], c[1], c[2]);
+    doc.text(seg.text, curX, y);
+    curX += (doc.getStringUnitWidth(seg.text) * sz) / doc.internal.scaleFactor;
+  }
 }
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
@@ -207,63 +271,54 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   const MAX_TW = LW - 26;
   const LINE_H = 4.5;
 
-  // Build management display string — prefer management_entries (multi-company), fall back to legacy text.
-  // Include role in parens for non-default roles (Lead is default for managers).
-  let mgmtVal: string;
+  const a3MgrSet  = new Set(d.a3ManagerIds ?? []);
+  const a3AgtSet  = new Set(d.a3AgentIds ?? []);
+  const a3CliSet  = new Set((d.a3ClientNames ?? []).map((n) => n.toLowerCase()));
+
+  // Build management segments — prefer management_entries, fall back to legacy text
+  let mgmtSegs: TextSeg[];
   if (inp.management_entries && inp.management_entries.length > 0) {
-    const parts = inp.management_entries
+    mgmtSegs = [];
+    inp.management_entries
       .filter((e) => e.company_name || e.manager_selections.length > 0)
-      .map((e) => {
-        const names = e.manager_selections
-          .map((s) => {
-            const name = s.manager_name ?? "";
-            if (!name) return "";
-            return s.role && s.role !== "Lead" ? `${name} (${s.role})` : name;
-          })
-          .filter(Boolean)
-          .join(", ");
-        return e.company_name ? `${e.company_name}${names ? " — " + names : ""}` : names;
-      })
-      .filter(Boolean);
-    mgmtVal = parts.join("  /  ") || "—";
+      .forEach((e, ei) => {
+        if (ei > 0) mgmtSegs.push({ text: "  /  ", color: MD });
+        if (e.company_name) mgmtSegs.push({ text: `${e.company_name} — `, color: DK });
+        e.manager_selections.forEach((s, si) => {
+          const name = s.manager_name ?? "";
+          if (!name) return;
+          if (si > 0) mgmtSegs.push({ text: ", ", color: MD });
+          mgmtSegs.push({ text: name, color: a3MgrSet.has(s.manager_id) ? GREEN_A3 : DK });
+          if (s.role && s.role !== "Lead") mgmtSegs.push({ text: ` (${s.role})`, color: MD });
+        });
+      });
+    if (mgmtSegs.length === 0) mgmtSegs = [{ text: "—", color: DK }];
   } else {
-    mgmtVal = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
+    const fallback = [inp.management_company, inp.manager_names].filter(Boolean).join(" — ") || "—";
+    mgmtSegs = [{ text: fallback, color: DK }];
   }
 
-  // Build booking display string — prefer booking_entries, fall back to legacy text.
-  // Include role in parens for non-default roles (Primary is default for agents).
-  let agentVal: string;
+  // Build booking segments — prefer booking_entries, fall back to legacy text
+  let agentSegs: TextSeg[];
   if (inp.booking_entries && inp.booking_entries.length > 0) {
-    const parts = inp.booking_entries
+    agentSegs = [];
+    inp.booking_entries
       .filter((e) => e.agency_name || e.agent_selections.length > 0)
-      .map((e) => {
-        const names = e.agent_selections
-          .map((s) => {
-            const name = s.agent_name ?? "";
-            if (!name) return "";
-            return s.role && s.role !== "Primary" ? `${name} (${s.role})` : name;
-          })
-          .filter(Boolean)
-          .join(", ");
-        return e.agency_name ? `${e.agency_name}${names ? " — " + names : ""}` : names;
-      })
-      .filter(Boolean);
-    agentVal = parts.join("  /  ") || "—";
+      .forEach((e, ei) => {
+        if (ei > 0) agentSegs.push({ text: "  /  ", color: MD });
+        if (e.agency_name) agentSegs.push({ text: `${e.agency_name} — `, color: DK });
+        e.agent_selections.forEach((s, si) => {
+          const name = s.agent_name ?? "";
+          if (!name) return;
+          if (si > 0) agentSegs.push({ text: ", ", color: MD });
+          agentSegs.push({ text: name, color: a3AgtSet.has(s.agent_id) ? GREEN_A3 : DK });
+          if (s.role && s.role !== "Primary") agentSegs.push({ text: ` (${s.role})`, color: MD });
+        });
+      });
+    if (agentSegs.length === 0) agentSegs = [{ text: "—", color: DK }];
   } else {
-    agentVal = inp.booking_agent || "—";
+    agentSegs = [{ text: inp.booking_agent || "—", color: DK }];
   }
-
-  // Pre-compute wrapped lines (cap at 2 lines each)
-  doc.setFontSize(6.5);
-  doc.setFont("helvetica", "normal");
-  const rawMgmtLines = doc.splitTextToSize(mgmtVal, MAX_TW) as string[];
-  const rawAgentLines = doc.splitTextToSize(agentVal, MAX_TW) as string[];
-  function capLines(ls: string[]): string[] {
-    if (ls.length <= 2) return ls;
-    return [ls[0], ls[1].slice(0, ls[1].length - 1) + "…"];
-  }
-  const mgmtLines = capLines(rawMgmtLines);
-  const agentLines = capLines(rawAgentLines);
 
   box(doc, 0, Y, PW, MGMT_H, BGINFO);
   hl(doc, 0, PW, Y, DIV, 0.35);
@@ -273,14 +328,13 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
 
   // ── Management rows ───────────────────────────────────────────
   t(doc, "MANAGEMENT", ML, ly, { sz: 6, bold: true, color: LT });
-  mgmtLines.forEach((line, i) => {
-    t(doc, line, TEXT_X, ly + i * LINE_H, { sz: 6.5, color: DK });
-  });
-  ly += mgmtLines.length * LINE_H;
+  const mgmtLinesUsed = renderColoredLine(doc, mgmtSegs, TEXT_X, ly, 6.5, MAX_TW, LINE_H);
+  ly += mgmtLinesUsed * LINE_H;
 
   if (inp.other_mgmt_artists) {
     t(doc, "Other managed:", ML + 24, ly, { sz: 5.5, color: LT });
-    t(doc, inp.other_mgmt_artists, ML + 51, ly, { sz: 5.5, color: MD, maxW: LW - 53 });
+    const knownMgmtSegs = buildKnownArtistSegs(inp.other_mgmt_artists, a3CliSet);
+    tSegs(doc, knownMgmtSegs, ML + 51, ly, 5.5);
     ly += 4;
   }
   if (d.a3MgmtNote) {
@@ -289,16 +343,15 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   }
 
   // ── Agent rows ────────────────────────────────────────────────
-  ly += 1.5;  // gap between management and agent sections
+  ly += 1.5;
   t(doc, "AGENT", ML, ly, { sz: 6, bold: true, color: LT });
-  agentLines.forEach((line, i) => {
-    t(doc, line, TEXT_X, ly + i * LINE_H, { sz: 6.5, color: DK });
-  });
-  ly += agentLines.length * LINE_H;
+  const agentLinesUsed = renderColoredLine(doc, agentSegs, TEXT_X, ly, 6.5, MAX_TW, LINE_H);
+  ly += agentLinesUsed * LINE_H;
 
   if (inp.other_agent_artists) {
     t(doc, "Other booked:", ML + 24, ly, { sz: 5.5, color: LT });
-    t(doc, inp.other_agent_artists, ML + 49, ly, { sz: 5.5, color: MD, maxW: LW - 51 });
+    const knownAgtSegs = buildKnownArtistSegs(inp.other_agent_artists, a3CliSet);
+    tSegs(doc, knownAgtSegs, ML + 49, ly, 5.5);
     ly += 4;
   }
   if (d.a3AgentNote) {
@@ -312,6 +365,18 @@ function drawMgmtStrip(doc: jsPDF, d: ScorecardData): void {
   const RX = ML + LW + 10;
   t(doc, "MERCH PROVIDER", RX, Y + 4.5, { sz: 6, bold: true, color: LT });
   t(doc, inp.merch_provider || "—", RX + 32, Y + 4.5, { sz: 6.5, color: DK, maxW: CW - LW - 44 });
+}
+
+// Build colored segments for a comma-separated known-artists string.
+// Names matching any a3ClientNames entry render in green.
+function buildKnownArtistSegs(text: string, a3CliSet: Set<string>): TextSeg[] {
+  const names = text.split(/,\s*/);
+  const segs: TextSeg[] = [];
+  names.forEach((name, i) => {
+    if (i > 0) segs.push({ text: ", ", color: MD });
+    segs.push({ text: name.trim(), color: a3CliSet.has(name.trim().toLowerCase()) ? GREEN_A3 : MD });
+  });
+  return segs;
 }
 
 // ─── SECTION 3: Profile strip ─────────────────────────────────────────────────

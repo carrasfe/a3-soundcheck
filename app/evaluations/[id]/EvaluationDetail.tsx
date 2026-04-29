@@ -157,6 +157,9 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
     inputs: evaluation.inputs,
     a3MgmtNote: evaluation.a3MgmtNote,
     a3AgentNote: evaluation.a3AgentNote,
+    a3ManagerIds: evaluation.a3ManagerIds,
+    a3AgentIds: evaluation.a3AgentIds,
+    a3ClientNames: evaluation.a3ClientNames,
   };
 
   const handleCopyLink = async () => {
