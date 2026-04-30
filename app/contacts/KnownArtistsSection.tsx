@@ -6,40 +6,63 @@ import type { KnownArtistRow } from "./actions";
 import { addKnownArtists, removeKnownArtist } from "./actions";
 
 // ─── Roster parser ─────────────────────────────────────────────────────────────
+//
+// Two modes, chosen by whether the pasted text contains any metric lines:
+//
+// CHARTMETRIC MODE (text has metrics) — position-based state machine:
+//   Artist Name      ← first non-metric line after a metric (or at start)
+//   Genre Tag        ← subsequent non-metric lines (skipped)
+//   15.3M            ← metric → "expect_artist" state
+//   4.2M             ← metric
+//   Next Artist Name ← first non-metric after metrics → artist
+//
+// PLAIN LIST MODE (no metrics) — every line is treated as an artist name.
+//
+// In both modes a single-word line whose lowercase form matches a common genre
+// term is skipped (catches edge cases like a bare "Rock" or "Soul" line).
 
-const GENRE_TAGS = new Set([
-  "alternative", "indie", "rock", "pop", "r&b/soul", "r&b", "soul",
-  "jazz", "latin", "dance / edm", "dance/edm", "edm", "electronic",
-  "country", "metal", "hip hop", "hip-hop", "hip hop/rap", "folk",
-  "punk", "classical", "reggae", "blues", "christian", "k-pop", "k rock",
-  "j pop", "j rock", "anime", "asian artists", "cloud rap", "french rap",
-  "french pop", "french house", "french indie pop", "hindi indie",
-  "indian indie", "indie folk", "indie rock", "indie pop", "indie soul",
-  "bedroom pop", "art pop", "krautrock", "neo psychedelic", "post rock",
-  "post punk", "post hardcore", "math rock", "noise rock", "slowcore",
-  "egg punk", "electroclash", "synthpop", "alternative dance", "jazz house",
-  "latin alternative", "latin indie", "japanese indie",
-  "gospel", "worship", "bluegrass", "swing", "emo", "hardcore",
-  "progressive", "psychedelic", "shoegaze", "grunge", "ambient", "trap",
-  "drill", "afrobeats", "afropop",
+const METRIC_RE = /^#?[\d,.][\d,.]*\s*[kKmMbB]?$/;
+
+const GENERIC_GENRE_WORDS = new Set([
+  "rock", "pop", "indie", "folk", "jazz", "metal", "punk", "soul",
+  "country", "blues", "reggae", "dance", "electronic", "classical",
+  "latin", "alternative", "emo", "grunge", "ambient", "gospel",
+  "worship", "rap", "funk", "house", "techno", "ska", "swing",
 ]);
 
-// Matches Chartmetric metric lines: optional #, digits/commas/dots, optional K/M/B suffix
-const METRIC_RE = /^#?\d[\d,.]*\s*[kKmMbB]?$/;
+function isGenericGenreWord(line: string): boolean {
+  return !line.includes(" ") && line.length < 15 && GENERIC_GENRE_WORDS.has(line.toLowerCase());
+}
 
 function parseRoster(text: string): string[] {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const hasMetrics = lines.some((l) => METRIC_RE.test(l));
   const seen = new Set<string>();
   const artists: string[] = [];
-  for (const raw of text.split("\n")) {
-    const line = raw.trim();
-    if (!line) continue;
-    if (METRIC_RE.test(line)) continue;
-    if (GENRE_TAGS.has(line.toLowerCase())) continue;
-    if (!seen.has(line)) {
-      seen.add(line);
-      artists.push(line);
+
+  if (!hasMetrics) {
+    // Plain list: every line is an artist name
+    for (const line of lines) {
+      if (!seen.has(line) && !isGenericGenreWord(line)) {
+        seen.add(line);
+        artists.push(line);
+      }
     }
+    return artists;
   }
+
+  // Chartmetric format: position-based
+  let state: "expect_artist" | "in_genres" = "expect_artist";
+  for (const line of lines) {
+    if (METRIC_RE.test(line)) { state = "expect_artist"; continue; }
+    if (state === "expect_artist") {
+      if (isGenericGenreWord(line)) continue; // skip stray genre word, stay in expect_artist
+      if (!seen.has(line)) { seen.add(line); artists.push(line); }
+      state = "in_genres";
+    }
+    // in_genres: skip
+  }
+
   return artists;
 }
 
