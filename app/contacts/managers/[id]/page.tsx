@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getManagerDetail, getKnownArtistsForManager } from "../../actions";
+import { getManagerDetail, getKnownArtistsForManager, deleteManager } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
+import DeleteContactButton from "../../DeleteContactButton";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -28,11 +29,18 @@ export default async function ManagerDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ manager, error }, knownArtists] = await Promise.all([
+  const [{ data: profile }, { manager, error }, knownArtists] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
     getManagerDetail(params.id),
     getKnownArtistsForManager(params.id),
   ]);
   if (error || !manager) notFound();
+
+  const isAdmin = profile?.role === "admin";
+  const boundDelete = deleteManager.bind(null, params.id);
+  const redirectTo = manager.management_company_id
+    ? `/contacts/management/${manager.management_company_id}`
+    : "/contacts";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -57,26 +65,37 @@ export default async function ManagerDetailPage({
             {manager.name[0].toUpperCase()}
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-[#1B2A4A]">{manager.name}</h1>
-              {!manager.is_active && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-[#1B2A4A]">{manager.name}</h1>
+                  {!manager.is_active && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
+                  )}
+                </div>
+                {manager.management_company_name && (
+                  <Link href={`/contacts/management/${manager.management_company_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
+                    {manager.management_company_name}
+                  </Link>
+                )}
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+                  {manager.email && (
+                    <a href={`mailto:${manager.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {manager.email}</a>
+                  )}
+                  {manager.phone && (
+                    <a href={`tel:${manager.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {manager.phone}</a>
+                  )}
+                </div>
+                {manager.notes && <p className="mt-2 text-sm text-gray-500">{manager.notes}</p>}
+              </div>
+              {isAdmin && (
+                <DeleteContactButton
+                  confirmMessage={`Delete ${manager.name}? This will remove their known artist roster and artist links.`}
+                  action={boundDelete}
+                  redirectTo={redirectTo}
+                />
               )}
             </div>
-            {manager.management_company_name && (
-              <Link href={`/contacts/management/${manager.management_company_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
-                {manager.management_company_name}
-              </Link>
-            )}
-            <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
-              {manager.email && (
-                <a href={`mailto:${manager.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {manager.email}</a>
-              )}
-              {manager.phone && (
-                <a href={`tel:${manager.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {manager.phone}</a>
-              )}
-            </div>
-            {manager.notes && <p className="mt-2 text-sm text-gray-500">{manager.notes}</p>}
           </div>
         </div>
       </div>

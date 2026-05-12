@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getManagementCompanyDetail, getKnownArtistsForCompany } from "../../actions";
+import { getManagementCompanyDetail, getKnownArtistsForCompany, deleteManagementCompany } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
+import DeleteContactButton from "../../DeleteContactButton";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -28,11 +29,14 @@ export default async function ManagementCompanyDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ company, error }, knownArtists] = await Promise.all([
+  const [{ data: profile }, { company, error }, knownArtists] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
     getManagementCompanyDetail(params.id),
     getKnownArtistsForCompany(params.id),
   ]);
   if (error || !company) notFound();
+
+  const isAdmin = profile?.role === "admin";
 
   const allArtists = company.managers.flatMap((m) =>
     m.artists.map((a) => ({ ...a, managerName: m.name }))
@@ -40,6 +44,8 @@ export default async function ManagementCompanyDetailPage({
   const uniqueArtists = Array.from(new Map(allArtists.map((a) => [a.id, a])).values());
 
   const managerOptions = company.managers.map((m) => ({ id: m.id, name: m.name }));
+
+  const boundDelete = deleteManagementCompany.bind(null, params.id);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -53,22 +59,33 @@ export default async function ManagementCompanyDetailPage({
 
       {/* Header */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1B2A4A]">{company.name}</h1>
-        {company.website && (
-          <a
-            href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 text-sm text-[#C0392B] hover:underline"
-          >
-            {company.website}
-          </a>
-        )}
-        {company.notes && <p className="mt-2 text-sm text-gray-600">{company.notes}</p>}
-        <div className="mt-3 flex gap-4 text-sm text-gray-500">
-          <span>{company.managers.length} manager{company.managers.length !== 1 ? "s" : ""}</span>
-          <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
-          <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1B2A4A]">{company.name}</h1>
+            {company.website && (
+              <a
+                href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 text-sm text-[#C0392B] hover:underline"
+              >
+                {company.website}
+              </a>
+            )}
+            {company.notes && <p className="mt-2 text-sm text-gray-600">{company.notes}</p>}
+            <div className="mt-3 flex gap-4 text-sm text-gray-500">
+              <span>{company.managers.length} manager{company.managers.length !== 1 ? "s" : ""}</span>
+              <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+              <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
+          {isAdmin && (
+            <DeleteContactButton
+              confirmMessage={`Delete ${company.name}? This will also remove all managers and known artists linked to this company. This cannot be undone.`}
+              action={boundDelete}
+              redirectTo="/contacts"
+            />
+          )}
         </div>
       </div>
 

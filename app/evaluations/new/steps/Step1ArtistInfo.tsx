@@ -40,7 +40,7 @@ const VIP_OPTIONS = [
 const MANAGER_ROLES = ["Lead", "Day-to-Day", "A&R"];
 const AGENT_ROLES = ["US Booking", "UK/EU Booking", "Global", "Festivals", "Secondary", "Primary"];
 
-const MAX_SLOTS = 3;
+const MAX_SLOTS = 5;
 
 // ─── Inline create form ───────────────────────────────────────
 
@@ -861,9 +861,9 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
                   allPersons={managers}
                   selections={selectedPersons}
                   roles={MANAGER_ROLES}
-                  maxSelections={3}
+                  maxSelections={5}
                   onAdd={(id, name) => {
-                    if (slotManagerCount >= 3) return;
+                    if (slotManagerCount >= 5) return;
                     const newSel: ManagerSelection = { manager_id: id, role: "Lead", manager_name: name };
                     updateMgmtEntry(slotIdx, { manager_selections: [...entry.manager_selections, newSel] });
                   }}
@@ -977,9 +977,9 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
                   allPersons={agents}
                   selections={selectedPersons}
                   roles={AGENT_ROLES}
-                  maxSelections={3}
+                  maxSelections={5}
                   onAdd={(id, name) => {
-                    if (slotAgentCount >= 3) return;
+                    if (slotAgentCount >= 5) return;
                     const newSel: AgentSelection = { agent_id: id, role: "Primary", agent_name: name };
                     updateBookingEntry(slotIdx, { agent_selections: [...entry.agent_selections, newSel] });
                   }}

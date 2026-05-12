@@ -870,6 +870,56 @@ export async function removeKnownArtist(id: string): Promise<{ error: string | n
   return { error: error?.message ?? null };
 }
 
+export async function deleteManager(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  await supabase.from("known_artists").delete().eq("manager_id", id);
+  await supabase.from("artist_managers").delete().eq("manager_id", id);
+  const { error } = await supabase.from("managers").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteAgent(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  await supabase.from("known_artists").delete().eq("agent_id", id);
+  await supabase.from("artist_agents").delete().eq("agent_id", id);
+  const { error } = await supabase.from("agents").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteManagementCompany(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { data: managerRows } = await supabase
+    .from("managers")
+    .select("id")
+    .eq("management_company_id", id);
+  const managerIds = (managerRows ?? []).map((m) => m.id);
+  if (managerIds.length > 0) {
+    await supabase.from("known_artists").delete().in("manager_id", managerIds);
+    await supabase.from("artist_managers").delete().in("manager_id", managerIds);
+  }
+  await supabase.from("known_artists").delete().eq("management_company_id", id);
+  await supabase.from("managers").delete().eq("management_company_id", id);
+  const { error } = await supabase.from("management_companies").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteAgency(id: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { data: agentRows } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("agency_id", id);
+  const agentIds = (agentRows ?? []).map((a) => a.id);
+  if (agentIds.length > 0) {
+    await supabase.from("known_artists").delete().in("agent_id", agentIds);
+    await supabase.from("artist_agents").delete().in("agent_id", agentIds);
+  }
+  await supabase.from("known_artists").delete().eq("agency_id", id);
+  await supabase.from("agents").delete().eq("agency_id", id);
+  const { error } = await supabase.from("agencies").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
+
 // ─── Fuzzy match free-text fields against contacts DB ────────
 
 function parseBookingAgentText(raw: string): { agencyName: string | null; agentNames: string[] } {

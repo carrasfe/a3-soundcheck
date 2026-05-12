@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAgencyDetail, getKnownArtistsForAgency, getRosterCrossoverForAgency } from "../../actions";
+import { getAgencyDetail, getKnownArtistsForAgency, getRosterCrossoverForAgency, deleteAgency } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
+import DeleteContactButton from "../../DeleteContactButton";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -28,18 +29,23 @@ export default async function AgencyDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ agency, error }, knownArtists, crossovers] = await Promise.all([
+  const [{ data: profile }, { agency, error }, knownArtists, crossovers] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
     getAgencyDetail(params.id),
     getKnownArtistsForAgency(params.id),
     getRosterCrossoverForAgency(params.id),
   ]);
   if (error || !agency) notFound();
 
+  const isAdmin = profile?.role === "admin";
+
   const allArtists = agency.agents.flatMap((a) =>
     a.artists.map((ar) => ({ ...ar, agentName: a.name }))
   );
   const uniqueArtists = Array.from(new Map(allArtists.map((a) => [a.id, a])).values());
   const agentOptions = agency.agents.map((a) => ({ id: a.id, name: a.name }));
+
+  const boundDelete = deleteAgency.bind(null, params.id);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -52,22 +58,33 @@ export default async function AgencyDetailPage({
       </nav>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-[#1B2A4A]">{agency.name}</h1>
-        {agency.website && (
-          <a
-            href={agency.website.startsWith("http") ? agency.website : `https://${agency.website}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 text-sm text-[#C0392B] hover:underline"
-          >
-            {agency.website}
-          </a>
-        )}
-        {agency.notes && <p className="mt-2 text-sm text-gray-600">{agency.notes}</p>}
-        <div className="mt-3 flex gap-4 text-sm text-gray-500">
-          <span>{agency.agents.length} agent{agency.agents.length !== 1 ? "s" : ""}</span>
-          <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
-          <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1B2A4A]">{agency.name}</h1>
+            {agency.website && (
+              <a
+                href={agency.website.startsWith("http") ? agency.website : `https://${agency.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 text-sm text-[#C0392B] hover:underline"
+              >
+                {agency.website}
+              </a>
+            )}
+            {agency.notes && <p className="mt-2 text-sm text-gray-600">{agency.notes}</p>}
+            <div className="mt-3 flex gap-4 text-sm text-gray-500">
+              <span>{agency.agents.length} agent{agency.agents.length !== 1 ? "s" : ""}</span>
+              <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
+              <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
+          {isAdmin && (
+            <DeleteContactButton
+              confirmMessage={`Delete ${agency.name}? This will also remove all agents and known artists linked to this agency. This cannot be undone.`}
+              action={boundDelete}
+              redirectTo="/contacts"
+            />
+          )}
         </div>
       </div>
 

@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAgentDetail, getKnownArtistsForAgent, getRosterCrossoverForAgent } from "../../actions";
+import { getAgentDetail, getKnownArtistsForAgent, getRosterCrossoverForAgent, deleteAgent } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
+import DeleteContactButton from "../../DeleteContactButton";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -28,12 +29,19 @@ export default async function AgentDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ agent, error }, knownArtists, crossovers] = await Promise.all([
+  const [{ data: profile }, { agent, error }, knownArtists, crossovers] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
     getAgentDetail(params.id),
     getKnownArtistsForAgent(params.id),
     getRosterCrossoverForAgent(params.id),
   ]);
   if (error || !agent) notFound();
+
+  const isAdmin = profile?.role === "admin";
+  const boundDelete = deleteAgent.bind(null, params.id);
+  const redirectTo = agent.agency_id
+    ? `/contacts/agencies/${agent.agency_id}`
+    : "/contacts";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -58,26 +66,37 @@ export default async function AgentDetailPage({
             {agent.name[0].toUpperCase()}
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-[#1B2A4A]">{agent.name}</h1>
-              {!agent.is_active && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-[#1B2A4A]">{agent.name}</h1>
+                  {!agent.is_active && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
+                  )}
+                </div>
+                {agent.agency_name && (
+                  <Link href={`/contacts/agencies/${agent.agency_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
+                    {agent.agency_name}
+                  </Link>
+                )}
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+                  {agent.email && (
+                    <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {agent.email}</a>
+                  )}
+                  {agent.phone && (
+                    <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {agent.phone}</a>
+                  )}
+                </div>
+                {agent.notes && <p className="mt-2 text-sm text-gray-500">{agent.notes}</p>}
+              </div>
+              {isAdmin && (
+                <DeleteContactButton
+                  confirmMessage={`Delete ${agent.name}? This will remove their known artist roster and artist links.`}
+                  action={boundDelete}
+                  redirectTo={redirectTo}
+                />
               )}
             </div>
-            {agent.agency_name && (
-              <Link href={`/contacts/agencies/${agent.agency_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
-                {agent.agency_name}
-              </Link>
-            )}
-            <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
-              {agent.email && (
-                <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {agent.email}</a>
-              )}
-              {agent.phone && (
-                <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {agent.phone}</a>
-              )}
-            </div>
-            {agent.notes && <p className="mt-2 text-sm text-gray-500">{agent.notes}</p>}
           </div>
         </div>
       </div>
