@@ -112,7 +112,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between bg-[#1B2A4A] px-6 py-4">
+        <div className="flex items-center justify-between bg-[#001489] px-6 py-4">
           <div>
             <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Chartmetric Import</p>
             <h2 className="text-base font-semibold text-white">Audience Demographics CSV</h2>
@@ -123,7 +123,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
         {/* Step indicator */}
         <div className="flex border-b border-gray-100 px-6 py-3 gap-6 text-xs">
           {(["upload", "mapping", "preview"] as ModalStep[]).map((s, i) => (
-            <span key={s} className={`font-medium ${modalStep === s ? "text-[#C0392B]" : "text-gray-400"}`}>
+            <span key={s} className={`font-medium ${modalStep === s ? "text-[#C8102E]" : "text-gray-400"}`}>
               {i + 1}. {s.charAt(0).toUpperCase() + s.slice(1)}
             </span>
           ))}
@@ -141,13 +141,13 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
                 className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition ${
-                  isDragging ? "border-[#C0392B] bg-red-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"
+                  isDragging ? "border-[#C8102E] bg-red-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"
                 }`}
               >
                 <div className="mb-3 text-4xl">📊</div>
                 <p className="text-sm font-medium text-gray-700">Drag & drop your CSV here</p>
                 <p className="mt-1 text-xs text-gray-400">or</p>
-                <label className="mt-3 cursor-pointer rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-medium text-white hover:bg-[#1B2A4A]/90">
+                <label className="mt-3 cursor-pointer rounded-lg bg-[#001489] px-4 py-2 text-sm font-medium text-white hover:bg-[#001489]/90">
                   Browse files
                   <input type="file" accept=".csv" className="hidden" onChange={onFileChange} />
                 </label>
@@ -200,7 +200,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
                                 if (role) (newMapping as Record<string, string | null>)[role] = h;
                                 setMapping(newMapping);
                               }}
-                              className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C0392B]"
+                              className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C8102E]"
                             >
                               {MAPPING_OPTIONS.map((o) => (
                                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -223,7 +223,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
                 </button>
                 <button
                   onClick={applyMapping}
-                  className="flex-1 rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a93226]"
+                  className="flex-1 rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a60d26]"
                 >
                   Apply Mapping →
                 </button>
@@ -255,7 +255,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
                       return (
                         <tr key={key} className={val ? "" : "opacity-40"}>
                           <td className="px-4 py-2 text-gray-700">{label}</td>
-                          <td className="px-4 py-2 font-medium text-[#1B2A4A]">{val ? `${val}%` : "—"}</td>
+                          <td className="px-4 py-2 font-medium text-[#001489]">{val ? `${val}%` : "—"}</td>
                           <td className="px-4 py-2 text-center">{val ? "✓" : "—"}</td>
                         </tr>
                       );
@@ -278,7 +278,7 @@ export default function DemographicsImportModal({ onApply, onClose }: Props) {
                 <button
                   onClick={handleApply}
                   disabled={filledCount === 0}
-                  className="flex-1 rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
                 >
                   Apply {filledCount} Fields
                 </button>

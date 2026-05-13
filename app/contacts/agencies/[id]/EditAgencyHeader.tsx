@@ -6,7 +6,7 @@ import { updateAgency } from "../../actions";
 import DeleteContactButton from "../../DeleteContactButton";
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]";
 
 export default function EditAgencyHeader({
   agency,
@@ -68,13 +68,13 @@ export default function EditAgencyHeader({
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1B2A4A]">{agency.name}</h1>
+            <h1 className="text-2xl font-bold text-[#001489]">{agency.name}</h1>
             {agency.website && (
               <a
                 href={agency.website.startsWith("http") ? agency.website : `https://${agency.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 text-sm text-[#C0392B] hover:underline"
+                className="mt-1 text-sm text-[#C8102E] hover:underline"
               >
                 {agency.website}
               </a>
@@ -93,7 +93,7 @@ export default function EditAgencyHeader({
             <button
               type="button"
               onClick={startEdit}
-              className="rounded border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50 transition"
+              className="rounded border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-[#001489]/30 hover:bg-gray-50 transition"
             >
               Edit
             </button>
@@ -104,10 +104,10 @@ export default function EditAgencyHeader({
   }
 
   return (
-    <div className="rounded-xl border border-[#1B2A4A]/30 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-[#001489]/30 bg-white p-6 shadow-sm">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Edit Agency</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Edit Agency</h2>
           <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
             Cancel
           </button>
@@ -125,13 +125,13 @@ export default function EditAgencyHeader({
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
         </div>
         {stats}
-        {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+        {error && <p className="text-xs text-[#C8102E]">{error}</p>}
         <div className="flex gap-2 pt-1">
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1B2A4A]/90 disabled:opacity-50"
+            className="rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white hover:bg-[#001489]/90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

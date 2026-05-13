@@ -16,7 +16,7 @@ export default function DownloadPDFButton({ data, className, children }: Props) 
     setLoading(true);
     try {
       const { downloadScorecardPDF } = await import("@/lib/generate-scorecard-pdf");
-      downloadScorecardPDF(data);
+      await downloadScorecardPDF(data);
     } finally {
       setLoading(false);
     }

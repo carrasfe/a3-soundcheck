@@ -10,17 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          DEFAULT: "#1B2A4A",
-          dark: "#141f36",
-          light: "#243561",
+          DEFAULT: "#001489",
+          dark: "#00106b",
+          light: "#1428a8",
         },
         brand: {
-          red: "#C0392B",
-          "red-hover": "#a93226",
+          red: "#C8102E",
+          "red-hover": "#a60d26",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-nunito-sans)", "Helvetica Neue", "Arial", "sans-serif"],
       },
     },
   },

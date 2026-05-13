@@ -37,7 +37,7 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
     <div className="space-y-6">
       {/* Monthly Listeners + FCR */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Spotify</h3>
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">Spotify</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Monthly Listeners"
@@ -77,7 +77,7 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Spotify Growth</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Spotify Growth</h3>
             <p className="text-xs text-gray-500">30% weight in P4</p>
           </div>
           <ScoreBadge score={scores?.p4.sub_scores.spotify_yoy ?? null} />
@@ -98,23 +98,23 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
             <button
               type="button"
               onClick={() => onChange({ show_album_cycle: true })}
-              className="text-sm text-[#C0392B] hover:underline"
+              className="text-sm text-[#C8102E] hover:underline"
             >
               + Add album cycle context
             </button>
           ) : (
-            <div className="rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-4">
+            <div className="rounded-lg border border-[#001489]/20 bg-[#001489]/5 p-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-[#1B2A4A]">Album Cycle Context</p>
+                <p className="text-sm font-medium text-[#001489]">Album Cycle Context</p>
                 <button
                   type="button"
                   onClick={() => onChange({ show_album_cycle: false, album_cycle_override: "" })}
-                  className="text-xs text-[#C0392B] hover:underline"
+                  className="text-xs text-[#C8102E] hover:underline"
                 >
                   Remove
                 </button>
               </div>
-              <p className="mb-3 text-xs text-[#1B2A4A]/70">
+              <p className="mb-3 text-xs text-[#001489]/70">
                 If YoY score is below 3, this will boost it by 1 point (max 3). Useful when listener decline is expected mid-cycle.
               </p>
               <Select
@@ -136,7 +136,7 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Playlist / Algorithm Traction
             </h3>
             <p className="text-xs text-gray-500">10% weight in P4</p>
@@ -161,8 +161,8 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
 
       {/* P4 Live Preview */}
       {scores?.p4 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             P4 Live Preview
           </h3>
           <div className="grid grid-cols-5 gap-2 text-sm">
@@ -180,9 +180,9 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">P4 Score</span>
-            <span className="text-lg font-bold text-[#1B2A4A]">{scores.p4.final_score.toFixed(2)}</span>
+            <span className="text-lg font-bold text-[#001489]">{scores.p4.final_score.toFixed(2)}</span>
           </div>
         </section>
       )}

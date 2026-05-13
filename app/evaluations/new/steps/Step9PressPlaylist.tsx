@@ -19,7 +19,7 @@ export default function Step9PressPlaylist({ data, onChange, errors }: StepProps
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Press / Blog Coverage
             </h3>
             <p className="text-xs text-gray-500">15% weight in P4</p>
@@ -46,7 +46,7 @@ export default function Step9PressPlaylist({ data, onChange, errors }: StepProps
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Playlist / Algorithm Traction
             </h3>
             <p className="text-xs text-gray-500">10% weight in P4</p>
@@ -71,8 +71,8 @@ export default function Step9PressPlaylist({ data, onChange, errors }: StepProps
 
       {/* P4 Live Preview */}
       {p4 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             P4 Live Preview
           </h3>
           <div className="grid grid-cols-5 gap-2 text-sm">
@@ -90,9 +90,9 @@ export default function Step9PressPlaylist({ data, onChange, errors }: StepProps
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">P4 Score</span>
-            <span className="text-lg font-bold text-[#1B2A4A]">{p4.final_score.toFixed(2)}</span>
+            <span className="text-lg font-bold text-[#001489]">{p4.final_score.toFixed(2)}</span>
           </div>
         </section>
       )}

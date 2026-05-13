@@ -59,15 +59,15 @@ const FOOTER_Y   = 204;
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
 type RGB = [number, number, number];
-const NAVY:    RGB = [27,  42,  74];
-const RED:     RGB = [192, 57,  43];
+const NAVY:    RGB = [0,   20,  137];
+const RED:     RGB = [200, 16,  46];
 const DK:      RGB = [25,  25,  25];
 const MD:      RGB = [90,  90,  90];
 const LT:      RGB = [155, 155, 155];
 const WHITE:   RGB = [255, 255, 255];
-const BGINFO:  RGB = [237, 241, 248];
+const BGINFO:  RGB = [235, 238, 250];
 const BGROW:   RGB = [248, 249, 252];
-const DIV:     RGB = [205, 211, 222];
+const DIV:     RGB = [210, 215, 238];
 const GREEN:   RGB = [18,  130,  55];
 const GREEN_A3: RGB = [39, 174, 96];
 const BLUE:    RGB = [37,   99, 200];
@@ -225,12 +225,16 @@ const TOUR_L = ["", "Light", "Moderate", "Heavy", "Massive"];
 
 // ─── SECTION 1: Header bar ────────────────────────────────────────────────────
 
-function drawHeader(doc: jsPDF, d: ScorecardData): void {
+function drawHeader(doc: jsPDF, d: ScorecardData, logoBase64: string | null = null): void {
   const r = d.results;
   box(doc, 0, 0, PW, HDR_H, NAVY);
 
   // Branding
-  t(doc, "A3 SOUNDCHECK", ML, 6.5, { sz: 6.5, bold: true, color: [170, 190, 220] });
+  if (logoBase64) {
+    doc.addImage(logoBase64, "PNG", ML, 3, 42, 10);
+  } else {
+    t(doc, "A3 SOUNDCHECK", ML, 6.5, { sz: 6.5, bold: true, color: [170, 190, 220] });
+  }
 
   // Artist name
   const name = d.artistName.length > 42 ? d.artistName.slice(0, 40) + "…" : d.artistName;
@@ -739,12 +743,31 @@ function drawFooter(doc: jsPDF, d: ScorecardData): void {
   t(doc, right, PW - MR, FOOTER_Y + 3, { sz: 6, color: LT, align: "right" });
 }
 
+// ─── Logo loader ─────────────────────────────────────────────────────────────
+
+async function loadLogoBase64(path: string): Promise<string | null> {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function downloadScorecardPDF(data: ScorecardData): void {
+export async function downloadScorecardPDF(data: ScorecardData): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const logoBase64 = await loadLogoBase64("/a3-logo-horizontal.png");
 
-  drawHeader(doc, data);
+  drawHeader(doc, data, logoBase64);
   drawMgmtStrip(doc, data);
   drawProfileStrip(doc, data);
   drawPillarGrid(doc, data);

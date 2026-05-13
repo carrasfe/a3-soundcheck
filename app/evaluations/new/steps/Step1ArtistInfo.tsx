@@ -63,8 +63,8 @@ function InlineCreate({
     Object.fromEntries(fields.map((f) => [f.name, ""]))
   );
   return (
-    <div className="mt-2 rounded-lg border border-[#C0392B]/20 bg-[#C0392B]/5 p-3 space-y-2">
-      <p className="text-xs font-semibold text-[#C0392B]">{label}</p>
+    <div className="mt-2 rounded-lg border border-[#C8102E]/20 bg-[#C8102E]/5 p-3 space-y-2">
+      <p className="text-xs font-semibold text-[#C8102E]">{label}</p>
       {fields.map((f) => (
         <input
           key={f.name}
@@ -72,16 +72,16 @@ function InlineCreate({
           placeholder={f.placeholder}
           value={values[f.name]}
           onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-          className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+          className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
         />
       ))}
-      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+      {error && <p className="text-xs text-[#C8102E]">{error}</p>}
       <div className="flex gap-2">
         <button
           type="button"
           disabled={saving || !values[fields[0].name]?.trim()}
           onClick={() => onSave(values)}
-          className="rounded bg-[#C0392B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+          className="rounded bg-[#C8102E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
         >
           {saving ? "Saving…" : "Add"}
         </button>
@@ -144,7 +144,7 @@ function Combobox({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { setOpen(true); if (selectedOption) setQuery(""); }}
           placeholder={placeholder}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
         />
         {value && (
           <button
@@ -163,7 +163,7 @@ function Combobox({
                   <button
                     type="button"
                     onMouseDown={() => { onChange(opt.id, opt.name); setQuery(""); setOpen(false); }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-[#1B2A4A]/5"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-[#001489]/5"
                   >
                     {opt.name}
                   </button>
@@ -177,7 +177,7 @@ function Combobox({
               <button
                 type="button"
                 onMouseDown={() => { setOpen(false); onAddNew(); }}
-                className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C0392B] hover:bg-[#C0392B]/5"
+                className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C8102E] hover:bg-[#C8102E]/5"
               >
                 + Add New{query ? ` "${query}"` : ""}
               </button>
@@ -244,20 +244,20 @@ function PersonSelect({
       {selections.map((s) => {
         const relArtists = a3Artists?.[s.id];
         return (
-          <div key={s.id} className="rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2">
+          <div key={s.id} className="rounded-lg border border-[#001489]/20 bg-[#001489]/5 px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="flex-1 text-sm font-medium text-[#1B2A4A]">{s.name}</span>
+              <span className="flex-1 text-sm font-medium text-[#001489]">{s.name}</span>
               {relArtists && relArtists.length > 0 && (
                 <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#27AE60] text-white">A3 RELATIONSHIP</span>
               )}
               <select
                 value={s.role}
                 onChange={(e) => onRoleChange(s.id, e.target.value)}
-                className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C0392B]"
+                className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-[#C8102E]"
               >
                 {roles.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <button type="button" onClick={() => onRemove(s.id)} className="text-gray-400 hover:text-[#C0392B]">✕</button>
+              <button type="button" onClick={() => onRemove(s.id)} className="text-gray-400 hover:text-[#C8102E]">✕</button>
             </div>
             {relArtists && relArtists.length > 0 && (
               <p className="mt-1 text-xs text-[#27AE60]">{a3Label ?? "Also works with"}: {relArtists.join(", ")}</p>
@@ -273,7 +273,7 @@ function PersonSelect({
             onFocus={() => setOpen(true)}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             placeholder={companyId ? "Add a person…" : "Select a company/agency first, or search all…"}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
           />
           {open && (
             <div className="absolute z-20 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
@@ -283,7 +283,7 @@ function PersonSelect({
                     <button
                       type="button"
                       onMouseDown={() => { onAdd(p.id, p.name); setQuery(""); setOpen(false); }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#1B2A4A]/5"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#001489]/5"
                     >
                       {p.name}
                     </button>
@@ -297,7 +297,7 @@ function PersonSelect({
                 <button
                   type="button"
                   onMouseDown={() => { setOpen(false); onAddNew(); }}
-                  className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C0392B] hover:bg-[#C0392B]/5"
+                  className="w-full rounded px-3 py-2 text-left text-xs font-semibold text-[#C8102E] hover:bg-[#C8102E]/5"
                 >
                   + Add New Person
                 </button>
@@ -346,18 +346,18 @@ function KnownArtistsInline({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
             placeholder="e.g. Arctic Monkeys, Royal Blood"
-            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
           />
           <button
             type="button"
             onClick={submit}
             disabled={!input.trim()}
-            className="rounded bg-[#1B2A4A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243561] disabled:opacity-40"
+            className="rounded bg-[#001489] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1428a8] disabled:opacity-40"
           >
             Add
           </button>
         </div>
-        {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
+        {addError && <p className="text-xs text-[#C8102E]">{addError}</p>}
       </div>
     );
   }
@@ -372,7 +372,7 @@ function KnownArtistsInline({
             className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700"
           >
             {item.matched_artist_id ? (
-              <Link href={`/artists/${item.matched_artist_id}`} className="font-medium text-[#1B2A4A] hover:underline">
+              <Link href={`/artists/${item.matched_artist_id}`} className="font-medium text-[#001489] hover:underline">
                 {item.name}
               </Link>
             ) : (
@@ -381,7 +381,7 @@ function KnownArtistsInline({
             <button
               type="button"
               onClick={() => onRemove(item.id)}
-              className="ml-0.5 text-gray-400 hover:text-[#C0392B]"
+              className="ml-0.5 text-gray-400 hover:text-[#C8102E]"
             >
               ×
             </button>
@@ -394,19 +394,19 @@ function KnownArtistsInline({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
           placeholder="Add more names (comma-separated)…"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
           disabled={adding}
         />
         <button
           type="button"
           onClick={submit}
           disabled={adding || !input.trim()}
-          className="rounded bg-[#1B2A4A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243561] disabled:opacity-40"
+          className="rounded bg-[#001489] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1428a8] disabled:opacity-40"
         >
           {adding ? "…" : "Add"}
         </button>
       </div>
-      {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
+      {addError && <p className="text-xs text-[#C8102E]">{addError}</p>}
     </div>
   );
 }
@@ -751,44 +751,44 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
     <div className="space-y-8">
       {/* Core identity */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Artist Identity
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
-              Artist Name<span className="ml-0.5 text-[#C0392B]">*</span>
+              Artist Name<span className="ml-0.5 text-[#C8102E]">*</span>
             </label>
             <input
               value={data.artist_name}
               onChange={set("artist_name")}
               placeholder="e.g. The Marias"
-              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${errors.artist_name ? "border-[#C0392B]" : "border-gray-300"}`}
+              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] ${errors.artist_name ? "border-[#C8102E]" : "border-gray-300"}`}
             />
-            {errors.artist_name && <p className="text-xs text-[#C0392B]">{errors.artist_name}</p>}
+            {errors.artist_name && <p className="text-xs text-[#C8102E]">{errors.artist_name}</p>}
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
-              Genre<span className="ml-0.5 text-[#C0392B]">*</span>
+              Genre<span className="ml-0.5 text-[#C8102E]">*</span>
             </label>
             <select
               value={data.genre}
               onChange={set("genre")}
-              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${errors.genre ? "border-red-400" : "border-gray-300"}`}
+              className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] ${errors.genre ? "border-red-400" : "border-gray-300"}`}
             >
               <option value="">Select genre…</option>
               {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
-            {errors.genre && <p className="text-xs text-[#C0392B]">{errors.genre}</p>}
+            {errors.genre && <p className="text-xs text-[#C8102E]">{errors.genre}</p>}
           </div>
         </div>
         {savedContacts && !contactsBannerDismissed && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2 text-sm">
-            <span className="flex-1 text-[#1B2A4A]">Contacts loaded from previous evaluation.</span>
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#001489]/20 bg-[#001489]/5 px-3 py-2 text-sm">
+            <span className="flex-1 text-[#001489]">Contacts loaded from previous evaluation.</span>
             <button
               type="button"
               onClick={() => applyContacts(savedContacts)}
-              className="text-xs font-semibold text-[#C0392B] hover:underline"
+              className="text-xs font-semibold text-[#C8102E] hover:underline"
             >
               Reload saved
             </button>
@@ -806,7 +806,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
 
       {/* Management */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Management
         </h3>
         <div className="space-y-4">
@@ -826,7 +826,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
                     <button
                       type="button"
                       onClick={() => removeMgmtSlot(slotIdx)}
-                      className="text-xs text-gray-400 hover:text-[#C0392B] transition"
+                      className="text-xs text-gray-400 hover:text-[#C8102E] transition"
                     >
                       Remove
                     </button>
@@ -899,7 +899,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             <button
               type="button"
               onClick={addMgmtSlot}
-              className="text-xs font-semibold text-[#1B2A4A] hover:text-[#C0392B] transition"
+              className="text-xs font-semibold text-[#001489] hover:text-[#C8102E] transition"
             >
               + Add Another Management Company
             </button>
@@ -922,7 +922,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
 
       {/* Booking */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Booking
         </h3>
         <div className="space-y-4">
@@ -942,7 +942,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
                     <button
                       type="button"
                       onClick={() => removeBookingSlot(slotIdx)}
-                      className="text-xs text-gray-400 hover:text-[#C0392B] transition"
+                      className="text-xs text-gray-400 hover:text-[#C8102E] transition"
                     >
                       Remove
                     </button>
@@ -1015,7 +1015,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
             <button
               type="button"
               onClick={addBookingSlot}
-              className="text-xs font-semibold text-[#1B2A4A] hover:text-[#C0392B] transition"
+              className="text-xs font-semibold text-[#001489] hover:text-[#C8102E] transition"
             >
               + Add Another Agency
             </button>
@@ -1038,7 +1038,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
 
       {/* Merch & VIP */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Merch & VIP
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1048,7 +1048,7 @@ export default function Step1ArtistInfo({ data, onChange, errors }: StepProps) {
               value={data.merch_provider}
               onChange={set("merch_provider")}
               placeholder="e.g. Bravado, Live Nation Merchandise"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
             />
           </div>
           <Select label="VIP / M&G Program" value={data.vip_level} onChange={set("vip_level")}>

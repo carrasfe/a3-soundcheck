@@ -10,7 +10,7 @@ import DeleteContactButton from "../../DeleteContactButton";
 type Company = { id: string; name: string };
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]";
 
 function CompanySelect({
   companies,
@@ -60,7 +60,7 @@ function CompanySelect({
               type="button"
               onMouseDown={() => { onChange(c.id); setOpen(false); }}
               className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                c.id === value ? "font-semibold text-[#1B2A4A]" : "text-gray-700"
+                c.id === value ? "font-semibold text-[#001489]" : "text-gray-700"
               }`}
             >
               {c.name}
@@ -72,7 +72,7 @@ function CompanySelect({
           <button
             type="button"
             onMouseDown={() => { setOpen(false); onRequestCreate(); }}
-            className="w-full border-t border-gray-100 px-3 py-2 text-left text-xs font-semibold text-[#C0392B] hover:bg-red-50"
+            className="w-full border-t border-gray-100 px-3 py-2 text-left text-xs font-semibold text-[#C8102E] hover:bg-red-50"
           >
             + Create new company
           </button>
@@ -161,29 +161,29 @@ export default function EditManagerCard({
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1B2A4A]/10 text-lg font-bold text-[#1B2A4A]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#001489]/10 text-lg font-bold text-[#001489]">
             {manager.name[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-bold text-[#1B2A4A]">{manager.name}</h1>
+                  <h1 className="text-2xl font-bold text-[#001489]">{manager.name}</h1>
                   {!manager.is_active && (
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
                   )}
                 </div>
                 {manager.management_company_name && (
-                  <Link href={`/contacts/management/${manager.management_company_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
+                  <Link href={`/contacts/management/${manager.management_company_id}`} className="mt-0.5 text-sm text-[#C8102E] hover:underline">
                     {manager.management_company_name}
                   </Link>
                 )}
                 <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
                   {manager.email && (
-                    <a href={`mailto:${manager.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {manager.email}</a>
+                    <a href={`mailto:${manager.email}`} className="flex items-center gap-1 hover:text-[#C8102E]">✉ {manager.email}</a>
                   )}
                   {manager.phone && (
-                    <a href={`tel:${manager.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {manager.phone}</a>
+                    <a href={`tel:${manager.phone}`} className="flex items-center gap-1 hover:text-[#C8102E]">☎ {manager.phone}</a>
                   )}
                 </div>
                 {manager.notes && <p className="mt-2 text-sm text-gray-500">{manager.notes}</p>}
@@ -199,7 +199,7 @@ export default function EditManagerCard({
                 <button
                   type="button"
                   onClick={startEdit}
-                  className="rounded border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50 transition"
+                  className="rounded border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-[#001489]/30 hover:bg-gray-50 transition"
                 >
                   Edit
                 </button>
@@ -212,10 +212,10 @@ export default function EditManagerCard({
   }
 
   return (
-    <div className="rounded-xl border border-[#1B2A4A]/30 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-[#001489]/30 bg-white p-6 shadow-sm">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Edit Manager</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Edit Manager</h2>
           <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
             Cancel
           </button>
@@ -246,8 +246,8 @@ export default function EditManagerCard({
         </div>
 
         {showNewCompany && (
-          <div className="rounded-lg border border-[#C0392B]/20 bg-[#C0392B]/5 p-3 space-y-2">
-            <p className="text-xs font-semibold text-[#C0392B]">New Management Company</p>
+          <div className="rounded-lg border border-[#C8102E]/20 bg-[#C8102E]/5 p-3 space-y-2">
+            <p className="text-xs font-semibold text-[#C8102E]">New Management Company</p>
             <input
               value={newCoName}
               onChange={(e) => setNewCoName(e.target.value)}
@@ -265,7 +265,7 @@ export default function EditManagerCard({
                 type="button"
                 onClick={handleCreateCompany}
                 disabled={creatingCo || !newCoName.trim()}
-                className="rounded bg-[#C0392B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+                className="rounded bg-[#C8102E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
               >
                 {creatingCo ? "Creating…" : "Create"}
               </button>
@@ -295,19 +295,19 @@ export default function EditManagerCard({
             type="checkbox"
             checked={isActive}
             onChange={(e) => setIsActive(e.target.checked)}
-            className="h-4 w-4 accent-[#C0392B]"
+            className="h-4 w-4 accent-[#C8102E]"
           />
           Active
         </label>
 
-        {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+        {error && <p className="text-xs text-[#C8102E]">{error}</p>}
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1B2A4A]/90 disabled:opacity-50"
+            className="rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white hover:bg-[#001489]/90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

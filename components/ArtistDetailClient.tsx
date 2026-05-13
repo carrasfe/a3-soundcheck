@@ -29,7 +29,7 @@ function AddToContactsButton({
           router.refresh();
         })
       }
-      className="ml-1.5 rounded border border-dashed border-[#1B2A4A]/40 px-1.5 py-0.5 text-[10px] font-medium text-[#1B2A4A]/60 transition hover:border-[#1B2A4A] hover:text-[#1B2A4A] disabled:opacity-40"
+      className="ml-1.5 rounded border border-dashed border-[#001489]/40 px-1.5 py-0.5 text-[10px] font-medium text-[#001489]/60 transition hover:border-[#001489] hover:text-[#001489] disabled:opacity-40"
     >
       {pending ? "Adding…" : label}
     </button>
@@ -37,8 +37,8 @@ function AddToContactsButton({
 }
 
 const TIER_STYLES: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active:   "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active:   "bg-[#001489] text-white",
   Watch:    "bg-gray-200 text-gray-700",
   Pass:     "bg-gray-100 text-gray-500",
 };
@@ -64,7 +64,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="shrink-0 bg-[#1B2A4A] px-6 py-5 text-white">
+      <div className="shrink-0 bg-[#001489] px-6 py-5 text-white">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs text-white/50">
@@ -75,7 +75,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
             <div className="mt-1 flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl font-bold">{artist.name}</h1>
               {artist.is_a3_client && (
-                <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider bg-[#C0392B] text-white border border-white/20">
+                <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider bg-[#C8102E] text-white border border-white/20">
                   A3 CLIENT
                 </span>
               )}
@@ -104,7 +104,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
           <div className="flex shrink-0 flex-col items-end gap-2">
             <Link
               href="/evaluations/new"
-              className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
+              className="rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26]"
             >
               + New Evaluation
             </Link>
@@ -135,7 +135,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
       </div>
 
       {actionError && (
-        <div className="shrink-0 bg-[#C0392B]/10 border-b border-[#C0392B]/30 px-6 py-2 text-sm text-[#C0392B] flex items-center justify-between">
+        <div className="shrink-0 bg-[#C8102E]/10 border-b border-[#C8102E]/30 px-6 py-2 text-sm text-[#C8102E] flex items-center justify-between">
           <span>{actionError}</span>
           <button onClick={() => setActionError(null)} className="ml-4 font-bold hover:opacity-70">✕</button>
         </div>
@@ -146,7 +146,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
         <div className="mx-auto max-w-4xl space-y-8 px-6 py-8">
           {/* Artist Info */}
           <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Artist Info
             </h2>
             <dl className="grid gap-4 sm:grid-cols-2">
@@ -168,7 +168,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                             return (
                               <div key={m.id} className="flex flex-col gap-0.5 ml-2">
                                 <div className="flex items-center gap-1.5">
-                                  <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                  <Link href={`/contacts/managers/${m.id}`} className="font-medium text-[#001489] hover:underline">
                                     {m.name}
                                   </Link>
                                   <span className="text-xs text-gray-400">({m.role})</span>
@@ -188,7 +188,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                   ) : artist.fuzzy_managers.length > 0 ? (
                     <div className="flex flex-col gap-1">
                       {artist.fuzzy_managers.map((m) => (
-                        <Link key={m.id} href={`/contacts/managers/${m.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                        <Link key={m.id} href={`/contacts/managers/${m.id}`} className="font-medium text-[#001489] hover:underline">
                           {m.name}
                         </Link>
                       ))}
@@ -222,7 +222,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                             return (
                               <div key={a.id} className="flex flex-col gap-0.5 ml-2">
                                 <div className="flex items-center gap-1.5">
-                                  <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                                  <Link href={`/contacts/agents/${a.id}`} className="font-medium text-[#001489] hover:underline">
                                     {a.name}
                                   </Link>
                                   <span className="text-xs text-gray-400">({a.role})</span>
@@ -242,7 +242,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                   ) : (artist.fuzzy_agents.length > 0 || artist.unmatched_agent_names.length > 0) ? (
                     <div className="flex flex-col gap-1">
                       {artist.fuzzy_agents.map((a) => (
-                        <Link key={a.id} href={`/contacts/agents/${a.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                        <Link key={a.id} href={`/contacts/agents/${a.id}`} className="font-medium text-[#001489] hover:underline">
                           {a.name}
                         </Link>
                       ))}
@@ -278,7 +278,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
 
           {/* Evaluation History */}
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Evaluation History
               <span className="ml-2 text-xs font-normal normal-case text-gray-400">
                 {artist.evaluations.length} evaluation{artist.evaluations.length !== 1 ? "s" : ""}
@@ -290,7 +290,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                 <p className="text-sm text-gray-500">No completed evaluations yet.</p>
                 <Link
                   href="/evaluations/new"
-                  className="mt-4 inline-block rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
+                  className="mt-4 inline-block rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26]"
                 >
                   Create Evaluation
                 </Link>
@@ -322,7 +322,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                         <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
                           {new Date(ev.created_at).toLocaleDateString()}
                           {i === 0 && (
-                            <span className="ml-2 rounded bg-[#1B2A4A]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#1B2A4A]">
+                            <span className="ml-2 rounded bg-[#001489]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#001489]">
                               Latest
                             </span>
                           )}
@@ -330,7 +330,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                         <td className="px-4 py-3 text-gray-600">{ev.evaluator_name}</td>
                         <td className="px-4 py-3 text-center">
                           {ev.total_score != null ? (
-                            <span className="font-bold text-[#1B2A4A]">{ev.total_score.toFixed(2)}</span>
+                            <span className="font-bold text-[#001489]">{ev.total_score.toFixed(2)}</span>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
@@ -348,7 +348,7 @@ export default function ArtistDetailClient({ artist }: { artist: ArtistDetail })
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <Link
                             href={`/evaluations/${ev.id}`}
-                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#1B2A4A]"
+                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#001489]"
                           >
                             View →
                           </Link>

@@ -34,16 +34,11 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const allNavItems = isAdmin ? [...NAV_ITEMS, ...ADMIN_ITEMS] : NAV_ITEMS;
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-[#1B2A4A] text-white">
+    <aside className="flex h-screen w-64 flex-col bg-[#001489] text-white">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#C0392B] text-sm font-bold">
-          A3
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold leading-tight">A3 Soundcheck</p>
-          <p className="text-xs text-white/50">Artist Evaluation</p>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/a3-logo-stacked.png" alt="A3 Soundcheck" className="h-10 w-auto" />
         {/* Close button — mobile/tablet only */}
         <button
           className="lg:hidden -mr-1 flex h-8 w-8 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white transition"
@@ -62,7 +57,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         <span
           className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
             isAdmin
-              ? "bg-[#C0392B]/20 text-[#e05a4c]"
+              ? "bg-[#C8102E]/20 text-[#ff8a98]"
               : "bg-white/10 text-white/60"
           }`}
         >
@@ -85,7 +80,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
                   onClick={onClose}
                   className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-[#C0392B] text-white"
+                      ? "bg-[#C8102E] text-white"
                       : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >

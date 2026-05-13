@@ -40,7 +40,7 @@ function NumInput({
         if (!isNaN(v)) onChange(v);
         setRaw(null);
       }}
-      className={`w-full rounded border border-gray-200 bg-white px-2 py-1 text-center text-sm font-mono focus:border-[#1B2A4A] focus:outline-none focus:ring-1 focus:ring-[#1B2A4A]/30 ${className}`}
+      className={`w-full rounded border border-gray-200 bg-white px-2 py-1 text-center text-sm font-mono focus:border-[#001489] focus:outline-none focus:ring-1 focus:ring-[#001489]/30 ${className}`}
     />
   );
 }
@@ -62,7 +62,7 @@ function Section({ title, subtitle, defaultOpen = false, children }: SectionProp
         className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
       >
         <div>
-          <span className="font-semibold text-[#1B2A4A]">{title}</span>
+          <span className="font-semibold text-[#001489]">{title}</span>
           {subtitle && (
             <span className="ml-2 text-xs text-gray-400">{subtitle}</span>
           )}
@@ -115,7 +115,7 @@ function VersionHistoryPanel({ onClose, onRestore }: {
         className="flex h-full w-full max-w-lg flex-col bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 bg-[#1B2A4A] px-6 py-4">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-[#001489] px-6 py-4">
           <h2 className="font-semibold text-white">Version History</h2>
           <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none">×</button>
         </div>
@@ -138,7 +138,7 @@ function VersionHistoryPanel({ onClose, onRestore }: {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="rounded bg-[#1B2A4A] px-2 py-0.5 text-xs font-bold text-white">
+                        <span className="rounded bg-[#001489] px-2 py-0.5 text-xs font-bold text-white">
                           v{v.version}
                         </span>
                         {i === 0 && (
@@ -360,7 +360,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
           <button
             disabled={!isDirty || isSaving}
             onClick={() => setShowSummaryDialog(true)}
-            className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226] disabled:opacity-40"
+            className="rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26] disabled:opacity-40"
           >
             {isSaving ? "Saving…" : "Save Model Changes"}
           </button>
@@ -431,7 +431,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
             <tbody className="divide-y divide-gray-50">
               {(["HIGH", "MEDIUM", "LOW"] as const).map((tier) => (
                 <tr key={tier} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-semibold text-[#1B2A4A]">{tier}</td>
+                  <td className="px-3 py-1.5 font-semibold text-[#001489]">{tier}</td>
                   {[0, 1, 2, 3].map((idx) => (
                     <td key={idx} className="px-2 py-1 w-24">
                       <NumInput
@@ -468,7 +468,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
             <tbody className="divide-y divide-gray-50">
               {(["HIGH", "MEDIUM", "LOW"] as const).map((tier) => (
                 <tr key={tier} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-semibold text-[#1B2A4A]">{tier}</td>
+                  <td className="px-3 py-1.5 font-semibold text-[#001489]">{tier}</td>
                   {[0, 1, 2, 3].map((idx) => (
                     <td key={idx} className="px-2 py-1 w-24">
                       <NumInput
@@ -507,7 +507,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
             <tbody className="divide-y divide-gray-50">
               {(["PREMIUM", "STANDARD", "VALUE"] as const).map((tier) => (
                 <tr key={tier} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-semibold text-[#1B2A4A]">{tier}</td>
+                  <td className="px-3 py-1.5 font-semibold text-[#001489]">{tier}</td>
                   {[0, 1, 2, 3].map((idx) => (
                     <td key={idx} className="px-2 py-1 w-24">
                       <NumInput
@@ -546,7 +546,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
             <tbody className="divide-y divide-gray-50">
               {(["PREMIUM", "HIGH", "STANDARD", "LOW"] as const).map((rt) => (
                 <tr key={rt} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-semibold text-[#1B2A4A]">{rt}</td>
+                  <td className="px-3 py-1.5 font-semibold text-[#001489]">{rt}</td>
                   {(["priority", "active", "watch"] as const).map((key) => (
                     <td key={key} className="px-2 py-1 w-24">
                       <NumInput
@@ -644,7 +644,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
                 const sum = weights.reduce((a, b) => a + b, 0);
                 return (
                   <tr key={group} className="hover:bg-gray-50">
-                    <td className="px-3 py-1.5 font-semibold text-[#1B2A4A]">{group}</td>
+                    <td className="px-3 py-1.5 font-semibold text-[#001489]">{group}</td>
                     {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
                       <td key={idx} className="px-1 py-1 w-16">
                         <NumInput
@@ -712,7 +712,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
       {showSummaryDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h3 className="mb-3 text-base font-semibold text-[#1B2A4A]">Save Model Changes</h3>
+            <h3 className="mb-3 text-base font-semibold text-[#001489]">Save Model Changes</h3>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Change summary <span className="font-normal text-gray-400">(optional)</span>
             </label>
@@ -721,7 +721,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
               type="text"
               autoFocus
               placeholder="e.g. Adjusted FCR thresholds for Pop genre"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -732,7 +732,7 @@ export default function ScoringModelTab({ initialConfig }: { initialConfig: Mode
               </button>
               <button
                 onClick={() => handleSave(summaryRef.current?.value ?? "")}
-                className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a93226]"
+                className="rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a60d26]"
               >
                 Save Version
               </button>
@@ -778,7 +778,7 @@ function GenreTierDisplay({
       <div className="flex flex-wrap gap-3">
         {Object.entries(grouped).map(([tier, genres]) => (
           <div key={tier}>
-            <span className="font-semibold text-[#1B2A4A]">{tier}: </span>
+            <span className="font-semibold text-[#001489]">{tier}: </span>
             <span className="text-gray-600">{genres.join(", ")}</span>
           </div>
         ))}

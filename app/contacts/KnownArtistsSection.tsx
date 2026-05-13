@@ -122,7 +122,7 @@ function PasteRosterModal({
       <div className="relative w-full max-w-lg rounded-xl bg-white shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 shrink-0">
-          <h2 className="text-base font-semibold text-[#1B2A4A]">Paste Roster</h2>
+          <h2 className="text-base font-semibold text-[#001489]">Paste Roster</h2>
           <button
             type="button"
             onClick={onClose}
@@ -146,14 +146,14 @@ function PasteRosterModal({
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder={"Paste artist roster from Chartmetric or any list…\n\nExample:\nArctic Monkeys\nAlternative\nIndie Rock\n15.3M\n4.2M\nRoyal Blood\nRock\n858k\n413k"}
                 rows={12}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono outline-none resize-y focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono outline-none resize-y focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
               />
             </>
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500">
-                  Found <strong className="text-[#1B2A4A]">{parsed.length}</strong> artist{parsed.length !== 1 ? "s" : ""}.
+                  Found <strong className="text-[#001489]">{parsed.length}</strong> artist{parsed.length !== 1 ? "s" : ""}.
                   {selectedCount !== parsed.length && (
                     <span className="text-gray-400"> {selectedCount} selected.</span>
                   )}
@@ -161,7 +161,7 @@ function PasteRosterModal({
                 <button
                   type="button"
                   onClick={() => setChecked(checked.size === parsed.length ? new Set() : new Set(parsed))}
-                  className="text-xs text-[#1B2A4A] hover:underline"
+                  className="text-xs text-[#001489] hover:underline"
                 >
                   {checked.size === parsed.length ? "Deselect all" : "Select all"}
                 </button>
@@ -177,13 +177,13 @@ function PasteRosterModal({
                         type="checkbox"
                         checked={checked.has(name)}
                         onChange={(e) => toggleOne(name, e.target.checked)}
-                        className="accent-[#1B2A4A] shrink-0"
+                        className="accent-[#001489] shrink-0"
                       />
                       <span className="flex-1 text-sm text-gray-700">{name}</span>
                       <button
                         type="button"
                         onClick={() => removeOne(name)}
-                        className="shrink-0 text-gray-300 hover:text-[#C0392B] text-base leading-none"
+                        className="shrink-0 text-gray-300 hover:text-[#C8102E] text-base leading-none"
                         aria-label={`Remove ${name}`}
                       >
                         ×
@@ -193,7 +193,7 @@ function PasteRosterModal({
                 </div>
               )}
 
-              {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
+              {addError && <p className="text-xs text-[#C8102E]">{addError}</p>}
             </>
           )}
         </div>
@@ -205,7 +205,7 @@ function PasteRosterModal({
               type="button"
               onClick={handleParse}
               disabled={!rawText.trim()}
-              className="w-full rounded-lg bg-[#1B2A4A] py-2.5 text-sm font-semibold text-white hover:bg-[#243561] disabled:opacity-40 transition"
+              className="w-full rounded-lg bg-[#001489] py-2.5 text-sm font-semibold text-white hover:bg-[#1428a8] disabled:opacity-40 transition"
             >
               Parse
             </button>
@@ -222,7 +222,7 @@ function PasteRosterModal({
                 type="button"
                 onClick={handleAdd}
                 disabled={adding || selectedCount === 0}
-                className="flex-1 rounded-lg bg-[#C0392B] py-2.5 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-40 transition"
+                className="flex-1 rounded-lg bg-[#C8102E] py-2.5 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-40 transition"
               >
                 {adding ? "Adding…" : `Add ${selectedCount} Artist${selectedCount !== 1 ? "s" : ""}`}
               </button>
@@ -337,17 +337,17 @@ export default function KnownArtistsSection({
                   {item.matched_artist_id ? (
                     <Link
                       href={`/artists/${item.matched_artist_id}`}
-                      className="flex-1 text-sm font-medium text-[#1B2A4A] hover:underline"
+                      className="flex-1 text-sm font-medium text-[#001489] hover:underline"
                     >
                       {item.name}
-                      <span className="ml-1.5 text-[10px] font-normal text-[#C0392B]">in Soundcheck</span>
+                      <span className="ml-1.5 text-[10px] font-normal text-[#C8102E]">in Soundcheck</span>
                     </Link>
                   ) : (
                     <span className="flex-1 text-sm text-gray-700">{item.name}</span>
                   )}
                   <button
                     onClick={() => handleRemove(item.id)}
-                    className="shrink-0 text-gray-300 transition hover:text-[#C0392B]"
+                    className="shrink-0 text-gray-300 transition hover:text-[#C8102E]"
                     aria-label={`Remove ${item.name}`}
                   >
                     ×
@@ -363,7 +363,7 @@ export default function KnownArtistsSection({
               <select
                 value={selectedPersonId}
                 onChange={(e) => setSelectedPersonId(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
               >
                 <option value="">— Company level (unassigned) —</option>
                 {personOptions.map((p) => (
@@ -379,24 +379,24 @@ export default function KnownArtistsSection({
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
                 placeholder="Add artists (comma-separated)…"
                 disabled={adding}
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] disabled:opacity-50"
+                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] disabled:opacity-50"
               />
               <button
                 onClick={handleAdd}
                 disabled={adding || !input.trim()}
-                className="rounded-lg bg-[#1B2A4A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#243561] disabled:opacity-40"
+                className="rounded-lg bg-[#001489] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1428a8] disabled:opacity-40"
               >
                 {adding ? "Adding…" : "Add"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowPasteModal(true)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 transition hover:border-[#1B2A4A] hover:text-[#1B2A4A]"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 transition hover:border-[#001489] hover:text-[#001489]"
               >
                 Paste Roster
               </button>
             </div>
-            {addError && <p className="text-xs text-[#C0392B]">{addError}</p>}
+            {addError && <p className="text-xs text-[#C8102E]">{addError}</p>}
             <p className="text-xs text-gray-400">e.g. "Arctic Monkeys, Royal Blood" — or use Paste Roster for bulk import</p>
           </div>
         </div>

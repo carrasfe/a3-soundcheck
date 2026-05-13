@@ -53,17 +53,17 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
       )}
 
       {/* Chartmetric import banner */}
-      <div className="flex items-center justify-between rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-5 py-4">
+      <div className="flex items-center justify-between rounded-xl border border-[#001489]/20 bg-[#001489]/5 px-5 py-4">
         <div>
-          <p className="text-sm font-semibold text-[#1B2A4A]">Import platform data from Chartmetric</p>
-          <p className="mt-0.5 text-xs text-[#1B2A4A]/70">
+          <p className="text-sm font-semibold text-[#001489]">Import platform data from Chartmetric</p>
+          <p className="mt-0.5 text-xs text-[#001489]/70">
             Upload up to 5 CSVs to auto-fill Spotify, Instagram, TikTok and YouTube fields in Steps 4–6.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setShowImportModal(true)}
-          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243561]"
+          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1428a8]"
         >
           <span>📊</span>
           Import from Chartmetric CSVs
@@ -72,7 +72,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
 
       {/* Core inputs */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Venue & Schedule
         </h3>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -132,10 +132,10 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
 
         {/* Auto-calculated reach */}
         {reach > 0 && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#1B2A4A]/5 px-4 py-3">
+          <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#001489]/5 px-4 py-3">
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Audience Reach</p>
-              <p className="text-xl font-bold text-[#1B2A4A]">{fmt(Math.round(reach))}</p>
+              <p className="text-xl font-bold text-[#001489]">{fmt(Math.round(reach))}</p>
               <p className="text-xs text-gray-400">
                 {fmt(cap)} cap × {fmt(dates)} dates × {st}% sold = {fmt(Math.round(reach))}
               </p>
@@ -152,7 +152,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
 
       {/* Market coverage */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Market Coverage
           {p1 && (
             <span className="ml-2 inline-flex">
@@ -179,7 +179,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
 
       {/* Resale demand */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Resale Demand Signal
           {p1 && (
             <span className="ml-2 inline-flex">
@@ -223,7 +223,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
             {data.face_value && data.resale_price && parseFloat(data.face_value) > 0 && (
               <div className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-600">
                 <span>Resale multiplier:</span>
-                <span className="font-semibold text-[#1B2A4A]">
+                <span className="font-semibold text-[#001489]">
                   {(parseFloat(data.resale_price) / parseFloat(data.face_value)).toFixed(2)}×
                 </span>
               </div>
@@ -236,7 +236,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Venue Size Progression</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Venue Size Progression</h3>
             <p className="text-xs text-gray-500">25% weight in P4 — vs. last major cycle</p>
           </div>
           <ScoreBadge score={scores?.p4.sub_scores.venue_progression ?? null} />
@@ -262,8 +262,8 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
 
       {/* Summary */}
       {p1 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             P1 Live Preview
           </h3>
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
@@ -280,11 +280,11 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">
               Weighted P1 Score (before VIP bonus)
             </span>
-            <span className="text-lg font-bold text-[#1B2A4A]">
+            <span className="text-lg font-bold text-[#001489]">
               {p1.weighted_score.toFixed(2)}
               {p1.bonus !== undefined && p1.bonus > 0 && (
                 <span className="ml-1 text-sm font-normal text-emerald-600">

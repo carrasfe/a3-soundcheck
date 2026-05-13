@@ -2,7 +2,7 @@ export default function DashboardLoading() {
   return (
     <div className="flex h-full flex-col animate-pulse">
       {/* Header */}
-      <div className="shrink-0 bg-[#1B2A4A] px-6 py-5">
+      <div className="shrink-0 bg-[#001489] px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
             <div className="h-6 w-28 rounded bg-white/20" />

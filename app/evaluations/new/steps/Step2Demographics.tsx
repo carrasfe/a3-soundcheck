@@ -64,12 +64,12 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
           value={data[key] as string}
           onChange={set(key)}
           placeholder="0"
-          className={`w-20 rounded-md border px-2 py-1.5 text-center text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${
-            filled ? "border-[#1B2A4A]/30 bg-[#1B2A4A]/5" : "border-gray-300"
+          className={`w-20 rounded-md border px-2 py-1.5 text-center text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] ${
+            filled ? "border-[#001489]/30 bg-[#001489]/5" : "border-gray-300"
           }`}
         />
         {filled && (
-          <span className="absolute -top-3 left-0 text-[9px] font-semibold text-[#1B2A4A]">CM</span>
+          <span className="absolute -top-3 left-0 text-[9px] font-semibold text-[#001489]">CM</span>
         )}
       </div>
     );
@@ -92,7 +92,7 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
         <button
           type="button"
           onClick={() => setShowImportModal(true)}
-          className="shrink-0 flex items-center gap-1.5 rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-3 py-2 text-sm font-medium text-[#1B2A4A] transition hover:bg-[#1B2A4A]/10"
+          className="shrink-0 flex items-center gap-1.5 rounded-lg border border-[#001489]/20 bg-[#001489]/5 px-3 py-2 text-sm font-medium text-[#001489] transition hover:bg-[#001489]/10"
         >
           <span>📊</span>
           Import from Chartmetric
@@ -102,7 +102,7 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
       {/* Age grid */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
             Age & Gender Distribution
           </h3>
           <span className="text-xs text-gray-400">Enter as 75, not 0.75</span>
@@ -154,7 +154,7 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
 
       {/* Ethnicity */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-[#001489]">
           Ethnicity
         </h3>
         <p className="mb-4 text-xs text-gray-500">
@@ -182,7 +182,7 @@ export default function Step2Demographics({ data, onChange, onCsvFill, csvFilled
                     value={data[key] as string}
                     onChange={set(key)}
                     placeholder="0"
-                    className={`w-full rounded-md border px-3 py-2 pr-7 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${
+                    className={`w-full rounded-md border px-3 py-2 pr-7 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] ${
                       filled ? "border-blue-300 bg-blue-50/40" : "border-gray-300"
                     }`}
                   />
@@ -201,7 +201,7 @@ function Stat({ label, value, highlight = false }: { label: string; value: strin
   return (
     <div>
       <p className="text-xs text-gray-500">{label}</p>
-      <p className={`font-semibold ${highlight ? "text-[#C0392B]" : "text-gray-800"}`}>{value}</p>
+      <p className={`font-semibold ${highlight ? "text-[#C8102E]" : "text-gray-800"}`}>{value}</p>
     </div>
   );
 }

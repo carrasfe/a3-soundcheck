@@ -30,15 +30,15 @@ export default function DeleteContactButton({
 
   if (confirming) {
     return (
-      <div className="rounded-lg border border-[#C0392B]/30 bg-[#C0392B]/5 p-4 space-y-3">
+      <div className="rounded-lg border border-[#C8102E]/30 bg-[#C8102E]/5 p-4 space-y-3">
         <p className="text-sm text-gray-700">{confirmMessage}</p>
-        {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+        {error && <p className="text-xs text-[#C8102E]">{error}</p>}
         <div className="flex gap-2">
           <button
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="rounded bg-[#C0392B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+            className="rounded bg-[#C8102E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
           >
             {deleting ? "Deleting…" : "Yes, Delete"}
           </button>
@@ -59,7 +59,7 @@ export default function DeleteContactButton({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="text-xs font-semibold text-[#C0392B] hover:text-[#a93226] transition"
+      className="text-xs font-semibold text-[#C8102E] hover:text-[#a60d26] transition"
     >
       Delete
     </button>

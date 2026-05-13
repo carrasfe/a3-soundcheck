@@ -328,7 +328,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
   return (
     <div className="flex min-h-full flex-col print:block">
       {/* ── Sticky header ── */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#1B2A4A] print:hidden">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#001489] print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
           {/* Breadcrumb */}
           <div className="shrink-0">
@@ -351,7 +351,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
                     >
                       <span
                         className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition ${
-                          isActive    ? "bg-[#C0392B] text-white"
+                          isActive    ? "bg-[#C8102E] text-white"
                           : isCompleted ? "bg-white/20 text-white"
                           : "bg-white/10 text-white/40"
                         }`}
@@ -424,10 +424,10 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
         <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-full print:px-8 print:py-4">
           {/* Step title + progress bar */}
           <div className="mb-6 print:hidden">
-            <h1 className="text-xl font-bold text-[#1B2A4A]">{STEPS[step - 1]}</h1>
+            <h1 className="text-xl font-bold text-[#001489]">{STEPS[step - 1]}</h1>
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-200">
               <div
-                className="h-full rounded-full bg-[#C0392B] transition-all duration-500"
+                className="h-full rounded-full bg-[#C8102E] transition-all duration-500"
                 style={{ width: `${(step / STEPS.length) * 100}%` }}
               />
             </div>
@@ -450,7 +450,7 @@ export default function EvaluationWizard({ evaluatorName, prefillId, editId }: P
             </button>
             <button
               onClick={() => goTo(step + 1)}
-              className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
+              className="rounded-lg bg-[#C8102E] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26]"
             >
               {step === 8 ? "View Results →" : "Next →"}
             </button>

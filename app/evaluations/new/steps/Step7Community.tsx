@@ -34,7 +34,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
       {/* Reddit */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Reddit</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Reddit</h3>
           <ScoreBadge score={p2?.sub_scores.Reddit ?? null} />
         </div>
         <Input
@@ -53,7 +53,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
       {/* Discord */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Discord</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Discord</h3>
           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
             {data.discord_members ? discordBonusLabel(data.discord_members) : "Bonus metric"}
           </span>
@@ -76,7 +76,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Fan Identity Signaling</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Fan Identity Signaling</h3>
             <p className="mt-0.5 text-xs text-gray-500">How strong is the artist's fan community and tribal identity?</p>
           </div>
           <ScoreBadge score={p2?.sub_scores.FanID ?? null} size="md" />
@@ -100,7 +100,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
       {/* Merch Sentiment */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Merch-Specific Sentiment</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Merch-Specific Sentiment</h3>
           <ScoreBadge score={p2?.sub_scores.MerchSent ?? null} />
         </div>
         <ScoreSelector
@@ -123,7 +123,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Press / Blog Coverage
             </h3>
             <p className="text-xs text-gray-500">15% weight in P4</p>
@@ -148,8 +148,8 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
 
       {/* P2 Live Preview */}
       {p2 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             P2 Live Preview
           </h3>
           <div className="grid grid-cols-4 gap-2 text-sm sm:grid-cols-7">
@@ -160,7 +160,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">
               Weighted P2 Score
               {(p2.bonus ?? 0) > 0 && (
@@ -169,7 +169,7 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
                 </span>
               )}
             </span>
-            <span className="text-lg font-bold text-[#1B2A4A]">{p2.final_score.toFixed(2)}</span>
+            <span className="text-lg font-bold text-[#001489]">{p2.final_score.toFixed(2)}</span>
           </div>
         </section>
       )}

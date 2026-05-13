@@ -50,7 +50,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
     <div className="space-y-6">
       {/* Spotify */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Spotify Growth</h3>
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">Spotify Growth</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Monthly Listeners</label>
@@ -84,23 +84,23 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
             <button
               type="button"
               onClick={() => onChange({ show_album_cycle: true })}
-              className="text-sm text-[#C0392B] hover:underline"
+              className="text-sm text-[#C8102E] hover:underline"
             >
               + Add album cycle context
             </button>
           ) : (
-            <div className="rounded-lg border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-4">
+            <div className="rounded-lg border border-[#001489]/20 bg-[#001489]/5 p-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-[#1B2A4A]">Album Cycle Context</p>
+                <p className="text-sm font-medium text-[#001489]">Album Cycle Context</p>
                 <button
                   type="button"
                   onClick={() => onChange({ show_album_cycle: false, album_cycle_override: "" })}
-                  className="text-xs text-[#C0392B] hover:underline"
+                  className="text-xs text-[#C8102E] hover:underline"
                 >
                   Remove
                 </button>
               </div>
-              <p className="mb-3 text-xs text-[#1B2A4A]/70">
+              <p className="mb-3 text-xs text-[#001489]/70">
                 If YoY score is below 3, this will boost it by 1 point (max 3). Useful when listener decline is expected mid-cycle.
               </p>
               <Select
@@ -122,7 +122,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Venue Progression</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Venue Progression</h3>
             <p className="text-xs text-gray-500">25% weight</p>
           </div>
           <ScoreBadge score={p4?.sub_scores.venue_progression ?? null} />
@@ -151,7 +151,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Instagram Growth</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Instagram Growth</h3>
             <p className="text-xs text-gray-500">20% weight</p>
           </div>
           <ScoreBadge score={p4?.sub_scores.ig_growth ?? null} />
@@ -178,7 +178,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
             />
             {igGrowthPct && (
               <p className="mt-1 text-xs text-gray-500">
-                Growth rate: <span className="font-semibold text-[#1B2A4A]">{igGrowthPct}</span>
+                Growth rate: <span className="font-semibold text-[#001489]">{igGrowthPct}</span>
                 {parseFloat(data.ig_followers) > 200_000 && (
                   <span className="ml-1 text-gray-400">(relaxed thresholds for 200K+ accounts)</span>
                 )}
@@ -190,12 +190,12 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
 
       {/* Press & Playlist */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Press & Playlist</h3>
+        <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-[#001489]">Press & Playlist</h3>
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Press Coverage <span className="text-[#C0392B]">*</span>
+                Press Coverage <span className="text-[#C8102E]">*</span>
               </label>
               <ScoreBadge score={p4?.sub_scores.press ?? null} />
             </div>
@@ -218,7 +218,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
           <div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Playlist Placement <span className="text-[#C0392B]">*</span>
+                Playlist Placement <span className="text-[#C8102E]">*</span>
               </label>
               <ScoreBadge score={p4?.sub_scores.playlist ?? null} />
             </div>
@@ -243,8 +243,8 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
 
       {/* P4 summary */}
       {p4 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">P4 Live Preview</h3>
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">P4 Live Preview</h3>
           <div className="grid grid-cols-5 gap-2 text-sm">
             {[
               { label: "YoY",      score: p4.sub_scores.spotify_yoy,       weight: "30%" },
@@ -260,9 +260,9 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">P4 Score</span>
-            <span className="text-lg font-bold text-[#1B2A4A]">{p4.final_score.toFixed(2)}</span>
+            <span className="text-lg font-bold text-[#001489]">{p4.final_score.toFixed(2)}</span>
           </div>
         </section>
       )}

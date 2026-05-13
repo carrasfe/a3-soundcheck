@@ -9,10 +9,10 @@ function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
   const n = parseInt(tier.replace(/\D.*/, ""));
   const color =
-    n === 1 ? "bg-[#1B2A4A] text-white"
-    : n === 2 ? "bg-[#1B2A4A]/70 text-white"
+    n === 1 ? "bg-[#001489] text-white"
+    : n === 2 ? "bg-[#001489]/70 text-white"
     : n === 3 ? "bg-gray-200 text-gray-700"
-    : "bg-[#C0392B]/10 text-[#C0392B]";
+    : "bg-[#C8102E]/10 text-[#C8102E]";
   return (
     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${color}`}>
       {tier.replace(" — ", " ")}
@@ -49,11 +49,11 @@ export default async function ManagementCompanyDetailPage({
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/contacts" className="hover:text-[#1B2A4A]">Contacts</Link>
+        <Link href="/contacts" className="hover:text-[#001489]">Contacts</Link>
         <span>/</span>
-        <Link href="/contacts" className="hover:text-[#1B2A4A]">Management</Link>
+        <Link href="/contacts" className="hover:text-[#001489]">Management</Link>
         <span>/</span>
-        <span className="font-medium text-[#1B2A4A]">{company.name}</span>
+        <span className="font-medium text-[#001489]">{company.name}</span>
       </nav>
 
       <EditCompanyHeader
@@ -77,7 +77,7 @@ export default async function ManagementCompanyDetailPage({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Link href={`/contacts/managers/${m.id}`} className="text-base font-semibold text-[#1B2A4A] hover:underline">
+                      <Link href={`/contacts/managers/${m.id}`} className="text-base font-semibold text-[#001489] hover:underline">
                         {m.name}
                       </Link>
                       {!m.is_active && (
@@ -85,14 +85,14 @@ export default async function ManagementCompanyDetailPage({
                       )}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
-                      {m.email && <a href={`mailto:${m.email}`} className="hover:text-[#C0392B]">{m.email}</a>}
+                      {m.email && <a href={`mailto:${m.email}`} className="hover:text-[#C8102E]">{m.email}</a>}
                       {m.phone && <span>{m.phone}</span>}
                     </div>
                   </div>
                   <Link
                     href={`/contacts/managers/${m.id}`}
                     title="Edit manager"
-                    className="shrink-0 rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#1B2A4A]/30 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+                    className="shrink-0 rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#001489]/30 hover:bg-gray-50 hover:text-[#001489] transition"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -105,7 +105,7 @@ export default async function ManagementCompanyDetailPage({
                     <div className="space-y-1.5">
                       {m.artists.map((a) => (
                         <div key={a.id} className="flex items-center gap-3">
-                          <Link href={`/artists/${a.id}`} className="text-sm font-medium text-[#1B2A4A] hover:underline">
+                          <Link href={`/artists/${a.id}`} className="text-sm font-medium text-[#001489] hover:underline">
                             {a.name}
                           </Link>
                           <span className="text-xs text-gray-400">{a.role}</span>
@@ -130,7 +130,7 @@ export default async function ManagementCompanyDetailPage({
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
             {uniqueArtists.map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-5 py-3">
-                <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-medium text-[#1B2A4A] hover:underline">
+                <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-medium text-[#001489] hover:underline">
                   {a.name}
                 </Link>
                 <span className="text-xs text-gray-400">{a.managerName}</span>

@@ -42,7 +42,7 @@ export default function AppShell({ showSidebar, children }: Props) {
         {/* Hamburger — visible only on mobile/tablet when sidebar is not open */}
         {showSidebar && (
           <button
-            className="lg:hidden fixed top-3 left-3 z-30 flex h-9 w-9 items-center justify-center rounded-md bg-[#1B2A4A] text-white shadow-md"
+            className="lg:hidden fixed top-3 left-3 z-30 flex h-9 w-9 items-center justify-center rounded-md bg-[#001489] text-white shadow-md"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open navigation"
           >

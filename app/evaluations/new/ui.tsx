@@ -5,7 +5,7 @@ import React from "react";
 // ── Chartmetric source badge ──────────────────────────────────
 export function ChartmetricBadge() {
   return (
-    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-[#1B2A4A]/10 text-[#1B2A4A] leading-none">
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-[#001489]/10 text-[#001489] leading-none">
       Chartmetric
     </span>
   );
@@ -24,18 +24,18 @@ export function Input({ label, hint, required, error, csvFilled, className, ...r
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <label className="text-sm font-medium text-gray-700">
-          {label}{required && <span className="ml-0.5 text-[#C0392B]">*</span>}
+          {label}{required && <span className="ml-0.5 text-[#C8102E]">*</span>}
         </label>
         {csvFilled && <ChartmetricBadge />}
       </div>
       <input
         {...rest}
-        className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] disabled:bg-gray-50 ${
-          csvFilled ? "border-[#1B2A4A]/30 bg-[#1B2A4A]/5" : error ? "border-[#C0392B]" : "border-gray-300"
+        className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] disabled:bg-gray-50 ${
+          csvFilled ? "border-[#001489]/30 bg-[#001489]/5" : error ? "border-[#C8102E]" : "border-gray-300"
         } ${className ?? ""}`}
       />
       {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
-      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+      {error && <p className="text-xs text-[#C8102E]">{error}</p>}
     </div>
   );
 }
@@ -52,18 +52,18 @@ export function Select({ label, hint, required, error, children, className, ...r
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium text-gray-700">
-        {label}{required && <span className="ml-0.5 text-[#C0392B]">*</span>}
+        {label}{required && <span className="ml-0.5 text-[#C8102E]">*</span>}
       </label>
       <select
         {...rest}
-        className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] ${
+        className={`rounded-md border px-3 py-2 text-sm shadow-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] ${
           error ? "border-red-400" : "border-gray-300"
         } ${className ?? ""}`}
       >
         {children}
       </select>
       {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
-      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+      {error && <p className="text-xs text-[#C8102E]">{error}</p>}
     </div>
   );
 }
@@ -88,7 +88,7 @@ export function ScoreSelector({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
         <label className="text-sm font-medium text-gray-700">
-          {label}{required && <span className="ml-0.5 text-[#C0392B]">*</span>}
+          {label}{required && <span className="ml-0.5 text-[#C8102E]">*</span>}
         </label>
         {csvFilled && <ChartmetricBadge />}
       </div>
@@ -100,8 +100,8 @@ export function ScoreSelector({
             onClick={() => onChange(String(n))}
             className={`h-10 w-10 rounded-md border text-sm font-semibold transition ${
               selected === n
-                ? "border-[#C0392B] bg-[#C0392B] text-white shadow-sm"
-                : "border-gray-300 text-gray-600 hover:border-[#C0392B] hover:text-[#C0392B]"
+                ? "border-[#C8102E] bg-[#C8102E] text-white shadow-sm"
+                : "border-gray-300 text-gray-600 hover:border-[#C8102E] hover:text-[#C8102E]"
             }`}
           >
             {n}
@@ -111,7 +111,7 @@ export function ScoreSelector({
       {descriptions && selected >= 1 && selected <= descriptions.length && (
         <p className="text-xs text-gray-500 italic">{descriptions[selected - 1]}</p>
       )}
-      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+      {error && <p className="text-xs text-[#C8102E]">{error}</p>}
     </div>
   );
 }
@@ -136,7 +136,7 @@ export function RadioCardSelector({
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-gray-700">
-        {label}{required && <span className="ml-0.5 text-[#C0392B]">*</span>}
+        {label}{required && <span className="ml-0.5 text-[#C8102E]">*</span>}
       </label>
       <div className="flex flex-col gap-2">
         {options.map((opt) => {
@@ -148,26 +148,26 @@ export function RadioCardSelector({
               onClick={() => onChange(opt.value)}
               className={`flex items-start gap-3 rounded-lg border p-3 text-left transition ${
                 selected
-                  ? "border-[#C0392B] bg-[#C0392B]/5"
-                  : "border-gray-200 bg-white hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+                  ? "border-[#C8102E] bg-[#C8102E]/5"
+                  : "border-gray-200 bg-white hover:border-[#001489]/30 hover:bg-gray-50"
               }`}
             >
               <span
                 className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                  selected ? "border-[#C0392B]" : "border-gray-300"
+                  selected ? "border-[#C8102E]" : "border-gray-300"
                 }`}
               >
-                {selected && <span className="h-2 w-2 rounded-full bg-[#C0392B]" />}
+                {selected && <span className="h-2 w-2 rounded-full bg-[#C8102E]" />}
               </span>
               <span
                 className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
-                  selected ? "bg-[#C0392B] text-white" : "bg-[#1B2A4A]/10 text-[#1B2A4A]"
+                  selected ? "bg-[#C8102E] text-white" : "bg-[#001489]/10 text-[#001489]"
                 }`}
               >
                 {opt.value}
               </span>
               <span className="flex flex-col">
-                <span className={`text-sm font-medium ${selected ? "text-[#1B2A4A]" : "text-gray-700"}`}>
+                <span className={`text-sm font-medium ${selected ? "text-[#001489]" : "text-gray-700"}`}>
                   {opt.title}
                 </span>
                 {opt.detail && (
@@ -178,7 +178,7 @@ export function RadioCardSelector({
           );
         })}
       </div>
-      {error && <p className="text-xs text-[#C0392B]">{error}</p>}
+      {error && <p className="text-xs text-[#C8102E]">{error}</p>}
     </div>
   );
 }
@@ -193,10 +193,10 @@ export function ScoreBadge({ score, size = "sm" }: { score: number | null; size?
     );
   }
   const color =
-    score >= 4 ? "bg-[#1B2A4A]/10 text-[#1B2A4A]"
-    : score >= 3 ? "bg-[#1B2A4A]/5 text-[#1B2A4A]/70"
+    score >= 4 ? "bg-[#001489]/10 text-[#001489]"
+    : score >= 3 ? "bg-[#001489]/5 text-[#001489]/70"
     : score >= 2 ? "bg-gray-100 text-gray-600"
-    : "bg-[#C0392B]/10 text-[#C0392B]";
+    : "bg-[#C8102E]/10 text-[#C8102E]";
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 font-semibold ${color} ${size === "md" ? "text-sm" : "text-xs"}`}>
       {Number.isInteger(score) ? score : score.toFixed(1)}
@@ -208,7 +208,7 @@ export function ScoreBadge({ score, size = "sm" }: { score: number | null; size?
 export function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5 border-b border-gray-200 pb-3">
-      <h3 className="text-base font-semibold text-[#1B2A4A]">{title}</h3>
+      <h3 className="text-base font-semibold text-[#001489]">{title}</h3>
       {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
     </div>
   );
@@ -217,7 +217,7 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
 // ── Callout box ───────────────────────────────────────────────
 export function Callout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 px-4 py-3 text-sm text-[#1B2A4A]">
+    <div className="rounded-md border border-[#001489]/20 bg-[#001489]/5 px-4 py-3 text-sm text-[#001489]">
       {children}
     </div>
   );

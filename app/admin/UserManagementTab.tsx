@@ -5,12 +5,12 @@ import type { AdminUser } from "./actions";
 import { inviteUser, updateUserRole, setUserStatus, listUsers } from "./actions";
 
 const ROLE_BADGE: Record<string, string> = {
-  admin:     "bg-[#C0392B]/10 text-[#C0392B] border border-[#C0392B]/20",
-  evaluator: "bg-[#1B2A4A]/10 text-[#1B2A4A] border border-[#1B2A4A]/20",
+  admin:     "bg-[#C8102E]/10 text-[#C8102E] border border-[#C8102E]/20",
+  evaluator: "bg-[#001489]/10 text-[#001489] border border-[#001489]/20",
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  active:   "bg-[#1B2A4A]/5 text-[#1B2A4A] border border-[#1B2A4A]/20",
+  active:   "bg-[#001489]/5 text-[#001489] border border-[#001489]/20",
   inactive: "bg-gray-100 text-gray-500 border border-gray-200",
 };
 
@@ -81,7 +81,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
         </div>
         <button
           onClick={() => { setShowInvite(true); setInviteError(null); setInviteSuccess(false); }}
-          className="rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#243561] transition"
+          className="rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#1428a8] transition"
         >
           + Invite User
         </button>
@@ -127,7 +127,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
                     onChange={(e) =>
                       handleRoleChange(user.id, e.target.value as "admin" | "evaluator")
                     }
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20 cursor-pointer ${
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#001489]/20 cursor-pointer ${
                       ROLE_BADGE[user.role] ?? ROLE_BADGE.evaluator
                     }`}
                   >
@@ -173,7 +173,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-4 text-base font-semibold text-[#1B2A4A]">Invite New User</h3>
+            <h3 className="mb-4 text-base font-semibold text-[#001489]">Invite New User</h3>
 
             {inviteSuccess ? (
               <div className="rounded-lg bg-emerald-50 px-4 py-6 text-center">
@@ -196,7 +196,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
                       onChange={(e) => setInviteEmail(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleInvite()}
                       placeholder="name@company.com"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
                     />
                   </div>
                   <div>
@@ -204,7 +204,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
                     <select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value as "evaluator" | "admin")}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none"
                     >
                       <option value="evaluator">Evaluator</option>
                       <option value="admin">Admin</option>
@@ -228,7 +228,7 @@ export default function UserManagementTab({ initialUsers }: { initialUsers: Admi
                   <button
                     onClick={handleInvite}
                     disabled={!inviteEmail.trim() || isPending}
-                    className="rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#243561] disabled:opacity-40 transition"
+                    className="rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1428a8] disabled:opacity-40 transition"
                   >
                     Send Invitation
                   </button>

@@ -123,8 +123,8 @@ function recalcScore(fd: EvalFormData): { score: number; tier: string } | null {
 // ─── Tier badge styles ────────────────────────────────────────────────────────
 
 const TIER_STYLES: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active:   "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active:   "bg-[#001489] text-white",
   Watch:    "bg-gray-200 text-gray-700",
   Pass:     "bg-gray-100 text-gray-500",
 };
@@ -178,7 +178,7 @@ function IconX({ className }: { className?: string }) {
 }
 
 function Spinner({ className }: { className?: string }) {
-  return <div className={`animate-spin rounded-full border-2 border-[#C0392B] border-t-transparent ${className}`} />;
+  return <div className={`animate-spin rounded-full border-2 border-[#C8102E] border-t-transparent ${className}`} />;
 }
 
 // ─── Inline field editor ──────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ function FieldRow({ def, fd, isEditing, onStartEdit, onCommit }: FieldRowProps) 
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={() => onCommit(draft)}
-              className="mt-0.5 w-full rounded border border-[#1B2A4A] px-1.5 py-0.5 text-[10px] text-gray-800 focus:outline-none"
+              className="mt-0.5 w-full rounded border border-[#001489] px-1.5 py-0.5 text-[10px] text-gray-800 focus:outline-none"
             >
               {opts.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -235,7 +235,7 @@ function FieldRow({ def, fd, isEditing, onStartEdit, onCommit }: FieldRowProps) 
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") onCommit(String(raw ?? "")); }}
-            className="mt-0.5 w-full rounded border border-[#1B2A4A] px-1.5 py-0.5 text-[10px] text-gray-800 focus:outline-none"
+            className="mt-0.5 w-full rounded border border-[#001489] px-1.5 py-0.5 text-[10px] text-gray-800 focus:outline-none"
           />
         </div>
       </div>
@@ -426,7 +426,7 @@ export default function UploadPDFModal({ onClose }: Props) {
         {/* ── Modal header ── */}
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-bold text-[#1B2A4A]">
+            <h2 className="text-lg font-bold text-[#001489]">
               {step === "upload"     ? "Import PDF Scorecards" :
                step === "review"     ? "Review & Edit" :
                step === "processing" ? "Importing…" :
@@ -470,8 +470,8 @@ export default function UploadPDFModal({ onClose }: Props) {
                 onClick={() => dropRef.current?.click()}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition ${
                   isDragging
-                    ? "border-[#C0392B] bg-red-50"
-                    : "border-gray-300 bg-gray-50 hover:border-[#1B2A4A] hover:bg-gray-100"
+                    ? "border-[#C8102E] bg-red-50"
+                    : "border-gray-300 bg-gray-50 hover:border-[#001489] hover:bg-gray-100"
                 }`}
               >
                 {/* PDF icon */}
@@ -529,7 +529,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                   ))}
 
                   <button onClick={() => addMoreRef.current?.click()}
-                    className="w-full rounded-lg border border-dashed border-gray-300 py-2 text-xs font-medium text-gray-500 transition hover:border-[#1B2A4A] hover:text-[#1B2A4A]">
+                    className="w-full rounded-lg border border-dashed border-gray-300 py-2 text-xs font-medium text-gray-500 transition hover:border-[#001489] hover:text-[#001489]">
                     + Add More Files
                   </button>
                   <input ref={addMoreRef} type="file" accept=".pdf" multiple className="hidden"
@@ -564,7 +564,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                     {/* Row header */}
                     <div className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[#1B2A4A]">
+                        <p className="text-sm font-semibold text-[#001489]">
                           {fd.artist_name || <span className="italic text-gray-400">Unnamed</span>}
                         </p>
                         <p className="text-xs text-gray-500">{fd.genre || "—"}</p>
@@ -593,7 +593,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                         {filled}/{FIELD_DEFS.length}
                       </div>
                       <button onClick={() => toggleExpanded(item.uid)}
-                        className="shrink-0 text-xs text-gray-400 hover:text-[#1B2A4A]">
+                        className="shrink-0 text-xs text-gray-400 hover:text-[#001489]">
                         {expanded ? "▲ Hide" : "▼ Edit"}
                       </button>
                       <button onClick={() => removeFile(item.uid)}
@@ -632,7 +632,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                           const gFields = FIELD_DEFS.filter((f) => f.group === group);
                           return (
                             <div key={group}>
-                              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#1B2A4A]">
+                              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#001489]">
                                 {group}
                               </p>
                               <div className="grid grid-cols-3 gap-x-4 gap-y-0.5">
@@ -671,7 +671,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${
                     item.status === "done"   ? "border-green-200 bg-green-50" :
                     item.status === "error"  ? "border-red-200 bg-red-50" :
-                    item.status === "saving" ? "border-[#1B2A4A]/20 bg-[#1B2A4A]/5" :
+                    item.status === "saving" ? "border-[#001489]/20 bg-[#001489]/5" :
                                               "border-gray-200 bg-white opacity-50"
                   }`}
                 >
@@ -688,7 +688,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                   </div>
                   {item.status === "done" && item.score != null && (
                     <div className="shrink-0 text-right">
-                      <p className="text-sm font-bold text-[#1B2A4A]">{item.score.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-[#001489]">{item.score.toFixed(2)}</p>
                       {item.tier && (
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${TIER_STYLES[item.tier] ?? "bg-gray-100 text-gray-500"}`}>
                           {item.tier === "Pass" ? "Below" : item.tier}
@@ -736,7 +736,7 @@ export default function UploadPDFModal({ onClose }: Props) {
                       </div>
                       {item.status === "done" && item.score != null && (
                         <div className="shrink-0 text-right">
-                          <p className="text-sm font-bold text-[#1B2A4A]">{item.score.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-[#001489]">{item.score.toFixed(2)}</p>
                           {item.tier && (
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${TIER_STYLES[item.tier] ?? "bg-gray-100 text-gray-500"}`}>
                               {item.tier === "Pass" ? "Below" : item.tier}
@@ -784,7 +784,7 @@ export default function UploadPDFModal({ onClose }: Props) {
               <button
                 onClick={() => setStep("review")}
                 disabled={okItems.length === 0 || parsingItems.length > 0}
-                className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226] disabled:opacity-40"
+                className="rounded-lg bg-[#C8102E] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26] disabled:opacity-40"
               >
                 Review {okItems.length > 0 ? `${okItems.length} ` : ""}
                 Evaluation{okItems.length !== 1 ? "s" : ""} →
@@ -801,7 +801,7 @@ export default function UploadPDFModal({ onClose }: Props) {
               <button
                 onClick={runProcessing}
                 disabled={okItems.length === 0}
-                className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226] disabled:opacity-40"
+                className="rounded-lg bg-[#C8102E] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26] disabled:opacity-40"
               >
                 Import {okItems.length} Evaluation{okItems.length !== 1 ? "s" : ""}
               </button>
@@ -822,7 +822,7 @@ export default function UploadPDFModal({ onClose }: Props) {
               </button>
               <button
                 onClick={() => { onClose(); router.push("/"); }}
-                className="rounded-lg bg-[#1B2A4A] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152238]"
+                className="rounded-lg bg-[#001489] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152238]"
               >
                 View Dashboard
               </button>

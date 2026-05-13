@@ -27,7 +27,7 @@ export default function AdminClient({ initialConfig, initialUsers, initialAuditL
   return (
     <div className="flex h-full flex-col">
       {/* Page header */}
-      <div className="shrink-0 bg-[#1B2A4A] px-6 py-5 text-white">
+      <div className="shrink-0 bg-[#001489] px-6 py-5 text-white">
         <h1 className="text-xl font-bold">Admin Settings</h1>
         <p className="mt-0.5 text-sm text-white/60">
           Scoring model configuration, user management, and activity audit log
@@ -45,7 +45,7 @@ export default function AdminClient({ initialConfig, initialUsers, initialAuditL
               onClick={() => setActiveTab(id)}
               className={`border-b-2 px-5 py-3.5 text-sm font-medium transition-colors ${
                 activeTab === id
-                  ? "border-[#C0392B] text-[#C0392B]"
+                  ? "border-[#C8102E] text-[#C8102E]"
                   : "border-transparent text-gray-500 hover:text-gray-800"
               }`}
             >

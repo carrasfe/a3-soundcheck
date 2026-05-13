@@ -9,10 +9,10 @@ function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
   const n = parseInt(tier.replace(/\D.*/, ""));
   const color =
-    n === 1 ? "bg-[#1B2A4A] text-white"
-    : n === 2 ? "bg-[#1B2A4A]/70 text-white"
+    n === 1 ? "bg-[#001489] text-white"
+    : n === 2 ? "bg-[#001489]/70 text-white"
     : n === 3 ? "bg-gray-200 text-gray-700"
-    : "bg-[#C0392B]/10 text-[#C0392B]";
+    : "bg-[#C8102E]/10 text-[#C8102E]";
   return (
     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${color}`}>
       {tier.replace(" — ", " ")}
@@ -48,17 +48,17 @@ export default async function AgentDetailPage({
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/contacts" className="hover:text-[#1B2A4A]">Contacts</Link>
+        <Link href="/contacts" className="hover:text-[#001489]">Contacts</Link>
         <span>/</span>
         {agent.agency_id ? (
-          <Link href={`/contacts/agencies/${agent.agency_id}`} className="hover:text-[#1B2A4A]">
+          <Link href={`/contacts/agencies/${agent.agency_id}`} className="hover:text-[#001489]">
             {agent.agency_name}
           </Link>
         ) : (
           <span>Independent</span>
         )}
         <span>/</span>
-        <span className="font-medium text-[#1B2A4A]">{agent.name}</span>
+        <span className="font-medium text-[#001489]">{agent.name}</span>
       </nav>
 
       <EditAgentCard
@@ -90,18 +90,18 @@ export default async function AgentDetailPage({
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
             {agent.artists.map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-5 py-3">
-                <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-semibold text-[#1B2A4A] hover:underline">
+                <Link href={`/artists/${a.id}`} className="flex-1 text-sm font-semibold text-[#001489] hover:underline">
                   {a.name}
                 </Link>
                 {a.is_a3_client && (
-                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#C0392B] text-white">A3 CLIENT</span>
+                  <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-[#C8102E] text-white">A3 CLIENT</span>
                 )}
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">{a.role}</span>
                 {a.latest_score !== null && (
                   <span className="text-sm font-semibold text-gray-700">{a.latest_score.toFixed(1)}</span>
                 )}
                 <TierBadge tier={a.latest_tier} />
-                <Link href={`/artists/${a.id}`} className="text-xs text-[#C0392B] hover:underline">
+                <Link href={`/artists/${a.id}`} className="text-xs text-[#C8102E] hover:underline">
                   Scorecard →
                 </Link>
               </div>
@@ -120,7 +120,7 @@ export default async function AgentDetailPage({
               <div key={i} className="px-5 py-3 text-sm">
                 <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
                   {entry.artist_id ? (
-                    <Link href={`/artists/${entry.artist_id}`} className="font-semibold text-[#1B2A4A] hover:underline">
+                    <Link href={`/artists/${entry.artist_id}`} className="font-semibold text-[#001489] hover:underline">
                       {entry.artist_name}
                     </Link>
                   ) : (
@@ -130,14 +130,14 @@ export default async function AgentDetailPage({
                   {entry.other_agents.map((oa, j) => (
                     <span key={oa.id} className="inline-flex items-baseline gap-x-1">
                       {j > 0 && <span className="text-gray-300">,</span>}
-                      <Link href={`/contacts/agents/${oa.id}`} className="font-medium text-[#1B2A4A] hover:underline">
+                      <Link href={`/contacts/agents/${oa.id}`} className="font-medium text-[#001489] hover:underline">
                         {oa.name}
                       </Link>
                       {oa.agency_name && (
                         <span className="text-gray-500">
                           {" "}at{" "}
                           {oa.agency_id ? (
-                            <Link href={`/contacts/agencies/${oa.agency_id}`} className="text-gray-500 hover:text-[#1B2A4A] hover:underline">
+                            <Link href={`/contacts/agencies/${oa.agency_id}`} className="text-gray-500 hover:text-[#001489] hover:underline">
                               {oa.agency_name}
                             </Link>
                           ) : oa.agency_name}

@@ -12,7 +12,7 @@ const EVENT_META: Record<
 > = {
   evaluation_complete: {
     label: "Evaluation",
-    color: "bg-[#1B2A4A]/10 text-[#1B2A4A]",
+    color: "bg-[#001489]/10 text-[#001489]",
     icon: "📋",
   },
   model_change: {
@@ -22,7 +22,7 @@ const EVENT_META: Record<
   },
   user_invited: {
     label: "User Invited",
-    color: "bg-[#1B2A4A]/10 text-[#1B2A4A]",
+    color: "bg-[#001489]/10 text-[#001489]",
     icon: "✉️",
   },
   role_changed: {
@@ -32,19 +32,19 @@ const EVENT_META: Record<
   },
   user_deactivated: {
     label: "User Deactivated",
-    color: "bg-[#C0392B]/10 text-[#C0392B]",
+    color: "bg-[#C8102E]/10 text-[#C8102E]",
     icon: "🚫",
   },
   user_reactivated: {
     label: "User Reactivated",
-    color: "bg-[#1B2A4A]/10 text-[#1B2A4A]",
+    color: "bg-[#001489]/10 text-[#001489]",
     icon: "✅",
   },
 };
 
 const TIER_BADGE: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active:   "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active:   "bg-[#001489] text-white",
   Watch:    "bg-gray-200 text-gray-700",
   Pass:     "bg-gray-100 text-gray-500",
 };
@@ -173,7 +173,7 @@ export default function AuditLogTab({ initialLog }: { initialLog: AuditEntry[] }
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none"
           >
             {EVENT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>

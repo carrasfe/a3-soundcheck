@@ -17,8 +17,8 @@ const TIER_DISPLAY: Record<string, string> = {
 };
 
 const TIER_STYLES: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active: "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active: "bg-[#001489] text-white",
   Watch: "border-2 border-gray-400 text-gray-700",
   Pass: "bg-gray-100 text-gray-500",
 };
@@ -66,18 +66,18 @@ function PillarCard({
 }) {
   const scoreColor =
     result.final_score >= 4
-      ? "text-[#1B2A4A]"
+      ? "text-[#001489]"
       : result.final_score >= 3
-      ? "text-[#1B2A4A]/70"
+      ? "text-[#001489]/70"
       : result.final_score >= 2
       ? "text-gray-600"
-      : "text-[#C0392B]";
+      : "text-[#C8102E]";
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm print:border-gray-300">
-      <div className="flex items-center justify-between bg-[#1B2A4A]/5 px-5 py-3">
+      <div className="flex items-center justify-between bg-[#001489]/5 px-5 py-3">
         <div>
-          <span className="text-sm font-semibold text-[#1B2A4A]">{name}</span>
+          <span className="text-sm font-semibold text-[#001489]">{name}</span>
           <span className="ml-2 text-xs text-gray-500">
             ({(weight * 100).toFixed(0)}% of total)
           </span>
@@ -103,7 +103,7 @@ function PillarCard({
               <tr key={key}>
                 <td className="px-5 py-2 text-gray-700">{label}</td>
                 <td className="px-3 py-2 text-xs text-gray-400">{inputVal ?? "—"}</td>
-                <td className="px-3 py-2 text-center font-semibold text-[#1B2A4A]">
+                <td className="px-3 py-2 text-center font-semibold text-[#001489]">
                   {Number.isInteger(s) ? s : s.toFixed(1)}
                 </td>
                 <td className="px-3 py-2 text-center text-gray-400">
@@ -299,39 +299,39 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-[#1B2A4A] transition"
+              className="text-sm text-gray-500 hover:text-[#001489] transition"
             >
               ← Dashboard
             </Link>
             <span className="text-gray-300">/</span>
-            <span className="text-sm font-semibold text-[#1B2A4A]">
+            <span className="text-sm font-semibold text-[#001489]">
               {evaluation.artist_name}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href={`/evaluations/new?prefill=${evaluation.id}`}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#001489] transition"
             >
               Re-evaluate
             </Link>
             {isAdmin && (
               <Link
                 href={`/evaluations/new?edit=${evaluation.id}`}
-                className="rounded-lg border border-[#1B2A4A] px-3 py-1.5 text-xs font-medium text-[#1B2A4A] transition hover:bg-[#1B2A4A] hover:text-white"
+                className="rounded-lg border border-[#001489] px-3 py-1.5 text-xs font-medium text-[#001489] transition hover:bg-[#001489] hover:text-white"
               >
                 Edit
               </Link>
             )}
             <DownloadPDFButton
               data={pdfData}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#1B2A4A] transition disabled:opacity-60"
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#001489] transition disabled:opacity-60"
             >
               Download PDF
             </DownloadPDFButton>
             <button
               onClick={handleCopyLink}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#001489] transition"
             >
               {linkCopied ? "✓ Copied!" : "Copy Link"}
             </button>
@@ -342,13 +342,13 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
       <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 print:max-w-full print:px-8 print:py-4 print:space-y-4">
         {/* ── Print-only header ── */}
         <div className="hidden print:block">
-          <div className="mb-6 flex items-center justify-between border-b-2 border-[#1B2A4A] pb-4">
+          <div className="mb-6 flex items-center justify-between border-b-2 border-[#001489] pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-[#C0392B] text-base font-bold text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded bg-[#C8102E] text-base font-bold text-white">
                 A3
               </div>
               <div>
-                <p className="text-lg font-bold text-[#1B2A4A]">A3 Soundcheck</p>
+                <p className="text-lg font-bold text-[#001489]">A3 Soundcheck</p>
                 <p className="text-xs text-gray-500">Artist Evaluation Scorecard</p>
               </div>
             </div>
@@ -371,7 +371,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
         </div>
 
         {/* ── Artist header card ── */}
-        <div className="rounded-xl bg-[#1B2A4A] p-6 text-white print:rounded-none print:bg-white print:p-0 print:text-[#1B2A4A]">
+        <div className="rounded-xl bg-[#001489] p-6 text-white print:rounded-none print:bg-white print:p-0 print:text-[#001489]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-medium text-white/60 print:text-gray-500">
@@ -417,7 +417,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
 
         {/* ── Weight Profile ── */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             Weight Profile Applied
           </h3>
           <div className="flex flex-wrap gap-6 text-sm">
@@ -456,7 +456,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           {reach > 0 && (
             <div className="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3">
               <p className="text-xs text-gray-500">Total Audience Reach</p>
-              <p className="text-lg font-bold text-[#C0392B]">
+              <p className="text-lg font-bold text-[#C8102E]">
                 {reach.toLocaleString()}
               </p>
             </div>
@@ -521,7 +521,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
 
         {/* ── Score composition bar (screen only) ── */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:hidden">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             Score Composition
           </h3>
           <div className="space-y-2">
@@ -539,13 +539,13 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
                       ({(weight * 100).toFixed(0)}%)
                     </span>
                   </span>
-                  <span className="font-semibold text-[#1B2A4A]">
+                  <span className="font-semibold text-[#001489]">
                     {score.toFixed(2)}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                   <div
-                    className="h-full rounded-full bg-[#C0392B] transition-all duration-500"
+                    className="h-full rounded-full bg-[#C8102E] transition-all duration-500"
                     style={{ width: `${Math.min(100, (score / 5) * 100)}%` }}
                   />
                 </div>
@@ -555,7 +555,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
             <span className="font-semibold text-gray-700">Total Score</span>
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black text-[#1B2A4A]">
+              <span className="text-2xl font-black text-[#001489]">
                 {r.total_score.toFixed(2)}
               </span>
               <span
@@ -590,7 +590,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           {isAdmin && (
             <Link
               href={`/evaluations/new?edit=${evaluation.id}`}
-              className="flex items-center gap-2 rounded-lg bg-[#1B2A4A] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243561]"
+              className="flex items-center gap-2 rounded-lg bg-[#001489] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1428a8]"
             >
               Edit Evaluation
             </Link>

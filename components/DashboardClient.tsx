@@ -20,8 +20,8 @@ const TIER_DISPLAY: Record<string, string> = {
 };
 
 const TIER_STYLES: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active: "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active: "bg-[#001489] text-white",
   Watch: "bg-gray-200 text-gray-700",
   Pass: "bg-gray-100 text-gray-500",
 };
@@ -194,7 +194,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
     if (sortKey !== col)
       return <span className="ml-1 text-gray-300 text-xs">↕</span>;
     return (
-      <span className="ml-1 text-[#C0392B] text-xs">
+      <span className="ml-1 text-[#C8102E] text-xs">
         {sortDir === "asc" ? "↑" : "↓"}
       </span>
     );
@@ -204,7 +204,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="bg-[#1B2A4A] px-6 py-5 text-white shrink-0">
+      <div className="bg-[#001489] px-6 py-5 text-white shrink-0">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold">Dashboard</h1>
@@ -258,7 +258,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
           {/* Card 1 — New Evaluation */}
           <Link
             href="/evaluations/new"
-            className="group flex flex-col rounded-xl bg-[#C0392B] p-5 shadow-sm transition hover:bg-[#a93226] hover:shadow-md"
+            className="group flex flex-col rounded-xl bg-[#C8102E] p-5 shadow-sm transition hover:bg-[#a60d26] hover:shadow-md"
           >
             <span className="mb-3 text-2xl">📋</span>
             <p className="text-base font-bold text-white">New Evaluation</p>
@@ -268,7 +268,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
           {/* Card 2 — Current A3 Clients */}
           <Link
             href="/artists?filter=a3clients"
-            className="group flex flex-col rounded-xl bg-[#1B2A4A] p-5 shadow-sm transition hover:bg-[#152238] hover:shadow-md"
+            className="group flex flex-col rounded-xl bg-[#001489] p-5 shadow-sm transition hover:bg-[#152238] hover:shadow-md"
           >
             <span className="mb-3 text-2xl">⭐</span>
             <p className="text-base font-bold text-white">Current A3 Clients</p>
@@ -278,10 +278,10 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
           {/* Card 3 — Artist Soundchecks */}
           <Link
             href="/artists"
-            className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#1B2A4A]/30 hover:shadow-md"
+            className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#001489]/30 hover:shadow-md"
           >
             <span className="mb-3 text-2xl">🎤</span>
-            <p className="text-base font-bold text-[#1B2A4A]">Artist Soundchecks</p>
+            <p className="text-base font-bold text-[#001489]">Artist Soundchecks</p>
             <p className="mt-1 text-xs text-gray-500">Browse all artists and evaluation history</p>
           </Link>
         </div>
@@ -360,7 +360,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                     href={`/evaluations/new?edit=${d.id}`}
                     className="flex items-center gap-2 px-3 py-2 text-sm"
                   >
-                    <span className="font-semibold text-[#1B2A4A]">{d.artist_name}</span>
+                    <span className="font-semibold text-[#001489]">{d.artist_name}</span>
                     {isCompleted && (
                       <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
                         Completed
@@ -399,12 +399,12 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
             placeholder="Search artists…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           />
           <select
             value={filterGenre}
             onChange={(e) => setFilterGenre(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           >
             <option value="">All Genres</option>
             {genres.map((g) => (
@@ -416,7 +416,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
           <select
             value={filterTier}
             onChange={(e) => setFilterTier(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           >
             <option value="">All Tiers</option>
             <option value="Priority">Priority</option>
@@ -427,7 +427,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
           <select
             value={filterEvaluator}
             onChange={(e) => setFilterEvaluator(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           >
             <option value="">All Evaluators</option>
             {evaluators.map((ev) => (
@@ -467,7 +467,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                 </p>
                 <Link
                   href="/evaluations/new"
-                  className="mt-5 rounded-lg bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#a93226] transition"
+                  className="mt-5 rounded-lg bg-[#C8102E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#a60d26] transition"
                 >
                   + New Evaluation
                 </Link>
@@ -477,7 +477,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                 <p className="text-lg font-semibold text-gray-700">No results match your filters</p>
                 <button
                   onClick={clearFilters}
-                  className="mt-3 text-sm text-[#C0392B] hover:underline"
+                  className="mt-3 text-sm text-[#C8102E] hover:underline"
                 >
                   Clear all filters
                 </button>
@@ -531,7 +531,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                         )}
                         <Link
                           href={`/evaluations/${ev.id}`}
-                          className="font-semibold text-[#1B2A4A] hover:text-[#C0392B] hover:underline"
+                          className="font-semibold text-[#001489] hover:text-[#C8102E] hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {ev.artist_name}
@@ -540,7 +540,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                     </td>
                     <td className="px-4 py-3 text-gray-600">{ev.genre || "—"}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="font-bold text-[#1B2A4A]">
+                      <span className="font-bold text-[#001489]">
                         {ev.results?.total_score?.toFixed(2) ?? "—"}
                       </span>
                     </td>
@@ -581,14 +581,14 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                               results: ev.results,
                               inputs: ev.inputs as any,
                             }}
-                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#1B2A4A] disabled:opacity-60"
+                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#001489] disabled:opacity-60"
                           >
                             PDF
                           </DownloadPDFButton>
                         )}
                         <button
                           onClick={(e) => handleCopyLink(ev.id, e)}
-                          className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#1B2A4A]"
+                          className="rounded border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-[#001489]"
                         >
                           {copiedId === ev.id ? "✓ Copied" : "Link"}
                         </button>
@@ -633,7 +633,7 @@ function Th({
     <th
       className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600 ${
         center ? "text-center" : right ? "text-right" : "text-left"
-      } ${onClick ? "cursor-pointer select-none hover:text-[#1B2A4A]" : ""}`}
+      } ${onClick ? "cursor-pointer select-none hover:text-[#001489]" : ""}`}
       onClick={onClick}
     >
       {children}
@@ -656,8 +656,8 @@ function ActionBtn({
       onClick={(e) => e.stopPropagation()}
       className={`rounded border px-2.5 py-1 text-xs font-medium transition ${
         navy
-          ? "border-[#1B2A4A] text-[#1B2A4A] hover:bg-[#1B2A4A] hover:text-white"
-          : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-[#1B2A4A]"
+          ? "border-[#001489] text-[#001489] hover:bg-[#001489] hover:text-white"
+          : "border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-[#001489]"
       }`}
     >
       {children}

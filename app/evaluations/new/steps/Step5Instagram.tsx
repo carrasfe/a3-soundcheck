@@ -31,7 +31,7 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
       {/* Instagram ER */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Instagram</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Instagram</h3>
           <ScoreBadge score={scores?.p2.sub_scores.IG_ER ?? null} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -58,7 +58,7 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
           />
         </div>
         {parseFloat(data.ig_followers) < 10_000 && data.ig_followers && (
-          <p className="mt-2 text-xs text-[#C0392B]">⚠ Under 10K followers — IG score capped at 1</p>
+          <p className="mt-2 text-xs text-[#C8102E]">⚠ Under 10K followers — IG score capped at 1</p>
         )}
         {parseFloat(data.ig_followers) >= 10_000 && parseFloat(data.ig_followers) < 50_000 && (
           <p className="mt-2 text-xs text-gray-500">⚠ 10–50K followers — IG score capped at 3</p>
@@ -69,7 +69,7 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Instagram Growth</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Instagram Growth</h3>
             <p className="text-xs text-gray-500">20% weight in P4</p>
           </div>
           <ScoreBadge score={scores?.p4.sub_scores.ig_growth ?? null} />
@@ -86,7 +86,7 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
         />
         {igGrowthPct && (
           <p className="mt-2 text-xs text-gray-500">
-            Monthly growth rate: <span className="font-semibold text-[#1B2A4A]">{igGrowthPct}</span>
+            Monthly growth rate: <span className="font-semibold text-[#001489]">{igGrowthPct}</span>
             {parseFloat(data.ig_followers) > 200_000 && (
               <span className="ml-1 text-gray-400">(relaxed thresholds for 200K+ accounts)</span>
             )}

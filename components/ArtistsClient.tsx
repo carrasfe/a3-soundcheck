@@ -10,8 +10,8 @@ import type { ArtistBulkAction } from "@/app/artists/actions";
 // ─── Constants ────────────────────────────────────────────────
 
 const TIER_STYLES: Record<string, string> = {
-  Priority: "bg-[#C0392B] text-white",
-  Active:   "bg-[#1B2A4A] text-white",
+  Priority: "bg-[#C8102E] text-white",
+  Active:   "bg-[#001489] text-white",
   Watch:    "bg-gray-200 text-gray-700",
   Pass:     "bg-gray-100 text-gray-500",
 };
@@ -189,7 +189,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
 
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <span className="ml-1 text-gray-300 text-xs">↕</span>;
-    return <span className="ml-1 text-[#C0392B] text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>;
+    return <span className="ml-1 text-[#C8102E] text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
   // ── Render ─────────────────────────────────────────────────
@@ -215,7 +215,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
               <button
                 onClick={executeBulkAction}
                 disabled={isPending}
-                className="flex-1 rounded-lg bg-[#1B2A4A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1B2A4A]/90 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#001489] px-4 py-2 text-sm font-semibold text-white hover:bg-[#001489]/90 disabled:opacity-50"
               >
                 {isPending ? "Saving…" : "Confirm"}
               </button>
@@ -225,7 +225,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
       )}
 
       {/* Header */}
-      <div className="shrink-0 bg-[#1B2A4A] px-6 py-5 text-white">
+      <div className="shrink-0 bg-[#001489] px-6 py-5 text-white">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold">Artists</h1>
@@ -237,7 +237,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
           </div>
           <Link
             href="/evaluations/new"
-            className="shrink-0 rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a93226]"
+            className="shrink-0 rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a60d26]"
           >
             + New Evaluation
           </Link>
@@ -271,14 +271,14 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                 onClick={() => changeTab(tab)}
                 className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-medium transition ${
                   active
-                    ? "border-[#C0392B] text-[#C0392B]"
+                    ? "border-[#C8102E] text-[#C8102E]"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
                 {labels[tab]}
                 <span
                   className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                    active ? "bg-[#C0392B] text-white" : "bg-gray-100 text-gray-500"
+                    active ? "bg-[#C8102E] text-white" : "bg-gray-100 text-gray-500"
                   }`}
                 >
                   {tabCounts[tab]}
@@ -291,9 +291,9 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
 
       {/* Bulk action bar — shown when rows are selected */}
       {someSelected && (
-        <div className="shrink-0 border-b border-[#1B2A4A]/10 bg-[#1B2A4A]/5 px-6 py-3">
+        <div className="shrink-0 border-b border-[#001489]/10 bg-[#001489]/5 px-6 py-3">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm font-medium text-[#1B2A4A]">
+            <span className="text-sm font-medium text-[#001489]">
               {selectedIds.size} selected
             </span>
             <div className="h-4 w-px bg-gray-300" />
@@ -303,8 +303,8 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                 onClick={() => { setConfirmAction(action); setActionError(null); }}
                 disabled={isPending}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-                  style === "red"  ? "bg-[#C0392B] text-white hover:bg-[#a93226]" :
-                  style === "navy" ? "bg-[#1B2A4A] text-white hover:bg-[#1B2A4A]/90" :
+                  style === "red"  ? "bg-[#C8102E] text-white hover:bg-[#a60d26]" :
+                  style === "navy" ? "bg-[#001489] text-white hover:bg-[#001489]/90" :
                                      "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
@@ -329,12 +329,12 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
             placeholder="Search artists…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           />
           <select
             value={filterGenre}
             onChange={(e) => setFilterGenre(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           >
             <option value="">All Genres</option>
             {genres.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -342,7 +342,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
           <select
             value={filterTier}
             onChange={(e) => setFilterTier(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1B2A4A] focus:outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-2 focus:ring-[#001489]/20"
           >
             <option value="">All Tiers</option>
             <option value="Priority">Priority</option>
@@ -391,7 +391,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
             ) : (
               <>
                 <p className="text-lg font-semibold text-gray-700">No results match your filters</p>
-                <button onClick={clearFilters} className="mt-3 text-sm text-[#C0392B] hover:underline">
+                <button onClick={clearFilters} className="mt-3 text-sm text-[#C8102E] hover:underline">
                   Clear all filters
                 </button>
               </>
@@ -408,7 +408,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                       type="checkbox"
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#1B2A4A]"
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#001489]"
                     />
                   </th>
                   <Th onClick={() => handleSort("name")}>Artist Name <SortIcon col="name" /></Th>
@@ -435,7 +435,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
-                          className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#1B2A4A]"
+                          className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#001489]"
                         />
                       </td>
                       {/* Artist name + A3 badge */}
@@ -443,13 +443,13 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/artists/${artist.id}`}
-                            className="font-semibold text-[#1B2A4A] hover:text-[#C0392B] hover:underline"
+                            className="font-semibold text-[#001489] hover:text-[#C8102E] hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {artist.name}
                           </Link>
                           {artist.is_a3_client && (
-                            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider bg-[#C0392B] text-white">
+                            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider bg-[#C8102E] text-white">
                               A3 CLIENT
                             </span>
                           )}
@@ -464,7 +464,7 @@ export default function ArtistsClient({ artists, dbError, initialTab = "all" }: 
                       <td className="px-4 py-3 text-gray-600">{artist.merch_provider || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         {artist.latest_score != null ? (
-                          <span className="font-bold text-[#1B2A4A]">{artist.latest_score.toFixed(2)}</span>
+                          <span className="font-bold text-[#001489]">{artist.latest_score.toFixed(2)}</span>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -511,7 +511,7 @@ function Th({
     <th
       className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600 ${
         center ? "text-center" : "text-left"
-      } ${onClick ? "cursor-pointer select-none hover:text-[#1B2A4A]" : ""}`}
+      } ${onClick ? "cursor-pointer select-none hover:text-[#001489]" : ""}`}
       onClick={onClick}
     >
       {children}

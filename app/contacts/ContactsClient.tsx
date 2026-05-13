@@ -27,10 +27,10 @@ function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
   const n = parseInt(tier.replace(/\D.*/, ""));
   const color =
-    n === 1 ? "bg-[#1B2A4A] text-white"
-    : n === 2 ? "bg-[#1B2A4A]/70 text-white"
+    n === 1 ? "bg-[#001489] text-white"
+    : n === 2 ? "bg-[#001489]/70 text-white"
     : n === 3 ? "bg-gray-200 text-gray-700"
-    : "bg-[#C0392B]/10 text-[#C0392B]";
+    : "bg-[#C8102E]/10 text-[#C8102E]";
   return (
     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${color}`}>
       {tier.replace(" — ", " ")}
@@ -41,10 +41,10 @@ function TierBadge({ tier }: { tier: string | null }) {
 function ScorePill({ score }: { score: number | null }) {
   if (score === null) return <span className="text-xs text-gray-400">—</span>;
   const color =
-    score >= 4 ? "text-[#1B2A4A] font-bold"
-    : score >= 3 ? "text-[#1B2A4A]/70 font-semibold"
+    score >= 4 ? "text-[#001489] font-bold"
+    : score >= 3 ? "text-[#001489]/70 font-semibold"
     : score >= 2 ? "text-gray-500"
-    : "text-[#C0392B]";
+    : "text-[#C8102E]";
   return <span className={`text-xs ${color}`}>{score.toFixed(1)}</span>;
 }
 
@@ -54,11 +54,11 @@ function ArtistChip({ artist }: { artist: LinkedArtistRow }) {
   return (
     <Link
       href={`/artists/${artist.id}`}
-      className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-[#1B2A4A] hover:border-[#1B2A4A]/30 hover:bg-white transition"
+      className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-[#001489] hover:border-[#001489]/30 hover:bg-white transition"
     >
       <span className="font-medium">{artist.name}</span>
       {artist.is_a3_client && (
-        <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-[#C0392B] text-white leading-none">A3</span>
+        <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-[#C8102E] text-white leading-none">A3</span>
       )}
       <span className="text-gray-400">·</span>
       <ScorePill score={artist.latest_score} />
@@ -83,7 +83,7 @@ function Modal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-[#1B2A4A]">{title}</h3>
+          <h3 className="text-base font-semibold text-[#001489]">{title}</h3>
           <button
             onClick={onClose}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -115,7 +115,7 @@ function FieldRow({
 }
 
 const inputCls =
-  "rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]";
+  "rounded-md border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]";
 
 // ─── Person row inside a company card ─────────────────────────
 
@@ -141,7 +141,7 @@ function PersonRow({
           <div className="flex items-center gap-2 flex-wrap">
             <Link
               href={detailHref}
-              className={`text-sm font-semibold hover:underline ${hasA3Rel ? "text-[#27AE60]" : "text-[#1B2A4A]"}`}
+              className={`text-sm font-semibold hover:underline ${hasA3Rel ? "text-[#27AE60]" : "text-[#001489]"}`}
             >
               {person.name}
             </Link>
@@ -156,7 +156,7 @@ function PersonRow({
           </div>
           <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-gray-500">
             {person.email && (
-              <a href={`mailto:${person.email}`} className="hover:text-[#C0392B]">
+              <a href={`mailto:${person.email}`} className="hover:text-[#C8102E]">
                 {person.email}
               </a>
             )}
@@ -165,7 +165,7 @@ function PersonRow({
           {person.artists.length > 0 && (
             <button
               onClick={() => setExpanded((x) => !x)}
-              className="mt-1.5 text-xs text-gray-400 hover:text-[#1B2A4A]"
+              className="mt-1.5 text-xs text-gray-400 hover:text-[#001489]"
             >
               {person.artists.length} artist{person.artists.length !== 1 ? "s" : ""}
               {expanded ? " ▲" : " ▼"}
@@ -183,7 +183,7 @@ function PersonRow({
           <Link
             href={detailHref}
             title="Open detail page to edit"
-            className="rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#1B2A4A]/30 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+            className="rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#001489]/30 hover:bg-gray-50 hover:text-[#001489] transition"
           >
             <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -191,7 +191,7 @@ function PersonRow({
           </Link>
           <button
             onClick={onEdit}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#001489]/30 hover:bg-gray-50"
           >
             Edit
           </button>
@@ -245,7 +245,7 @@ function CompanyCard({
             )}
             <Link
               href={detailHref}
-              className="text-base font-semibold text-[#1B2A4A] hover:underline"
+              className="text-base font-semibold text-[#001489] hover:underline"
             >
               {name}
             </Link>
@@ -254,7 +254,7 @@ function CompanyCard({
                 href={website.startsWith("http") ? website : `https://${website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-400 hover:text-[#C0392B]"
+                className="text-xs text-gray-400 hover:text-[#C8102E]"
               >
                 ↗ {website.replace(/^https?:\/\//, "")}
               </a>
@@ -267,13 +267,13 @@ function CompanyCard({
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={onEditCompany}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#001489]/30 hover:bg-gray-50"
           >
             Edit
           </button>
           <button
             onClick={() => setOpen((x) => !x)}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#001489]/30 hover:bg-gray-50"
           >
             {open ? "Collapse ▲" : `View ${personLabel}s ▼`}
           </button>
@@ -293,7 +293,7 @@ function CompanyCard({
           <div className="px-4 py-3 border-t border-gray-50">
             <button
               onClick={onAddPerson}
-              className="text-xs font-medium text-[#C0392B] hover:underline"
+              className="text-xs font-medium text-[#C8102E] hover:underline"
             >
               + Add {personLabel}
             </button>
@@ -410,11 +410,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Company"}
             </button>
@@ -449,11 +449,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" defaultValue={modal.notes} className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -488,11 +488,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Agency"}
             </button>
@@ -527,11 +527,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" defaultValue={modal.notes} className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -571,11 +571,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Manager"}
             </button>
@@ -626,14 +626,14 @@ export default function ContactsClient({
               <textarea name="notes" defaultValue={m.notes ?? ""} className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
             <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input name="is_active" type="checkbox" value="1" defaultChecked={m.is_active} className="h-4 w-4 accent-[#C0392B]" />
+              <input name="is_active" type="checkbox" value="1" defaultChecked={m.is_active} className="h-4 w-4 accent-[#C8102E]" />
               Active
             </label>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -673,11 +673,11 @@ export default function ContactsClient({
             <FieldRow label="Notes">
               <textarea name="notes" className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Agent"}
             </button>
@@ -728,14 +728,14 @@ export default function ContactsClient({
               <textarea name="notes" defaultValue={a.notes ?? ""} className={`${inputCls} resize-none`} rows={2} />
             </FieldRow>
             <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input name="is_active" type="checkbox" value="1" defaultChecked={a.is_active} className="h-4 w-4 accent-[#C0392B]" />
+              <input name="is_active" type="checkbox" value="1" defaultChecked={a.is_active} className="h-4 w-4 accent-[#C8102E]" />
               Active
             </label>
-            {formError && <p className="text-xs text-[#C0392B]">{formError}</p>}
+            {formError && <p className="text-xs text-[#C8102E]">{formError}</p>}
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-[#C0392B] py-2 text-sm font-semibold text-white hover:bg-[#a93226] disabled:opacity-50"
+              className="w-full rounded-lg bg-[#C8102E] py-2 text-sm font-semibold text-white hover:bg-[#a60d26] disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -753,7 +753,7 @@ export default function ContactsClient({
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1B2A4A]">Contacts</h1>
+        <h1 className="text-2xl font-bold text-[#001489]">Contacts</h1>
         <p className="mt-1 text-sm text-gray-500">
           Management companies, booking agencies, and the people within them.
         </p>
@@ -774,7 +774,7 @@ export default function ContactsClient({
               onClick={() => setTab(t)}
               className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
                 tab === t
-                  ? "bg-white text-[#1B2A4A] shadow-sm"
+                  ? "bg-white text-[#001489] shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -786,7 +786,7 @@ export default function ContactsClient({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search companies, managers, agents…"
-          className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B] sm:w-64"
+          className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E] sm:w-64"
         />
       </div>
 
@@ -799,7 +799,7 @@ export default function ContactsClient({
             </h2>
             <button
               onClick={() => setModal({ kind: "addCompany" })}
-              className="rounded-lg bg-[#C0392B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a93226]"
+              className="rounded-lg bg-[#C8102E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a60d26]"
             >
               + Add Management Company
             </button>
@@ -876,7 +876,7 @@ export default function ContactsClient({
             </h2>
             <button
               onClick={() => setModal({ kind: "addAgency" })}
-              className="rounded-lg bg-[#C0392B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a93226]"
+              className="rounded-lg bg-[#C8102E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#a60d26]"
             >
               + Add Agency
             </button>
@@ -945,7 +945,7 @@ export default function ContactsClient({
       )}
 
       {isPending && (
-        <div className="fixed bottom-4 right-4 rounded-lg bg-[#1B2A4A] px-3 py-2 text-xs text-white shadow-lg">
+        <div className="fixed bottom-4 right-4 rounded-lg bg-[#001489] px-3 py-2 text-xs text-white shadow-lg">
           Refreshing…
         </div>
       )}

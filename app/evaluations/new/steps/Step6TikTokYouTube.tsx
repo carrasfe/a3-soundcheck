@@ -28,7 +28,7 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
       {/* TikTok */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">TikTok</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">TikTok</h3>
           <ScoreBadge score={p2?.sub_scores.TikTok ?? null} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -54,7 +54,7 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
             />
             {ttEr && (
               <p className="mt-1 text-xs text-gray-500">
-                Calculated ER: <span className="font-semibold text-[#1B2A4A]">{ttEr}</span>
+                Calculated ER: <span className="font-semibold text-[#001489]">{ttEr}</span>
               </p>
             )}
           </div>
@@ -79,7 +79,7 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
       {/* YouTube */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">YouTube</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">YouTube</h3>
           <div className="flex items-center gap-2">
             {p2?.youtube_excluded && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">

@@ -57,7 +57,7 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Store Quality</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Store Quality</h3>
             <p className="text-xs text-gray-500">35% weight</p>
           </div>
           <ScoreBadge score={p3?.sub_scores.store_quality ?? null} />
@@ -76,7 +76,7 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Merch Range</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Merch Range</h3>
             <p className="text-xs text-gray-500">30% weight</p>
           </div>
           <ScoreBadge score={p3?.sub_scores.merch_range ?? null} />
@@ -99,7 +99,7 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Price Point</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Price Point</h3>
             <p className="text-xs text-gray-500">25% weight</p>
           </div>
           <ScoreBadge score={p3?.sub_scores.price_point ?? null} />
@@ -116,7 +116,7 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
               value={data.price_point_highest}
               onChange={(e) => onChange({ price_point_highest: e.target.value })}
               placeholder="e.g. 65"
-              className="w-full rounded-md border border-gray-300 py-2 pl-7 pr-3 text-sm outline-none transition focus:border-[#C0392B] focus:ring-1 focus:ring-[#C0392B]"
+              className="w-full rounded-md border border-gray-300 py-2 pl-7 pr-3 text-sm outline-none transition focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
             />
           </div>
           {genreGroup && (
@@ -131,7 +131,7 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">D2C Infrastructure</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">D2C Infrastructure</h3>
             <p className="text-xs text-gray-500">10% weight</p>
           </div>
           <ScoreBadge score={p3?.sub_scores.d2c ?? null} />
@@ -148,8 +148,8 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
 
       {/* P3 Summary */}
       {p3 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">P3 Live Preview</h3>
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">P3 Live Preview</h3>
           <div className="grid grid-cols-4 gap-3 text-sm">
             {[
               { label: "Store Quality", score: p3.sub_scores.store_quality, weight: "35%" },
@@ -164,9 +164,9 @@ export default function Step5Ecommerce({ data, onChange, errors }: StepProps) {
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">P3 Score</span>
-            <span className="text-lg font-bold text-[#1B2A4A]">{p3.final_score.toFixed(2)}</span>
+            <span className="text-lg font-bold text-[#001489]">{p3.final_score.toFixed(2)}</span>
           </div>
         </section>
       )}

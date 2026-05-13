@@ -44,7 +44,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
     <div className="space-y-6">
       {/* Spotify */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Spotify</h3>
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#001489]">Spotify</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex items-end gap-3">
             <div className="flex-1">
@@ -88,7 +88,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">
               Fan Identity Signaling
             </h3>
             <p className="mt-0.5 text-xs text-gray-500">How strong is the artist's fan community and tribal identity?</p>
@@ -116,7 +116,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* Instagram */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Instagram</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Instagram</h3>
           <ScoreBadge score={p2?.sub_scores.IG_ER ?? null} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -142,7 +142,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
           />
         </div>
         {parseFloat(data.ig_followers) < 10_000 && data.ig_followers && (
-          <p className="mt-2 text-xs text-[#C0392B]">⚠ Under 10K followers — IG score capped at 1</p>
+          <p className="mt-2 text-xs text-[#C8102E]">⚠ Under 10K followers — IG score capped at 1</p>
         )}
         {parseFloat(data.ig_followers) >= 10_000 && parseFloat(data.ig_followers) < 50_000 && (
           <p className="mt-2 text-xs text-gray-500">⚠ 10–50K followers — IG score capped at 3</p>
@@ -152,7 +152,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* Reddit */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Reddit</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Reddit</h3>
           <ScoreBadge score={p2?.sub_scores.Reddit ?? null} />
         </div>
         <Input
@@ -171,7 +171,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* Discord */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Discord</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Discord</h3>
           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
             {data.discord_members ? discordBonusLabel(data.discord_members) : "Bonus metric"}
           </span>
@@ -193,7 +193,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* Merch Sentiment */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">Merch Sentiment</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">Merch Sentiment</h3>
           <ScoreBadge score={p2?.sub_scores.MerchSent ?? null} />
         </div>
         <ScoreSelector
@@ -215,7 +215,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* TikTok */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">TikTok</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">TikTok</h3>
           <ScoreBadge score={p2?.sub_scores.TikTok ?? null} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -240,7 +240,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
               placeholder="e.g. 8500"
             />
             {ttEr && (
-              <p className="mt-1 text-xs text-gray-500">Calculated ER: <span className="font-semibold text-[#1B2A4A]">{ttEr}</span></p>
+              <p className="mt-1 text-xs text-gray-500">Calculated ER: <span className="font-semibold text-[#001489]">{ttEr}</span></p>
             )}
           </div>
         </div>
@@ -263,7 +263,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
       {/* YouTube */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">YouTube</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-[#001489]">YouTube</h3>
           <div className="flex items-center gap-2">
             {p2?.youtube_excluded && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
@@ -302,8 +302,8 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
 
       {/* P2 live summary */}
       {p2 && (
-        <section className="rounded-xl border border-[#1B2A4A]/20 bg-[#1B2A4A]/5 p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#1B2A4A]">
+        <section className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#001489]">
             P2 Live Preview
           </h3>
           <div className="grid grid-cols-4 gap-2 text-sm sm:grid-cols-7">
@@ -314,7 +314,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#1B2A4A]/10 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#001489]/10 pt-3">
             <span className="text-sm font-medium text-gray-600">
               Weighted P2 Score
               {(p2.bonus ?? 0) > 0 && (
@@ -323,7 +323,7 @@ export default function Step4FanEngagement({ data, onChange, csvFilled, errors }
                 </span>
               )}
             </span>
-            <span className="text-lg font-bold text-[#1B2A4A]">
+            <span className="text-lg font-bold text-[#001489]">
               {p2.final_score.toFixed(2)}
             </span>
           </div>

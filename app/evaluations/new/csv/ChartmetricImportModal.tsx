@@ -249,7 +249,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" style={{ maxHeight: "90vh" }}>
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between bg-[#1B2A4A] px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between bg-[#001489] px-6 py-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-white/50">Chartmetric Import</p>
             <h2 className="text-base font-semibold text-white">Import Platform Data CSVs</h2>
@@ -271,7 +271,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                 disabled={isDisabled || !extract}
                 className={`border-b-2 py-3 font-medium transition ${
                   isActive
-                    ? "border-[#C0392B] text-[#C0392B]"
+                    ? "border-[#C8102E] text-[#C8102E]"
                     : isDisabled
                     ? "cursor-default border-transparent text-gray-300"
                     : "border-transparent text-gray-400 hover:text-gray-600"
@@ -304,12 +304,12 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
                 className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 transition ${
-                  isDragging ? "border-[#C0392B] bg-red-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"
+                  isDragging ? "border-[#C8102E] bg-red-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"
                 }`}
               >
                 <div className="mb-2 text-3xl">📁</div>
                 <p className="text-sm font-medium text-gray-700">Drop CSV files here (up to 12)</p>
-                <label className="mt-3 cursor-pointer rounded-lg bg-[#1B2A4A] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#1B2A4A]/90">
+                <label className="mt-3 cursor-pointer rounded-lg bg-[#001489] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#001489]/90">
                   Browse files
                   <input type="file" accept=".csv" multiple className="hidden" onChange={onFileChange} />
                 </label>
@@ -390,7 +390,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                 <button
                   onClick={handleNext}
                   disabled={!extract || totalFound === 0 || isProcessing}
-                  className="rounded-lg bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#a93226] disabled:opacity-40"
+                  className="rounded-lg bg-[#C8102E] px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#a60d26] disabled:opacity-40"
                 >
                   {isProcessing
                     ? "Processing…"
@@ -478,7 +478,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                 <button
                   onClick={() => setModalStep("confirm")}
                   disabled={unresolvedCount > 0}
-                  className="flex-1 rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#a93226] disabled:opacity-40"
+                  className="flex-1 rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#a60d26] disabled:opacity-40"
                 >
                   {unresolvedCount > 0 ? `${unresolvedCount} unassigned` : `Review ${totalFound} fields →`}
                 </button>
@@ -494,7 +494,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                   Review the fields below, then click <strong>Apply to Form</strong>.
                   You can edit any value after applying.
                 </p>
-                <span className="shrink-0 rounded-full bg-[#1B2A4A] px-3 py-0.5 text-xs font-semibold text-white">
+                <span className="shrink-0 rounded-full bg-[#001489] px-3 py-0.5 text-xs font-semibold text-white">
                   {totalFound} / {totalPossible} filled
                 </span>
               </div>
@@ -546,7 +546,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                           <div key={fe.key} className="flex items-center gap-3 px-4 py-2.5">
                             <span className={`h-2 w-2 shrink-0 rounded-full ${found ? "bg-emerald-500" : "bg-amber-300"}`} />
                             <span className="w-40 text-xs font-medium text-gray-700">{fe.label}</span>
-                            <span className="flex-1 text-xs font-semibold text-[#1B2A4A]">
+                            <span className="flex-1 text-xs font-semibold text-[#001489]">
                               {found ? display : <span className="font-normal text-gray-400">Not found</span>}
                             </span>
                             {src && (
@@ -572,7 +572,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                 <button
                   onClick={handleApply}
                   disabled={totalFound === 0}
-                  className="flex-1 rounded-lg bg-[#C0392B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#a93226] disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-[#C8102E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#a60d26] disabled:opacity-50"
                 >
                   Apply {totalFound} Fields to Form
                 </button>
