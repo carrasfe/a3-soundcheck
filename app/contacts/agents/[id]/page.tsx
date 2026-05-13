@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAgentDetail, getKnownArtistsForAgent, getRosterCrossoverForAgent, deleteAgent } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
-import DeleteContactButton from "../../DeleteContactButton";
+import EditAgentCard from "./EditAgentCard";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -29,17 +29,19 @@ export default async function AgentDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { agent, error }, knownArtists, crossovers] = await Promise.all([
+  const [{ data: profile }, { agent, error }, knownArtists, crossovers, { data: agenciesData }] = await Promise.all([
     supabase.from("profiles").select("role").eq("id", user.id).single(),
     getAgentDetail(params.id),
     getKnownArtistsForAgent(params.id),
     getRosterCrossoverForAgent(params.id),
+    supabase.from("agencies").select("id, name").order("name"),
   ]);
   if (error || !agent) notFound();
 
   const isAdmin = profile?.role === "admin";
+  const agencies = (agenciesData ?? []).map((a) => ({ id: a.id, name: a.name }));
   const boundDelete = deleteAgent.bind(null, params.id);
-  const redirectTo = agent.agency_id
+  const deleteRedirectTo = agent.agency_id
     ? `/contacts/agencies/${agent.agency_id}`
     : "/contacts";
 
@@ -59,47 +61,13 @@ export default async function AgentDetailPage({
         <span className="font-medium text-[#1B2A4A]">{agent.name}</span>
       </nav>
 
-      {/* Profile card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1B2A4A]/10 text-lg font-bold text-[#1B2A4A]">
-            {agent.name[0].toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-bold text-[#1B2A4A]">{agent.name}</h1>
-                  {!agent.is_active && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
-                  )}
-                </div>
-                {agent.agency_name && (
-                  <Link href={`/contacts/agencies/${agent.agency_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
-                    {agent.agency_name}
-                  </Link>
-                )}
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
-                  {agent.email && (
-                    <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {agent.email}</a>
-                  )}
-                  {agent.phone && (
-                    <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {agent.phone}</a>
-                  )}
-                </div>
-                {agent.notes && <p className="mt-2 text-sm text-gray-500">{agent.notes}</p>}
-              </div>
-              {isAdmin && (
-                <DeleteContactButton
-                  confirmMessage={`Delete ${agent.name}? This will remove their known artist roster and artist links.`}
-                  action={boundDelete}
-                  redirectTo={redirectTo}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <EditAgentCard
+        agent={agent}
+        agencies={agencies}
+        isAdmin={isAdmin}
+        deleteAction={boundDelete}
+        deleteRedirectTo={deleteRedirectTo}
+      />
 
       {/* Soundcheck Artists */}
       <section>
@@ -142,7 +110,6 @@ export default async function AgentDetailPage({
         )}
       </section>
 
-      {/* Roster Crossover */}
       {crossovers.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">

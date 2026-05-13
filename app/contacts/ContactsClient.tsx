@@ -179,12 +179,23 @@ function PersonRow({
             </div>
           )}
         </div>
-        <button
-          onClick={onEdit}
-          className="shrink-0 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50"
-        >
-          Edit
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Link
+            href={detailHref}
+            title="Open detail page to edit"
+            className="rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#1B2A4A]/30 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </Link>
+          <button
+            onClick={onEdit}
+            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-[#1B2A4A]/30 hover:bg-gray-50"
+          >
+            Edit
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getManagerDetail, getKnownArtistsForManager, deleteManager } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
-import DeleteContactButton from "../../DeleteContactButton";
+import EditManagerCard from "./EditManagerCard";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -29,16 +29,18 @@ export default async function ManagerDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { manager, error }, knownArtists] = await Promise.all([
+  const [{ data: profile }, { manager, error }, knownArtists, { data: companiesData }] = await Promise.all([
     supabase.from("profiles").select("role").eq("id", user.id).single(),
     getManagerDetail(params.id),
     getKnownArtistsForManager(params.id),
+    supabase.from("management_companies").select("id, name").order("name"),
   ]);
   if (error || !manager) notFound();
 
   const isAdmin = profile?.role === "admin";
+  const companies = (companiesData ?? []).map((c) => ({ id: c.id, name: c.name }));
   const boundDelete = deleteManager.bind(null, params.id);
-  const redirectTo = manager.management_company_id
+  const deleteRedirectTo = manager.management_company_id
     ? `/contacts/management/${manager.management_company_id}`
     : "/contacts";
 
@@ -58,47 +60,13 @@ export default async function ManagerDetailPage({
         <span className="font-medium text-[#1B2A4A]">{manager.name}</span>
       </nav>
 
-      {/* Profile card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1B2A4A]/10 text-lg font-bold text-[#1B2A4A]">
-            {manager.name[0].toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-bold text-[#1B2A4A]">{manager.name}</h1>
-                  {!manager.is_active && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
-                  )}
-                </div>
-                {manager.management_company_name && (
-                  <Link href={`/contacts/management/${manager.management_company_id}`} className="mt-0.5 text-sm text-[#C0392B] hover:underline">
-                    {manager.management_company_name}
-                  </Link>
-                )}
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
-                  {manager.email && (
-                    <a href={`mailto:${manager.email}`} className="flex items-center gap-1 hover:text-[#C0392B]">✉ {manager.email}</a>
-                  )}
-                  {manager.phone && (
-                    <a href={`tel:${manager.phone}`} className="flex items-center gap-1 hover:text-[#C0392B]">☎ {manager.phone}</a>
-                  )}
-                </div>
-                {manager.notes && <p className="mt-2 text-sm text-gray-500">{manager.notes}</p>}
-              </div>
-              {isAdmin && (
-                <DeleteContactButton
-                  confirmMessage={`Delete ${manager.name}? This will remove their known artist roster and artist links.`}
-                  action={boundDelete}
-                  redirectTo={redirectTo}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <EditManagerCard
+        manager={manager}
+        companies={companies}
+        isAdmin={isAdmin}
+        deleteAction={boundDelete}
+        deleteRedirectTo={deleteRedirectTo}
+      />
 
       {/* Soundcheck Artists */}
       <section>

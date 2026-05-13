@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAgencyDetail, getKnownArtistsForAgency, getRosterCrossoverForAgency, deleteAgency } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
-import DeleteContactButton from "../../DeleteContactButton";
+import EditAgencyHeader from "./EditAgencyHeader";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -44,7 +44,6 @@ export default async function AgencyDetailPage({
   );
   const uniqueArtists = Array.from(new Map(allArtists.map((a) => [a.id, a])).values());
   const agentOptions = agency.agents.map((a) => ({ id: a.id, name: a.name }));
-
   const boundDelete = deleteAgency.bind(null, params.id);
 
   return (
@@ -57,36 +56,14 @@ export default async function AgencyDetailPage({
         <span className="font-medium text-[#1B2A4A]">{agency.name}</span>
       </nav>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1B2A4A]">{agency.name}</h1>
-            {agency.website && (
-              <a
-                href={agency.website.startsWith("http") ? agency.website : `https://${agency.website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 text-sm text-[#C0392B] hover:underline"
-              >
-                {agency.website}
-              </a>
-            )}
-            {agency.notes && <p className="mt-2 text-sm text-gray-600">{agency.notes}</p>}
-            <div className="mt-3 flex gap-4 text-sm text-gray-500">
-              <span>{agency.agents.length} agent{agency.agents.length !== 1 ? "s" : ""}</span>
-              <span>{uniqueArtists.length} Soundcheck artist{uniqueArtists.length !== 1 ? "s" : ""}</span>
-              <span>{knownArtists.length} known artist{knownArtists.length !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-          {isAdmin && (
-            <DeleteContactButton
-              confirmMessage={`Delete ${agency.name}? This will also remove all agents and known artists linked to this agency. This cannot be undone.`}
-              action={boundDelete}
-              redirectTo="/contacts"
-            />
-          )}
-        </div>
-      </div>
+      <EditAgencyHeader
+        agency={{ id: agency.id, name: agency.name, website: agency.website, notes: agency.notes }}
+        agentsCount={agency.agents.length}
+        artistsCount={uniqueArtists.length}
+        knownArtistsCount={knownArtists.length}
+        isAdmin={isAdmin}
+        deleteAction={boundDelete}
+      />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Agents</h2>
@@ -96,15 +73,30 @@ export default async function AgencyDetailPage({
           <div className="space-y-3">
             {agency.agents.map((a) => (
               <div key={a.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <Link href={`/contacts/agents/${a.id}`} className="text-base font-semibold text-[#1B2A4A] hover:underline">
-                  {a.name}
-                </Link>
-                {!a.is_active && (
-                  <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
-                )}
-                <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
-                  {a.email && <a href={`mailto:${a.email}`} className="hover:text-[#C0392B]">{a.email}</a>}
-                  {a.phone && <span>{a.phone}</span>}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/contacts/agents/${a.id}`} className="text-base font-semibold text-[#1B2A4A] hover:underline">
+                        {a.name}
+                      </Link>
+                      {!a.is_active && (
+                        <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
+                      {a.email && <a href={`mailto:${a.email}`} className="hover:text-[#C0392B]">{a.email}</a>}
+                      {a.phone && <span>{a.phone}</span>}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/contacts/agents/${a.id}`}
+                    title="Edit agent"
+                    className="shrink-0 rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#1B2A4A]/30 hover:bg-gray-50 hover:text-[#1B2A4A] transition"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </Link>
                 </div>
                 {a.artists.length > 0 && (
                   <div className="mt-3">
