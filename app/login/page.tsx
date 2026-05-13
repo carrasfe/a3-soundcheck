@@ -37,7 +37,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/a3-logo-dark.png" alt="A3 Soundcheck" className="h-16 w-auto" />
+          <img src="/a3-logo-horizontal.png" alt="A3 Soundcheck" className="h-16 w-auto" />
         </div>
 
         {/* Card */}
