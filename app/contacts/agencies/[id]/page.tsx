@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAgencyDetail, getKnownArtistsForAgency, getRosterCrossoverForAgency, deleteAgency } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
 import EditAgencyHeader from "./EditAgencyHeader";
+import AddAgentSection from "./AddAgentSection";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -65,63 +66,7 @@ export default async function AgencyDetailPage({
         deleteAction={boundDelete}
       />
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Agents</h2>
-        {agency.agents.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">No agents yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {agency.agents.map((a) => (
-              <div key={a.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Link href={`/contacts/agents/${a.id}`} className="text-base font-semibold text-[#001489] hover:underline">
-                        {a.name}
-                      </Link>
-                      {!a.is_active && (
-                        <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
-                      {a.email && <a href={`mailto:${a.email}`} className="hover:text-[#C8102E]">{a.email}</a>}
-                      {a.phone && <span>{a.phone}</span>}
-                    </div>
-                  </div>
-                  <Link
-                    href={`/contacts/agents/${a.id}`}
-                    title="Edit agent"
-                    className="shrink-0 rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#001489]/30 hover:bg-gray-50 hover:text-[#001489] transition"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </Link>
-                </div>
-                {a.artists.length > 0 && (
-                  <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-gray-500">Soundcheck Artists</p>
-                    <div className="space-y-1.5">
-                      {a.artists.map((ar) => (
-                        <div key={ar.id} className="flex items-center gap-3">
-                          <Link href={`/artists/${ar.id}`} className="text-sm font-medium text-[#001489] hover:underline">
-                            {ar.name}
-                          </Link>
-                          <span className="text-xs text-gray-400">{ar.role}</span>
-                          {ar.latest_score !== null && (
-                            <span className="text-xs font-semibold text-gray-600">{ar.latest_score.toFixed(1)}</span>
-                          )}
-                          <TierBadge tier={ar.latest_tier} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <AddAgentSection initialAgents={agency.agents} agencyId={params.id} />
 
       {uniqueArtists.length > 0 && (
         <section>

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getManagementCompanyDetail, getKnownArtistsForCompany, deleteManagementCompany } from "../../actions";
 import KnownArtistsSection from "../../KnownArtistsSection";
 import EditCompanyHeader from "./EditCompanyHeader";
+import AddManagerSection from "./AddManagerSection";
 
 function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
@@ -65,64 +66,7 @@ export default async function ManagementCompanyDetailPage({
         deleteAction={boundDelete}
       />
 
-      {/* Managers */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Managers</h2>
-        {company.managers.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">No managers yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {company.managers.map((m) => (
-              <div key={m.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Link href={`/contacts/managers/${m.id}`} className="text-base font-semibold text-[#001489] hover:underline">
-                        {m.name}
-                      </Link>
-                      {!m.is_active && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
-                      {m.email && <a href={`mailto:${m.email}`} className="hover:text-[#C8102E]">{m.email}</a>}
-                      {m.phone && <span>{m.phone}</span>}
-                    </div>
-                  </div>
-                  <Link
-                    href={`/contacts/managers/${m.id}`}
-                    title="Edit manager"
-                    className="shrink-0 rounded border border-gray-200 p-1.5 text-gray-400 hover:border-[#001489]/30 hover:bg-gray-50 hover:text-[#001489] transition"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </Link>
-                </div>
-                {m.artists.length > 0 && (
-                  <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-gray-500">Soundcheck Artists</p>
-                    <div className="space-y-1.5">
-                      {m.artists.map((a) => (
-                        <div key={a.id} className="flex items-center gap-3">
-                          <Link href={`/artists/${a.id}`} className="text-sm font-medium text-[#001489] hover:underline">
-                            {a.name}
-                          </Link>
-                          <span className="text-xs text-gray-400">{a.role}</span>
-                          {a.latest_score !== null && (
-                            <span className="text-xs font-semibold text-gray-600">{a.latest_score.toFixed(1)}</span>
-                          )}
-                          <TierBadge tier={a.latest_tier} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <AddManagerSection initialManagers={company.managers} companyId={params.id} />
 
       {uniqueArtists.length > 0 && (
         <section>
