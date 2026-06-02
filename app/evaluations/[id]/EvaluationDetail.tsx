@@ -222,8 +222,8 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
       return listeners > 0 ? `${pct} (${fmtNum(listeners)})` : pct;
     })();
 
-    // IG 30-day growth
-    const gainRaw = g("ig_30day_gain");
+    // IG 90-day growth
+    const gainRaw = g("ig_90day_gain");
     const igFlwrs = nv("ig_followers");
     const igGrowthStr = (() => {
       if (!gainRaw) return "—";

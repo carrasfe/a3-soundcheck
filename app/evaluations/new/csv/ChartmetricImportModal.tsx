@@ -60,7 +60,7 @@ const FIELD_GROUPS: FieldGroup[] = [
     group: "Step 6 — Growth",
     fields: [
       { kind: "single", key: "spotify_yoy_pct",  label: "Spotify YoY Change", unit: "%" },
-      { kind: "single", key: "ig_30day_gain",    label: "IG 30-Day Gain" },
+      { kind: "single", key: "ig_90day_gain",    label: "IG 90-Day Gain" },
       { kind: "single", key: "playlist_score",   label: "Playlist Score (1–5)" },
     ],
   },

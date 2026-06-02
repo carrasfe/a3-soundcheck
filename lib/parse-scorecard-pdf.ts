@@ -484,7 +484,7 @@ async function _parsePDF(
           else if (name.includes("venue prog"))
             fd.venue_progression = reverseProg(inp);
           else if (name.includes("ig growth")) {
-            fd.ig_30day_gain = reverseGain(inp);
+            fd.ig_90day_gain = reverseGain(inp);
             // Parenthetical: "+374 (22K)" → ig_followers (if not already set by P2)
             if (paren && !fd.ig_followers) fd.ig_followers = parenFK(paren);
           }

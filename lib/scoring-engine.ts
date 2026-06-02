@@ -116,7 +116,7 @@ export interface ScoringInputs {
   spotify_yoy_pct?: number;       // year-over-year % change
   album_cycle_override?: AlbumCycleOverride;
   venue_progression: VenueProgressionOption;
-  ig_30day_gain?: number;         // absolute follower gain over 30 days
+  ig_90day_gain?: number;         // absolute follower gain over 90 days
   press_score: number;            // 1–5 manual
   playlist_score: number;         // 1–5 manual
 }
@@ -751,23 +751,23 @@ function scoreVenueProgression(option: VenueProgressionOption, capacity: number)
   return 5; // tier_change
 }
 
-function scoreIgGrowth(followers: number, gain30Day?: number, demo?: DemographicsInput): number {
-  if (gain30Day === undefined || gain30Day === null) return 3;
+function scoreIgGrowth(followers: number, gain90Day?: number, demo?: DemographicsInput): number {
+  if (gain90Day === undefined || gain90Day === null) return 3;
   if (followers === 0) return 1;
 
-  const growthPct = (gain30Day / followers) * 100;
+  const growthPct = (gain90Day / followers) * 100;
 
   if (followers > 200_000) {
-    if (growthPct < 0.15) return 1;
-    if (growthPct < 0.40) return 2;
-    if (growthPct < 1.5)  return 3;
-    if (growthPct < 4.0)  return 4;
+    if (growthPct <  0.45) return 1;
+    if (growthPct <  1.20) return 2;
+    if (growthPct <  4.5)  return 3;
+    if (growthPct < 12.0)  return 4;
     return 5;
   }
-  if (growthPct < 0.5) return 1;
-  if (growthPct < 1.0) return 2;
-  if (growthPct < 3.0) return 3;
-  if (growthPct < 6.0) return 4;
+  if (growthPct <  1.5) return 1;
+  if (growthPct <  3.0) return 2;
+  if (growthPct <  9.0) return 3;
+  if (growthPct < 18.0) return 4;
   return 5;
 }
 
@@ -780,7 +780,7 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown {
   }
 
   const venueScore   = scoreVenueProgression(inputs.venue_progression, inputs.venue_capacity);
-  const igGrowthScore = scoreIgGrowth(inputs.ig_followers, inputs.ig_30day_gain, inputs.demographics);
+  const igGrowthScore = scoreIgGrowth(inputs.ig_followers, inputs.ig_90day_gain, inputs.demographics);
   const pressScore   = inputs.press_score;
   const playlistScore = inputs.playlist_score;
 

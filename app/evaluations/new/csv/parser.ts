@@ -80,7 +80,7 @@ export const CSV_TYPE_INFO: Record<Exclude<CSVType, "unknown">, {
   spotify_fcr_trends:         { label: "Fan Conversion Rate Trends",      hint: "Fills Spotify FCR %",                    platform: "spotify" },
   spotify_followers_trends:   { label: "Spotify Followers Trends",        hint: "Optional reference data",                platform: "spotify" },
   spotify_playlist_evolution: { label: "Playlist Evolution",              hint: "Suggests playlist score (1–5)",          platform: "spotify" },
-  ig_followers_trends:        { label: "Instagram Followers Trends",      hint: "Fills IG followers + 30-day gain",       platform: "instagram" },
+  ig_followers_trends:        { label: "Instagram Followers Trends",      hint: "Fills IG followers + 90-day gain",       platform: "instagram" },
   er_trends:                  { label: "Engagement Rate Trends",          hint: "IG or YouTube ER % (assign in step 2)",  platform: "all" },
   tiktok_followers_trends:    { label: "TikTok Followers Trends",         hint: "Fills TikTok followers",                 platform: "tiktok" },
   tiktok_avg_views_trends:    { label: "TikTok Average Views Trends",     hint: "Fills TikTok avg views",                 platform: "tiktok" },
@@ -244,31 +244,31 @@ export function extractSpotifyFCRTrend(csv: ParsedCSV): { fan_concentration_rati
 
 export function extractIGFollowersTrend(csv: ParsedCSV): {
   ig_followers: string | null;
-  ig_30day_gain: string | null;
+  ig_90day_gain: string | null;
 } {
   const { headers, rows } = csv;
   const dateCol = findCol(headers, "date");
   const valCol  = findCol(headers, "follower", "subscriber");
-  if (!valCol) return { ig_followers: null, ig_30day_gain: null };
+  if (!valCol) return { ig_followers: null, ig_90day_gain: null };
 
   if (dateCol) {
     const trend = buildTrendRows(rows, dateCol, valCol);
-    if (!trend.length) return { ig_followers: null, ig_30day_gain: null };
+    if (!trend.length) return { ig_followers: null, ig_90day_gain: null };
     const latest = trend[trend.length - 1];
-    const priorTarget = latest.date.getTime() - 30 * 86400000;
+    const priorTarget = latest.date.getTime() - 90 * 86400000;
     const prior = findClosest(trend.slice(0, -1), priorTarget);
     return {
       ig_followers:  String(Math.round(latest.value)),
-      ig_30day_gain: prior != null ? String(Math.round(latest.value - prior.value)) : null,
+      ig_90day_gain: prior != null ? String(Math.round(latest.value - prior.value)) : null,
     };
   }
 
   const nonBlank = rows.filter((r) => { const v = r[valCol]?.trim(); return v && !isNaN(parseFloat(v)); });
-  if (!nonBlank.length) return { ig_followers: null, ig_30day_gain: null };
+  if (!nonBlank.length) return { ig_followers: null, ig_90day_gain: null };
   const latestVal = parseFloat(nonBlank[nonBlank.length - 1][valCol]);
-  const priorIdx  = Math.max(0, nonBlank.length - 31);
+  const priorIdx  = Math.max(0, nonBlank.length - 91);
   const priorVal  = parseFloat(nonBlank[priorIdx][valCol]);
-  return { ig_followers: String(Math.round(latestVal)), ig_30day_gain: String(Math.round(latestVal - priorVal)) };
+  return { ig_followers: String(Math.round(latestVal)), ig_90day_gain: String(Math.round(latestVal - priorVal)) };
 }
 
 // ─── Generic latest-value trend ───────────────────────────────
@@ -619,7 +619,7 @@ export async function extractMultiCSV(files: File[]): Promise<MultiCSVExtract> {
   if (ig) {
     const ex = extractIGFollowersTrend(ig.csv);
     set("ig_followers",  ex.ig_followers,  ig.file.name);
-    set("ig_30day_gain", ex.ig_30day_gain, ig.file.name);
+    set("ig_90day_gain", ex.ig_90day_gain, ig.file.name);
   }
 
   const tt = detected["tiktok_followers_trends"];

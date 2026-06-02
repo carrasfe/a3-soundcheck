@@ -113,7 +113,7 @@ async function parseScorecard(file: File): Promise<EvalFormData> {
     show_album_cycle:         !!albumCycleRaw,
     venue_progression:        mapVenueProgression(cellStr(s, "B54")),
     ig_followers:             cellNum(s, "B55"),
-    ig_30day_gain:            cellNum(s, "B56"),
+    ig_90day_gain:            cellNum(s, "B56"),
     press_score:              cellNum(s, "C58"),
     playlist_score:           cellNum(s, "C59"),
   };
@@ -175,7 +175,7 @@ const FIELD_DEFS: FieldDef[] = [
   { label: "Spotify YoY %",         key: "spotify_yoy_pct",        group: "Growth" },
   { label: "Venue Progression",     key: "venue_progression",      group: "Growth" },
   { label: "Album Cycle Override",  key: "album_cycle_override",   group: "Growth" },
-  { label: "IG 30-Day Gain",        key: "ig_30day_gain",          group: "Growth" },
+  { label: "IG 90-Day Gain",        key: "ig_90day_gain",          group: "Growth" },
   { label: "Press Score",           key: "press_score",            group: "Growth" },
   { label: "Playlist Score",        key: "playlist_score",         group: "Growth" },
   { label: "Ages 13–17",            key: "d_13_17_m",              group: "Demographics" },

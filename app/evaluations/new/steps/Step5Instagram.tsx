@@ -21,10 +21,10 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
 
   const igGrowthPct = useMemo(() => {
     const f = parseFloat(data.ig_followers)  || 0;
-    const g = parseFloat(data.ig_30day_gain) || 0;
+    const g = parseFloat(data.ig_90day_gain) || 0;
     if (!f || !g) return null;
     return ((g / f) * 100).toFixed(2) + "%";
-  }, [data.ig_followers, data.ig_30day_gain]);
+  }, [data.ig_followers, data.ig_90day_gain]);
 
   return (
     <div className="space-y-6">
@@ -65,7 +65,7 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
         )}
       </section>
 
-      {/* 30-Day Growth */}
+      {/* 90-Day Growth */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -75,14 +75,14 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
           <ScoreBadge score={scores?.p4.sub_scores.ig_growth ?? null} />
         </div>
         <Input
-          label="30-Day Follower Gain"
+          label="90-Day Follower Gain"
           type="number"
           min={0}
-          value={data.ig_30day_gain}
-          onChange={set("ig_30day_gain")}
-          placeholder="e.g. 3500"
-          hint="Net new followers over the last 30 days"
-          csvFilled={csvFilled.has("ig_30day_gain")}
+          value={data.ig_90day_gain}
+          onChange={set("ig_90day_gain")}
+          placeholder="e.g. 10500"
+          hint="Net new followers over the last 90 days"
+          csvFilled={csvFilled.has("ig_90day_gain")}
         />
         {igGrowthPct && (
           <p className="mt-2 text-xs text-gray-500">

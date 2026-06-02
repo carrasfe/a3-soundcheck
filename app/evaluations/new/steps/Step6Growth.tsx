@@ -34,10 +34,10 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
   // IG growth % preview
   const igGrowthPct = useMemo(() => {
     const f = parseFloat(data.ig_followers)  || 0;
-    const g = parseFloat(data.ig_30day_gain) || 0;
+    const g = parseFloat(data.ig_90day_gain) || 0;
     if (!f || !g) return null;
     return ((g / f) * 100).toFixed(2) + "%";
-  }, [data.ig_followers, data.ig_30day_gain]);
+  }, [data.ig_followers, data.ig_90day_gain]);
 
   const listenerSize = parseFloat(data.spotify_monthly_listeners) || 0;
   const yoyTierHint =
@@ -167,14 +167,14 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
           </div>
           <div>
             <Input
-              label="30-Day Follower Gain"
+              label="90-Day Follower Gain"
               type="number"
               min={0}
-              value={data.ig_30day_gain}
-              onChange={set("ig_30day_gain")}
-              placeholder="e.g. 3500"
-              hint="Net new followers over the last 30 days"
-              csvFilled={csvFilled.has("ig_30day_gain")}
+              value={data.ig_90day_gain}
+              onChange={set("ig_90day_gain")}
+              placeholder="e.g. 10500"
+              hint="Net new followers over the last 90 days"
+              csvFilled={csvFilled.has("ig_90day_gain")}
             />
             {igGrowthPct && (
               <p className="mt-1 text-xs text-gray-500">

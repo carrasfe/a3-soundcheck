@@ -586,16 +586,16 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
 
   // IG Growth: append followers in parentheses if entered (and not already
   // shown in the IG ER row) so the parser can recover ig_followers.
-  const igGrowthInput = inp.ig_30day_gain
+  const igGrowthInput = inp.ig_90day_gain
     ? (inp.ig_followers
-        ? `+${fK(inp.ig_30day_gain)} (${fK(inp.ig_followers)})`
-        : `+${fK(inp.ig_30day_gain)}`)
+        ? `+${fK(inp.ig_90day_gain)} (${fK(inp.ig_followers)})`
+        : `+${fK(inp.ig_90day_gain)}`)
     : "—";
 
   const rows: SubRow[] = [
     { name: "Spotify YoY",  input: spotifyYoyInput,                                              score: r.p4.sub_scores.spotify_yoy ?? 0 },
     { name: "Venue Prog.",  input: PROG_S[inp.venue_progression] ?? inp.venue_progression ?? "—", score: r.p4.sub_scores.venue_progression ?? 0 },
-    { name: "IG Growth",    input: igGrowthInput,                                                 score: r.p4.sub_scores.ig_growth ?? 0 },
+    { name: "IG Growth (90d)", input: igGrowthInput,                                              score: r.p4.sub_scores.ig_growth ?? 0 },
     { name: "Press",        input: inp.press_score    ? `${inp.press_score}/5`    : "—",         score: r.p4.sub_scores.press ?? 0 },
     { name: "Playlist",     input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",         score: r.p4.sub_scores.playlist ?? 0 },
   ];

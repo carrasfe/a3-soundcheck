@@ -29,7 +29,7 @@ const DEFAULTS = {
   d2c_level: 2 as const,
   spotify_yoy_pct: 10,
   venue_progression: "same" as const,
-  ig_30day_gain: 1_000,
+  ig_90day_gain: 3_000,
   press_score: 3,
   playlist_score: 3,
 };
@@ -398,23 +398,23 @@ describe("P4 – Venue Progression", () => {
 });
 
 describe("P4 – IG Growth size-adjusted", () => {
-  it(">200K followers uses relaxed thresholds: 0.1% gain → 1", () => {
-    // 300K followers, 300 gain = 0.1% < 0.15% → score 1
-    const r = score({ genre: "Pop", ig_followers: 300_000, ig_30day_gain: 300 });
+  it(">200K followers uses relaxed thresholds: 0.3% gain → 1", () => {
+    // 300K followers, 900 gain = 0.3% < 0.45% → score 1
+    const r = score({ genre: "Pop", ig_followers: 300_000, ig_90day_gain: 900 });
     expect(r.p4.sub_scores.ig_growth).toBe(1);
   });
-  it(">200K followers: 2% gain → 4", () => {
-    // 300K followers, 6000 gain = 2% ≥1.5% <4% → score 4
-    const r = score({ genre: "Pop", ig_followers: 300_000, ig_30day_gain: 6_000 });
+  it(">200K followers: 6% gain → 4", () => {
+    // 300K followers, 18000 gain = 6% ≥4.5% <12% → score 4
+    const r = score({ genre: "Pop", ig_followers: 300_000, ig_90day_gain: 18_000 });
     expect(r.p4.sub_scores.ig_growth).toBe(4);
   });
-  it("≤200K followers: 0.4% gain → 1 (< 0.5%)", () => {
-    // 100K followers, 400 gain = 0.4% → score 1
-    const r = score({ genre: "Pop", ig_followers: 100_000, ig_30day_gain: 400 });
+  it("≤200K followers: 1.2% gain → 1 (< 1.5%)", () => {
+    // 100K followers, 1200 gain = 1.2% → score 1
+    const r = score({ genre: "Pop", ig_followers: 100_000, ig_90day_gain: 1_200 });
     expect(r.p4.sub_scores.ig_growth).toBe(1);
   });
-  it("≤200K followers: 4% gain → 4 (3-6%)", () => {
-    const r = score({ genre: "Pop", ig_followers: 100_000, ig_30day_gain: 4_000 });
+  it("≤200K followers: 12% gain → 4 (9-18%)", () => {
+    const r = score({ genre: "Pop", ig_followers: 100_000, ig_90day_gain: 12_000 });
     expect(r.p4.sub_scores.ig_growth).toBe(4);
   });
 });
@@ -497,7 +497,7 @@ describe("Tier classification thresholds", () => {
       youtube_subscribers: 500_000, youtube_er_pct: 6.0,
       store_quality: 5, merch_range: 5, price_point_highest: 150, d2c_level: 4,
       spotify_yoy_pct: 50, venue_progression: "tier_change",
-      ig_30day_gain: 50_000, press_score: 5, playlist_score: 5,
+      ig_90day_gain: 150_000, press_score: 5, playlist_score: 5,
     });
     expect(r.tier_label).toBe("Priority");
   });
@@ -514,7 +514,7 @@ describe("Tier classification thresholds", () => {
       youtube_subscribers: 200_000, youtube_er_pct: 4.0,
       store_quality: 4, merch_range: 4, price_point_highest: 80, d2c_level: 3,
       spotify_yoy_pct: 25, venue_progression: "slight_step_up",
-      ig_30day_gain: 10_000, press_score: 4, playlist_score: 4,
+      ig_90day_gain: 30_000, press_score: 4, playlist_score: 4,
     });
     expect(r.revenue_tier).toBe("PREMIUM");
     expect(r.total_score).toBeGreaterThanOrEqual(3.2);
@@ -664,7 +664,7 @@ describe("Calibration artists", () => {
       // P4
       spotify_yoy_pct: 20,
       venue_progression: "major_jump",
-      ig_30day_gain: 12_000,
+      ig_90day_gain: 36_000,
       press_score: 4,
       playlist_score: 4,
       // Demographics: young-leaning Hispanic audience (The Marias)
@@ -712,7 +712,7 @@ describe("Calibration artists", () => {
       // P4
       spotify_yoy_pct: 8,
       venue_progression: "same",
-      ig_30day_gain: 3_000,
+      ig_90day_gain: 9_000,
       press_score: 5,
       playlist_score: 4,
       // Demographics: older audience typical of Bluegrass
@@ -759,7 +759,7 @@ describe("Calibration artists", () => {
       // P4
       spotify_yoy_pct: 5,
       venue_progression: "same",
-      ig_30day_gain: 3_000,
+      ig_90day_gain: 9_000,
       press_score: 4,
       playlist_score: 3,
       // Demographics: mixed-age rock/punk audience
@@ -806,7 +806,7 @@ describe("Calibration artists", () => {
       // P4
       spotify_yoy_pct: 18,
       venue_progression: "slight_step_up",
-      ig_30day_gain: 4_000,
+      ig_90day_gain: 12_000,
       press_score: 3,
       playlist_score: 3,
       // Demographics: mixed but younger-leaning country audience
@@ -852,7 +852,7 @@ describe("Calibration artists", () => {
       // P4
       spotify_yoy_pct: 5,
       venue_progression: "same",
-      ig_30day_gain: 30_000,
+      ig_90day_gain: 90_000,
       press_score: 5,
       playlist_score: 4,
       // Demographics: broad mix, significant younger base
@@ -882,7 +882,7 @@ describe("Edge cases", () => {
       tiktok_avg_views: undefined,
       youtube_er_pct: undefined,
       spotify_yoy_pct: undefined,
-      ig_30day_gain: undefined,
+      ig_90day_gain: undefined,
       price_point_highest: undefined,
       discord_members: undefined,
       album_cycle_override: null,

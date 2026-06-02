@@ -112,7 +112,7 @@ export interface EvalFormData {
   show_album_cycle: boolean;
   album_cycle_override: string;
   venue_progression: string;
-  ig_30day_gain: string;
+  ig_90day_gain: string;
   press_score: string;
   playlist_score: string;
 }
@@ -140,7 +140,7 @@ export const INITIAL_FORM_DATA: EvalFormData = {
   youtube_subscribers: "", youtube_er_pct: "",
   store_quality: "", merch_range: "", price_point_highest: "", d2c_level: "",
   spotify_yoy_pct: "", show_album_cycle: false, album_cycle_override: "",
-  venue_progression: "", ig_30day_gain: "", press_score: "", playlist_score: "",
+  venue_progression: "", ig_90day_gain: "", press_score: "", playlist_score: "",
 };
 
 // ─── Conversion helpers ───────────────────────────────────────
@@ -274,7 +274,7 @@ export function buildScoringInputs(fd: EvalFormData): ScoringInputs | null {
       ? (fd.album_cycle_override as AlbumCycleOverride)
       : null,
     venue_progression: (fd.venue_progression as VenueProgressionOption) || "same",
-    ig_30day_gain: n(fd.ig_30day_gain),
+    ig_90day_gain: n(fd.ig_90day_gain),
     press_score: nOr(fd.press_score, 1),
     playlist_score: nOr(fd.playlist_score, 1),
   };

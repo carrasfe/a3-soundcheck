@@ -45,7 +45,7 @@ const FIELD_DEFS: FieldDef[] = [
   { label: "D2C Level",                key: "d2c_level",                 group: "E-Commerce" },
   { label: "Spotify YoY %",            key: "spotify_yoy_pct",           group: "Growth" },
   { label: "Venue Progression",        key: "venue_progression",         group: "Growth" },
-  { label: "IG 30-Day Gain",           key: "ig_30day_gain",             group: "Growth" },
+  { label: "IG 90-Day Gain",           key: "ig_90day_gain",             group: "Growth" },
   { label: "Press Score",              key: "press_score",               group: "Growth" },
   { label: "Playlist Score",           key: "playlist_score",            group: "Growth" },
   { label: "Ages 13–17 (%)",           key: "d_13_17_m",                 group: "Demographics" },
