@@ -58,11 +58,13 @@ function PillarCard({
   result,
   weight,
   subRows,
+  bonusLabel = "Bonus (VIP / Discord)",
 }: {
   name: string;
   result: PillarBreakdown;
   weight: number;
   subRows: Array<{ key: string; label: string; weight: number; inputVal?: string }>;
+  bonusLabel?: string;
 }) {
   const scoreColor =
     result.final_score >= 4
@@ -123,7 +125,7 @@ function PillarCard({
                 className="px-5 py-1.5 text-xs text-emerald-700"
                 colSpan={4}
               >
-                Bonus (VIP / Discord)
+                {bonusLabel}
               </td>
               <td className="px-5 py-1.5 text-right text-xs font-semibold text-emerald-700">
                 +{result.bonus.toFixed(3)}
@@ -510,6 +512,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           name="P4 — Growth Trajectory"
           result={r.p4}
           weight={r.pillar_weights.p4}
+          bonusLabel="TikTok Viral Signal"
           subRows={[
             { key: "spotify_yoy",       label: "Spotify YoY",        weight: 0.30, inputVal: iv("spotify_yoy") },
             { key: "venue_progression", label: "Venue Progression",  weight: 0.25, inputVal: iv("venue_progression") },

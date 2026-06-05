@@ -600,6 +600,13 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
     { name: "Playlist",     input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",         score: r.p4.sub_scores.playlist ?? 0 },
   ];
 
+  if ((r.p4.bonus ?? 0) > 0) {
+    const ttFollowers = nv(inp.tiktok_followers);
+    const ttViews     = nv(inp.tiktok_avg_views);
+    const ratioStr    = ttFollowers > 0 ? `×${(ttViews / ttFollowers).toFixed(0)} ratio` : "—";
+    rows.push({ name: "TikTok Viral", input: ratioStr, score: r.p4.bonus!, isBonus: true });
+  }
+
   let endY = drawSubRows(doc, 3, first, rows);
 
   if (inp.show_album_cycle && inp.album_cycle_override) {

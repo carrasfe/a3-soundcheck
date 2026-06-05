@@ -771,6 +771,14 @@ function scoreIgGrowth(followers: number, gain90Day?: number, demo?: Demographic
   return 5;
 }
 
+export function tiktokViralBonus(followers: number, avgViews?: number): number {
+  if (!avgViews || avgViews < 10_000) return 0;
+  if (!followers || followers === 0) return 0;
+  const ratio = avgViews / followers;
+  if (ratio < 5) return 0;
+  return avgViews >= 50_000 ? 1.0 : 0.5;
+}
+
 function computeP4(inputs: ScoringInputs): PillarBreakdown {
   let yoyScore = scoreSpotifyYoY(inputs.spotify_yoy_pct, inputs.spotify_monthly_listeners);
 
@@ -779,9 +787,9 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown {
     yoyScore = Math.min(yoyScore + 1, 3);
   }
 
-  const venueScore   = scoreVenueProgression(inputs.venue_progression, inputs.venue_capacity);
+  const venueScore    = scoreVenueProgression(inputs.venue_progression, inputs.venue_capacity);
   const igGrowthScore = scoreIgGrowth(inputs.ig_followers, inputs.ig_90day_gain, inputs.demographics);
-  const pressScore   = inputs.press_score;
+  const pressScore    = inputs.press_score;
   const playlistScore = inputs.playlist_score;
 
   const weighted =
@@ -790,6 +798,9 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown {
     igGrowthScore * 0.20 +
     pressScore    * 0.15 +
     playlistScore * 0.10;
+
+  const viralBonus = tiktokViralBonus(inputs.tiktok_followers, inputs.tiktok_avg_views);
+  const finalScore = Math.min(5, weighted + viralBonus);
 
   return {
     sub_scores: {
@@ -800,7 +811,8 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown {
       playlist: playlistScore,
     },
     weighted_score: weighted,
-    final_score: weighted,
+    bonus: viralBonus > 0 ? viralBonus : undefined,
+    final_score: finalScore,
   };
 }
 

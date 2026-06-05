@@ -30,13 +30,14 @@ const TIER_STYLES: Record<string, string> = {
 };
 
 function PillarCard({
-  name, result, weight, subRows, bonus,
+  name, result, weight, subRows, bonus, bonusLabel = "Bonus (VIP / Discord)",
 }: {
   name: string;
   result: { final_score: number; weighted_score: number; sub_scores: Record<string, number> };
   weight: number;
   subRows: Array<{ key: string; label: string; weight: number }>;
   bonus?: number;
+  bonusLabel?: string;
 }) {
   const scoreColor =
     result.final_score >= 4 ? "text-[#001489]"
@@ -80,7 +81,7 @@ function PillarCard({
         {bonus !== undefined && bonus > 0 && (
           <tfoot>
             <tr className="border-t border-dashed border-gray-200 bg-emerald-50/50">
-              <td className="px-5 py-1.5 text-xs text-emerald-700" colSpan={3}>Bonus (VIP / Discord)</td>
+              <td className="px-5 py-1.5 text-xs text-emerald-700" colSpan={3}>{bonusLabel}</td>
               <td className="px-5 py-1.5 text-right text-xs font-semibold text-emerald-700">+{bonus.toFixed(3)}</td>
             </tr>
           </tfoot>
@@ -290,6 +291,8 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
         name="P4 — Growth Trajectory"
         result={r.p4}
         weight={r.pillar_weights.p4}
+        bonus={r.p4.bonus}
+        bonusLabel="TikTok Viral Signal"
         subRows={[
           { key: "spotify_yoy",       label: "Spotify YoY",          weight: 0.30 },
           { key: "venue_progression", label: "Venue Progression",    weight: 0.25 },

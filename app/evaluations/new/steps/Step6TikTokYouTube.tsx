@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Input, ScoreBadge } from "../ui";
 import type { EvalFormData, StepProps } from "../types";
 import { buildScoringInputs } from "../types";
-import { calculateScore } from "@/lib/scoring-engine";
+import { calculateScore, tiktokViralBonus } from "@/lib/scoring-engine";
 
 export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }: StepProps) {
   const set = (key: keyof EvalFormData) =>
@@ -21,6 +21,14 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
     const v = parseFloat(data.tiktok_avg_views)  || 0;
     if (!f || !v) return null;
     return ((v / f) * 100).toFixed(2) + "%";
+  }, [data.tiktok_followers, data.tiktok_avg_views]);
+
+  const viralSignal = useMemo(() => {
+    const f = parseFloat(data.tiktok_followers) || 0;
+    const v = parseFloat(data.tiktok_avg_views)  || 0;
+    const bonus = tiktokViralBonus(f, v);
+    if (!bonus) return null;
+    return { bonus, avgViews: v, followers: f };
   }, [data.tiktok_followers, data.tiktok_avg_views]);
 
   return (
@@ -64,6 +72,11 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
         )}
         {parseFloat(data.tiktok_followers) >= 15_000 && parseFloat(data.tiktok_followers) < 75_000 && (
           <p className="mt-2 text-xs text-amber-600">⚠ 15–75K followers — TikTok score capped at 3</p>
+        )}
+        {viralSignal && (
+          <p className="mt-2 rounded-lg bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700">
+            ⚡ TikTok Viral Signal detected: {(viralSignal.avgViews / 1000).toFixed(0)}K avg views on {(viralSignal.followers / 1000).toFixed(0)}K followers — P4 bonus +{viralSignal.bonus.toFixed(1)} will apply
+          </p>
         )}
         {p2 && (
           <p className="mt-2 text-xs text-gray-500">

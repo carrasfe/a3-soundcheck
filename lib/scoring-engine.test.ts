@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   calculateScore,
+  tiktokViralBonus,
   type ScoringInputs,
 } from "./scoring-engine";
 
@@ -416,6 +417,71 @@ describe("P4 – IG Growth size-adjusted", () => {
   it("≤200K followers: 12% gain → 4 (9-18%)", () => {
     const r = score({ genre: "Pop", ig_followers: 100_000, ig_90day_gain: 12_000 });
     expect(r.p4.sub_scores.ig_growth).toBe(4);
+  });
+});
+
+// ============================================================
+// P4 – TikTok Viral Signal bonus
+// ============================================================
+
+describe("tiktokViralBonus", () => {
+  it("returns 0 when avg views below 10K", () => {
+    expect(tiktokViralBonus(5_000, 9_999)).toBe(0);
+  });
+  it("returns 0 when ratio < 5 (even with high views)", () => {
+    // 100K followers, 400K views = ratio 4x → no bonus
+    expect(tiktokViralBonus(100_000, 400_000)).toBe(0);
+  });
+  it("returns 0 when no followers", () => {
+    expect(tiktokViralBonus(0, 50_000)).toBe(0);
+  });
+  it("returns 0 when avg views undefined", () => {
+    expect(tiktokViralBonus(5_000, undefined)).toBe(0);
+  });
+  it("returns +0.5 when ratio ≥5 and 10K ≤ avg_views < 50K", () => {
+    // 5K followers, 30K views = ratio 6x, views 30K → +0.5
+    expect(tiktokViralBonus(5_000, 30_000)).toBe(0.5);
+  });
+  it("returns +1.0 when ratio ≥5 and avg_views ≥ 50K", () => {
+    // 5K followers, 60K views = ratio 12x, views 60K → +1.0
+    expect(tiktokViralBonus(5_000, 60_000)).toBe(1.0);
+  });
+  it("boundary: ratio exactly 5 qualifies", () => {
+    // 10K followers, 50K views = ratio exactly 5 → +1.0
+    expect(tiktokViralBonus(10_000, 50_000)).toBe(1.0);
+  });
+});
+
+describe("P4 – TikTok Viral Signal applied to P4 score", () => {
+  it("adds +0.5 bonus to P4 final_score", () => {
+    const r = score({ genre: "Pop", tiktok_followers: 5_000, tiktok_avg_views: 30_000 });
+    expect(r.p4.bonus).toBe(0.5);
+    expect(r.p4.final_score).toBeCloseTo(r.p4.weighted_score + 0.5, 5);
+  });
+  it("adds +1.0 bonus to P4 final_score", () => {
+    const r = score({ genre: "Pop", tiktok_followers: 5_000, tiktok_avg_views: 60_000 });
+    expect(r.p4.bonus).toBe(1.0);
+    expect(r.p4.final_score).toBeCloseTo(r.p4.weighted_score + 1.0, 5);
+  });
+  it("no bonus when ratio < 5", () => {
+    const r = score({ genre: "Pop", tiktok_followers: 100_000, tiktok_avg_views: 400_000 });
+    expect(r.p4.bonus).toBeUndefined();
+    expect(r.p4.final_score).toBeCloseTo(r.p4.weighted_score, 5);
+  });
+  it("P4 final_score is capped at 5.0", () => {
+    // Very high base P4 score + viral bonus should not exceed 5
+    const r = score({
+      genre: "Pop",
+      spotify_yoy_pct: 100, venue_progression: "tier_change",
+      ig_followers: 50_000, ig_90day_gain: 15_000,
+      press_score: 5, playlist_score: 5,
+      tiktok_followers: 2_000, tiktok_avg_views: 50_000,
+    });
+    expect(r.p4.final_score).toBeLessThanOrEqual(5.0);
+  });
+  it("no bonus row in p4.bonus when no viral signal", () => {
+    const r = score({ genre: "Pop" });
+    expect(r.p4.bonus).toBeUndefined();
   });
 });
 
