@@ -1421,7 +1421,24 @@ export async function getA3RelationshipForPersons(opts: {
   const supabase = await createClient();
   const result = { managers: {} as Record<string, string[]>, agents: {} as Record<string, string[]> };
 
+  // Fetch all A3 client artists upfront for known_artists name matching (case-insensitive)
+  const { data: a3ClientArtists } = await supabase
+    .from("artists").select("name").eq("is_a3_client", true);
+  // lowercase name -> canonical name from the artists table
+  const a3ClientLowerMap = new Map<string, string>(
+    (a3ClientArtists ?? []).map((a) => [a.name.toLowerCase(), a.name])
+  );
+  console.log("[A3 Relationship] a3 client artists:", Array.from(a3ClientLowerMap.values()));
+
+  function addToResult(map: Record<string, string[]>, key: string, name: string) {
+    if (!map[key]) map[key] = [];
+    if (!map[key].includes(name)) map[key].push(name);
+  }
+
   if (opts.managerIds.length > 0) {
+    console.log("[A3 Relationship] checking managers:", opts.managerIds);
+
+    // Path 1: artist_managers junction table
     const { data: amLinks } = await supabase
       .from("artist_managers").select("manager_id, artist_id")
       .in("manager_id", opts.managerIds);
@@ -1433,14 +1450,30 @@ export async function getA3RelationshipForPersons(opts: {
       const a3Map = new Map((a3 ?? []).map((a) => [a.id, a.name]));
       for (const link of (amLinks ?? [])) {
         if (a3Map.has(link.artist_id)) {
-          if (!result.managers[link.manager_id]) result.managers[link.manager_id] = [];
-          result.managers[link.manager_id].push(a3Map.get(link.artist_id)!);
+          addToResult(result.managers, link.manager_id, a3Map.get(link.artist_id)!);
         }
       }
     }
+    console.log("[A3 Relationship] manager results after junction table:", result.managers);
+
+    // Path 2: known_artists roster entries (case-insensitive name match against a3 clients)
+    const { data: knownMgr } = await supabase
+      .from("known_artists").select("manager_id, name")
+      .in("manager_id", opts.managerIds);
+    console.log("[A3 Relationship] known_artists for managers:", knownMgr?.map(r => ({ id: r.manager_id, name: r.name })));
+    for (const row of (knownMgr ?? [])) {
+      const canonicalName = a3ClientLowerMap.get(row.name.toLowerCase());
+      if (canonicalName && row.manager_id) {
+        addToResult(result.managers, row.manager_id, canonicalName);
+      }
+    }
+    console.log("[A3 Relationship] manager results after known_artists:", result.managers);
   }
 
   if (opts.agentIds.length > 0) {
+    console.log("[A3 Relationship] checking agents:", opts.agentIds);
+
+    // Path 1: artist_agents junction table
     const { data: aaLinks } = await supabase
       .from("artist_agents").select("agent_id, artist_id")
       .in("agent_id", opts.agentIds);
@@ -1452,13 +1485,27 @@ export async function getA3RelationshipForPersons(opts: {
       const a3Map = new Map((a3 ?? []).map((a) => [a.id, a.name]));
       for (const link of (aaLinks ?? [])) {
         if (a3Map.has(link.artist_id)) {
-          if (!result.agents[link.agent_id]) result.agents[link.agent_id] = [];
-          result.agents[link.agent_id].push(a3Map.get(link.artist_id)!);
+          addToResult(result.agents, link.agent_id, a3Map.get(link.artist_id)!);
         }
       }
     }
+    console.log("[A3 Relationship] agent results after junction table:", result.agents);
+
+    // Path 2: known_artists roster entries (case-insensitive name match against a3 clients)
+    const { data: knownAgt } = await supabase
+      .from("known_artists").select("agent_id, name")
+      .in("agent_id", opts.agentIds);
+    console.log("[A3 Relationship] known_artists for agents:", knownAgt?.map(r => ({ id: r.agent_id, name: r.name })));
+    for (const row of (knownAgt ?? [])) {
+      const canonicalName = a3ClientLowerMap.get(row.name.toLowerCase());
+      if (canonicalName && row.agent_id) {
+        addToResult(result.agents, row.agent_id, canonicalName);
+      }
+    }
+    console.log("[A3 Relationship] agent results after known_artists:", result.agents);
   }
 
+  console.log("[A3 Relationship] final result:", result);
   return result;
 }
 
