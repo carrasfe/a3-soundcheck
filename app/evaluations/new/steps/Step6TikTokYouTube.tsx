@@ -16,12 +16,15 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
     try { return calculateScore(inputs).p2; } catch { return null; }
   }, [data]);
 
-  const ttEr = useMemo(() => {
+  // Legacy views/followers ER — only surfaced as a fallback note when the
+  // Chartmetric ER hasn't been entered yet (graceful degradation for older data).
+  const legacyTtEr = useMemo(() => {
+    if (data.tiktok_er_pct) return null;
     const f = parseFloat(data.tiktok_followers) || 0;
     const v = parseFloat(data.tiktok_avg_views)  || 0;
     if (!f || !v) return null;
     return ((v / f) * 100).toFixed(2) + "%";
-  }, [data.tiktok_followers, data.tiktok_avg_views]);
+  }, [data.tiktok_er_pct, data.tiktok_followers, data.tiktok_avg_views]);
 
   const viralSignal = useMemo(() => {
     const f = parseFloat(data.tiktok_followers) || 0;
@@ -51,27 +54,41 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
             error={errors.tiktok_followers}
             csvFilled={csvFilled.has("tiktok_followers")}
           />
-          <div>
-            <Input
-              label="Avg Views per Video (10 non-viral posts)"
-              type="number"
-              min={0}
-              value={data.tiktok_avg_views}
-              onChange={set("tiktok_avg_views")}
-              placeholder="e.g. 8500"
-            />
-            {ttEr && (
-              <p className="mt-1 text-xs text-gray-500">
-                Calculated ER: <span className="font-semibold text-[#001489]">{ttEr}</span>
-              </p>
-            )}
-          </div>
+          <Input
+            label="TikTok Engagement Rate (%)"
+            type="number"
+            min={0}
+            step="0.01"
+            value={data.tiktok_er_pct}
+            onChange={set("tiktok_er_pct")}
+            placeholder="Enter Chartmetric ER, e.g. 1.42"
+            hint="Chartmetric native ER — engagement per view, not views/followers"
+            csvFilled={csvFilled.has("tiktok_er_pct")}
+          />
         </div>
+        <div className="mt-4">
+          <Input
+            label="Avg Views per Video (10 non-viral posts)"
+            type="number"
+            min={0}
+            value={data.tiktok_avg_views}
+            onChange={set("tiktok_avg_views")}
+            placeholder="e.g. 8500"
+            hint="Used only for the TikTok Viral Signal bonus below — no longer used for ER scoring"
+            csvFilled={csvFilled.has("tiktok_avg_views")}
+          />
+        </div>
+        {legacyTtEr && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+            ⚠ No Chartmetric ER entered — showing legacy calculated ER ({legacyTtEr}) for reference only.
+            It is <strong>not</strong> used for scoring; enter the Chartmetric ER above for an accurate TikTok score.
+          </p>
+        )}
         {parseFloat(data.tiktok_followers) < 15_000 && data.tiktok_followers && (
           <p className="mt-2 text-xs text-amber-600">⚠ Under 15K followers — TikTok score capped at 1</p>
         )}
-        {parseFloat(data.tiktok_followers) >= 15_000 && parseFloat(data.tiktok_followers) < 75_000 && (
-          <p className="mt-2 text-xs text-amber-600">⚠ 15–75K followers — TikTok score capped at 3</p>
+        {parseFloat(data.tiktok_followers) >= 15_000 && parseFloat(data.tiktok_followers) < 50_000 && (
+          <p className="mt-2 text-xs text-amber-600">⚠ 15–50K followers — TikTok score capped at 3</p>
         )}
         {viralSignal && (
           <p className="mt-2 rounded-lg bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700">

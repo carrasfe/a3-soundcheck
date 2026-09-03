@@ -98,6 +98,7 @@ export interface EvalFormData {
   merch_sentiment: string;
   tiktok_followers: string;
   tiktok_avg_views: string;
+  tiktok_er_pct: string;
   youtube_subscribers: string;
   youtube_er_pct: string;
 
@@ -136,7 +137,7 @@ export const INITIAL_FORM_DATA: EvalFormData = {
   resale_situation: "not_sold_out", face_value: "", resale_price: "",
   spotify_monthly_listeners: "", fan_concentration_ratio: "", p2_fan_identity: "",
   ig_followers: "", ig_er_pct: "", reddit_members: "", discord_members: "",
-  merch_sentiment: "", tiktok_followers: "", tiktok_avg_views: "",
+  merch_sentiment: "", tiktok_followers: "", tiktok_avg_views: "", tiktok_er_pct: "",
   youtube_subscribers: "", youtube_er_pct: "",
   store_quality: "", merch_range: "", price_point_highest: "", d2c_level: "",
   spotify_yoy_pct: "", show_album_cycle: false, album_cycle_override: "",
@@ -263,6 +264,7 @@ export function buildScoringInputs(fd: EvalFormData): ScoringInputs | null {
     merch_sentiment: nOr(fd.merch_sentiment, 1),
     tiktok_followers: nOr(fd.tiktok_followers, 0),
     tiktok_avg_views: n(fd.tiktok_avg_views),
+    tiktok_er_pct: n(fd.tiktok_er_pct),
     youtube_subscribers: nOr(fd.youtube_subscribers, 0),
     youtube_er_pct: n(fd.youtube_er_pct),
     store_quality: nOr(fd.store_quality, 1),

@@ -117,13 +117,16 @@ function splitParen(s: string): { main: string; paren: string | null } {
 }
 
 /**
- * Extract a K/M number from parenthetical text like "22K flwrs", "1.4M", "4.5K subs".
- * Strips trailing words (flwrs, subs, listeners, etc.) before parsing.
+ * Extract a leading K/M number from parenthetical text like "22K flwrs",
+ * "1.4M", "2.1M listeners · T3 adj", "1.4M · floor 4". Only the leading
+ * numeric token is used — any trailing words or " · "-joined tags
+ * (tier/floor annotations) are ignored.
  */
 function parenFK(paren: string | null): string {
   if (!paren) return "";
-  const cleaned = paren.replace(/\s*(flwrs?|subs?|listeners?|avg)\s*$/i, "").trim();
-  return reverseFK(cleaned);
+  const m = paren.match(/^([\d.,]+\s*[KM]?)/i);
+  if (!m) return "";
+  return reverseFK(m[1].trim());
 }
 
 // ─── Y-band grouping ──────────────────────────────────────────────────────────
@@ -420,7 +423,11 @@ async function _parsePDF(
           }
           else if (name.includes("tiktok er") || name.includes("tiktok")) {
             if (!inp || inp === "—") break;
-            if (inp.endsWith("%")) {
+            // A trailing "†" marks the legacy views/followers ER fallback
+            // (used when no Chartmetric ER had been entered at save time).
+            const isLegacyEr = inp.includes("†");
+            const cleanInp = inp.replace(/†/g, "").trim();
+            if (cleanInp.endsWith("%")) {
               // ER% shown; paren may be "71.5K flwrs, 50K avg" (multi-part)
               if (paren) {
                 const parenParts = paren.split(/\s*,\s*/);
@@ -432,10 +439,18 @@ async function _parsePDF(
                     fd.tiktok_avg_views = parenFK(part);
                   }
                 }
-              } else {
+              }
+              if (isLegacyEr) {
                 warnings.push(
-                  "TikTok: only ER% shown in PDF — enter TikTok followers & avg views manually"
+                  "TikTok: legacy calculated ER detected in PDF — enter the Chartmetric ER (%) manually for accurate scoring"
                 );
+              } else {
+                fd.tiktok_er_pct = reverseFP(cleanInp);
+                if (!paren || !paren.toLowerCase().includes("avg")) {
+                  warnings.push(
+                    "TikTok: Avg Views not shown in PDF — enter manually to preserve the Viral Signal bonus if applicable"
+                  );
+                }
               }
             } else {
               // PDF shows raw followers (ER not available)

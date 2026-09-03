@@ -57,11 +57,14 @@ export default function Step5Instagram({ data, onChange, csvFilled, errors }: St
             error={errors.ig_er_pct}
           />
         </div>
-        {parseFloat(data.ig_followers) < 10_000 && data.ig_followers && (
-          <p className="mt-2 text-xs text-[#C8102E]">⚠ Under 10K followers — IG score capped at 1</p>
-        )}
-        {parseFloat(data.ig_followers) >= 10_000 && parseFloat(data.ig_followers) < 50_000 && (
-          <p className="mt-2 text-xs text-gray-500">⚠ 10–50K followers — IG score capped at 3</p>
+        {scores?.p2.ig_er_tier && data.ig_er_pct && (
+          <p className={`mt-2 text-xs ${scores.p2.ig_er_tier.mode === "capped" ? "text-[#C8102E]" : "text-gray-500"}`}>
+            {scores.p2.ig_er_tier.mode === "capped"
+              ? `⚠ Tier ${scores.p2.ig_er_tier.tier}: ${scores.p2.ig_er_tier.range_label} followers — IG score capped at ${scores.p2.ig_er_tier.cap_score}`
+              : scores.p2.ig_er_tier.mode === "adjusted"
+              ? `Tier ${scores.p2.ig_er_tier.tier}: ${scores.p2.ig_er_tier.range_label} followers — thresholds adjusted ×${scores.p2.ig_er_tier.multiplier.toFixed(1)}`
+              : `Tier ${scores.p2.ig_er_tier.tier}: ${scores.p2.ig_er_tier.range_label} followers — baseline thresholds`}
+          </p>
         )}
       </section>
 

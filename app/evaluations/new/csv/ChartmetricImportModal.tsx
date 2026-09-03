@@ -52,6 +52,7 @@ const FIELD_GROUPS: FieldGroup[] = [
       { kind: "single", key: "ig_er_pct",                 label: "Instagram ER", unit: "%" },
       { kind: "single", key: "tiktok_followers",          label: "TikTok Followers" },
       { kind: "single", key: "tiktok_avg_views",          label: "TikTok Avg Views" },
+      { kind: "single", key: "tiktok_er_pct",             label: "TikTok ER", unit: "%" },
       { kind: "single", key: "youtube_subscribers",       label: "YouTube Subscribers" },
       { kind: "single", key: "youtube_er_pct",            label: "YouTube ER", unit: "%" },
     ],
@@ -115,8 +116,8 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
 
-  // erAssignments: file.name → "ig" | "youtube" | ""
-  const [erAssignments, setErAssignments] = useState<Record<string, "ig" | "youtube" | "">>({});
+  // erAssignments: file.name → "ig" | "youtube" | "tiktok" | ""
+  const [erAssignments, setErAssignments] = useState<Record<string, "ig" | "youtube" | "tiktok" | "">>({});
 
   // Re-process whenever files change
   useEffect(() => {
@@ -127,7 +128,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
       .then((result) => {
         setExtract(result);
         // Seed erAssignments from auto-resolved platforms
-        const initial: Record<string, "ig" | "youtube" | ""> = {};
+        const initial: Record<string, "ig" | "youtube" | "tiktok" | ""> = {};
         for (const entry of result.erTrends) {
           initial[entry.file.name] = entry.resolvedPlatform ?? "";
         }
@@ -187,7 +188,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
 
     const resolvedER: ERTrendsEntry[] = extract.erTrends.map((e) => ({
       ...e,
-      resolvedPlatform: (erAssignments[e.file.name] as "ig" | "youtube" | null) || e.resolvedPlatform,
+      resolvedPlatform: (erAssignments[e.file.name] as "ig" | "youtube" | "tiktok" | null) || e.resolvedPlatform,
     }));
 
     const { fields, fieldSources } = applyERDisambiguation(
@@ -407,7 +408,7 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
                 The files below contain Engagement Rate data but could not be auto-assigned to a platform.
-                Choose whether each file should fill Instagram ER or YouTube ER.
+                Choose whether each file should fill Instagram, YouTube, or TikTok ER.
               </p>
 
               <div className="space-y-3">
@@ -428,28 +429,28 @@ export default function ChartmetricImportModal({ onApply, onClose }: Props) {
                             </span>
                             {autoResolved && (
                               <span className="ml-2 text-emerald-600">
-                                (auto-detected as {entry.resolvedPlatform === "ig" ? "Instagram" : "YouTube"})
+                                (auto-detected as {entry.resolvedPlatform === "ig" ? "Instagram" : entry.resolvedPlatform === "youtube" ? "YouTube" : "TikTok"})
                               </span>
                             )}
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {(["ig", "youtube"] as const).map((platform) => {
+                        {(["ig", "youtube", "tiktok"] as const).map((platform) => {
                           const active = assignment === platform;
+                          const activeClass =
+                            platform === "ig"      ? "border-pink-400 bg-pink-100 text-pink-800"
+                            : platform === "youtube" ? "border-red-400 bg-red-100 text-red-800"
+                            :                           "border-slate-400 bg-slate-100 text-slate-800";
                           return (
                             <button
                               key={platform}
                               onClick={() => setErAssignments((prev) => ({ ...prev, [entry.file.name]: platform }))}
                               className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                                active
-                                  ? platform === "ig"
-                                    ? "border-pink-400 bg-pink-100 text-pink-800"
-                                    : "border-red-400 bg-red-100 text-red-800"
-                                  : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
+                                active ? activeClass : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
                               }`}
                             >
-                              {platform === "ig" ? "📸 Instagram ER" : "▶️ YouTube ER"}
+                              {platform === "ig" ? "📸 Instagram ER" : platform === "youtube" ? "▶️ YouTube ER" : "🎵 TikTok ER"}
                             </button>
                           );
                         })}

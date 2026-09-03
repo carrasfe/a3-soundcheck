@@ -71,6 +71,15 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
             </div>
           </div>
         </div>
+        {scores?.p2.fcr_tier && data.fan_concentration_ratio && (
+          <p className={`mt-2 text-xs ${scores.p2.fcr_tier.mode === "capped" ? "text-[#C8102E]" : "text-gray-500"}`}>
+            {scores.p2.fcr_tier.mode === "capped"
+              ? `⚠ Tier ${scores.p2.fcr_tier.tier}: ${scores.p2.fcr_tier.range_label} listeners — FCR score capped at ${scores.p2.fcr_tier.cap_score}`
+              : scores.p2.fcr_tier.mode === "adjusted"
+              ? `Tier ${scores.p2.fcr_tier.tier}: ${scores.p2.fcr_tier.range_label} listeners — thresholds adjusted ×${scores.p2.fcr_tier.multiplier.toFixed(1)}`
+              : `Tier ${scores.p2.fcr_tier.tier}: ${scores.p2.fcr_tier.range_label} listeners — baseline thresholds`}
+          </p>
+        )}
       </section>
 
       {/* YoY Growth + Album Cycle Override */}
@@ -92,6 +101,11 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
           error={errors.spotify_yoy_pct}
           csvFilled={csvFilled.has("spotify_yoy_pct")}
         />
+        {scores?.p4.yoy_floor?.applied && (
+          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+            ⚡ {scores.p4.yoy_floor.gain_tier_label} absolute listener gain — YoY score floored at {scores.p4.yoy_floor.floor}
+          </p>
+        )}
 
         <div className="mt-4">
           {!data.show_album_cycle ? (

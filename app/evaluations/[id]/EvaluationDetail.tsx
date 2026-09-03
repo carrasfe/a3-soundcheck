@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { EvaluationRecord } from "./page";
 import type { ScoringResult, PillarBreakdown } from "@/lib/scoring-engine";
+import { formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel } from "@/lib/scoring-engine";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
@@ -206,12 +207,15 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
       resSit === "some_sold_out" ? `Some SO $${fv}/$${rp}` :
       resSit === "all_sold_out"  ? `All SO $${fv}/$${rp}` : "—";
 
-    // TikTok ER (avg_views / followers * 100)
+    // TikTok ER — Chartmetric native value; falls back to the old
+    // views/followers calculation (flagged as legacy) for older evaluations.
     const ttFlwrs = nv("tiktok_followers");
     const ttViews = nv("tiktok_avg_views");
-    const ttER = ttFlwrs > 0 ? (ttViews / ttFlwrs) * 100 : 0;
-    const tiktokStr = ttFlwrs > 0
-      ? `${ttER.toFixed(1)}% (${fmtNum(ttFlwrs)} flwrs)`
+    const ttErPct = g("tiktok_er_pct");
+    const tiktokStr = ttErPct
+      ? `${parseFloat(ttErPct).toFixed(2)}% (${fmtNum(ttFlwrs)} flwrs)`
+      : ttFlwrs > 0 && ttViews > 0
+      ? `${((ttViews / ttFlwrs) * 100).toFixed(1)}%* legacy (${fmtNum(ttFlwrs)} flwrs)`
       : "—";
 
     // Spotify YoY
@@ -464,6 +468,37 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
             </div>
           )}
         </div>
+
+        {/* ── Scale-adjusted metrics — only shown when a scale correction actually kicked in ── */}
+        {(() => {
+          const notes: string[] = [];
+          const fcrTier = r.p2?.fcr_tier;
+          const fcrPct = parseFloat(g("fan_concentration_ratio"));
+          if (fcrTier && fcrTier.mode !== "baseline" && !isNaN(fcrPct)) {
+            notes.push(formatFcrTierLabel(fcrPct, fcrTier));
+          }
+          const igErTier = r.p2?.ig_er_tier;
+          const igErPct = parseFloat(g("ig_er_pct"));
+          if (igErTier && igErTier.mode !== "baseline" && !isNaN(igErPct)) {
+            notes.push(formatIgErTierLabel(igErPct, igErTier));
+          }
+          const yoyFloor = r.p4?.yoy_floor;
+          const yoyPct = parseFloat(g("spotify_yoy_pct"));
+          if (yoyFloor?.applied && !isNaN(yoyPct)) {
+            notes.push(formatYoyFloorLabel(yoyPct, yoyFloor));
+          }
+          if (notes.length === 0) return null;
+          return (
+            <div className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-4">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#001489]">
+                Scale-Adjusted Metrics
+              </h3>
+              <ul className="space-y-1 text-sm text-gray-700">
+                {notes.map((n) => <li key={n}>{n}</li>)}
+              </ul>
+            </div>
+          );
+        })()}
 
         {/* ── Pillar breakdowns ── */}
         <PillarCard

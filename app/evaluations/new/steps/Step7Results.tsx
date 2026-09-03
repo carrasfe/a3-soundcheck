@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import type { EvalFormData } from "../types";
 import { buildScoringInputs, getAgeProfileLabel } from "../types";
-import { calculateScore } from "@/lib/scoring-engine";
+import { calculateScore, formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel } from "@/lib/scoring-engine";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
 interface Props {
@@ -243,6 +243,34 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
           </div>
         )}
       </div>
+
+      {/* Tier-adjusted metrics — only shown when a scale correction actually kicked in */}
+      {(() => {
+        const notes: string[] = [];
+        const fcrPct = parseFloat(data.fan_concentration_ratio);
+        if (!isNaN(fcrPct) && data.fan_concentration_ratio && r.p2.fcr_tier.mode !== "baseline") {
+          notes.push(formatFcrTierLabel(fcrPct, r.p2.fcr_tier));
+        }
+        const igErPct = parseFloat(data.ig_er_pct);
+        if (!isNaN(igErPct) && data.ig_er_pct && r.p2.ig_er_tier.mode !== "baseline") {
+          notes.push(formatIgErTierLabel(igErPct, r.p2.ig_er_tier));
+        }
+        const yoyPct = parseFloat(data.spotify_yoy_pct);
+        if (!isNaN(yoyPct) && data.spotify_yoy_pct && r.p4.yoy_floor.applied) {
+          notes.push(formatYoyFloorLabel(yoyPct, r.p4.yoy_floor));
+        }
+        if (notes.length === 0) return null;
+        return (
+          <div className="rounded-xl border border-[#001489]/20 bg-[#001489]/5 p-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#001489]">
+              Scale-Adjusted Metrics
+            </h3>
+            <ul className="space-y-1 text-sm text-gray-700">
+              {notes.map((n) => <li key={n}>{n}</li>)}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* Pillar breakdowns */}
       <PillarCard

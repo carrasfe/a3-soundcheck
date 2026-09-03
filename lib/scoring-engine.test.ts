@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   calculateScore,
   tiktokViralBonus,
+  getFcrListenerTier,
+  getIgErFollowerTier,
+  getYoyAbsoluteGain,
+  getYoyFloor,
+  formatFcrTierLabel,
+  formatIgErTierLabel,
+  formatYoyFloorLabel,
   type ScoringInputs,
 } from "./scoring-engine";
 
@@ -22,6 +29,7 @@ const DEFAULTS = {
   merch_sentiment: 3,
   tiktok_followers: 100_000,
   tiktok_avg_views: 5_000,
+  tiktok_er_pct: 3,
   youtube_subscribers: 20_000,
   youtube_er_pct: 2.5,
   store_quality: 3,
@@ -166,51 +174,130 @@ describe("P1 – VIP bonus", () => {
 // PILLAR 2 UNIT TESTS
 // ============================================================
 
-describe("P2 – FCR scoring", () => {
+describe("P2 – FCR listener-tiered thresholds", () => {
   it("caps at 3 when FCR >60% (micro-artist gate)", () => {
     const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 65, spotify_monthly_listeners: 100_000 });
     expect(r.p2.sub_scores.FCR).toBe(3);
   });
-  it("applies listener adjustment: 3M+ listeners compresses thresholds (score 5 at lower raw %)", () => {
-    // Rock thresholds * 0.65: T4 = 40*0.65 = 26%; FCR=27 should score 5
-    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 27, spotify_monthly_listeners: 4_000_000 });
-    expect(r.p2.sub_scores.FCR).toBe(5);
+  it("Tier 1 (<50K listeners): caps FCR score at 3 regardless of high percentage", () => {
+    // Rock T4=40 → FCR=45 would normally score 5, but tier1 caps at 3
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 45, spotify_monthly_listeners: 30_000 });
+    expect(r.p2.sub_scores.FCR).toBe(3);
+    expect(r.p2.fcr_tier).toMatchObject({ tier: 1, range_label: "<50K", mode: "capped", cap_score: 3 });
   });
-  it("1M-3M listeners: multiplies thresholds by 0.80", () => {
-    // Rock T4 = 40*0.80 = 32; FCR=33 → 5
-    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 33, spotify_monthly_listeners: 2_000_000 });
-    expect(r.p2.sub_scores.FCR).toBe(5);
+  it("Tier 2 (50K-250K listeners): baseline thresholds, no adjustment", () => {
+    // Rock T1=8, T2=15, T3=25; FCR=16 → score 3
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 16, spotify_monthly_listeners: 200_000 });
+    expect(r.p2.sub_scores.FCR).toBe(3);
+    expect(r.p2.fcr_tier).toMatchObject({ tier: 2, range_label: "50K-250K", mode: "baseline", multiplier: 1.0 });
   });
-  it("no listener adjustment below 1M", () => {
-    // Rock T1=8; FCR=7 → score=1
-    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 7, spotify_monthly_listeners: 500_000 });
-    expect(r.p2.sub_scores.FCR).toBe(1);
+  it("Tier 3 (250K-1M listeners): thresholds ×0.7 — reaches score 5 at a lower raw %", () => {
+    // Rock T4=40*0.7=28; FCR=30 → score 5 (would only be score 4 unadjusted)
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 30, spotify_monthly_listeners: 500_000 });
+    expect(r.p2.sub_scores.FCR).toBe(5);
+    expect(r.p2.fcr_tier).toMatchObject({ tier: 3, range_label: "250K-1M", mode: "adjusted", multiplier: 0.7 });
+  });
+  it("Tier 4 (1M-5M listeners): thresholds ×0.5", () => {
+    // Rock T4=40*0.5=20; FCR=21 → score 5
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 21, spotify_monthly_listeners: 2_000_000 });
+    expect(r.p2.sub_scores.FCR).toBe(5);
+    expect(r.p2.fcr_tier).toMatchObject({ tier: 4, range_label: "1M-5M", mode: "adjusted", multiplier: 0.5 });
+  });
+  it("Tier 5 (5M+ listeners): thresholds ×0.4", () => {
+    // Rock T4=40*0.4=16; FCR=17 → score 5
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 17, spotify_monthly_listeners: 6_000_000 });
+    expect(r.p2.sub_scores.FCR).toBe(5);
+    expect(r.p2.fcr_tier).toMatchObject({ tier: 5, range_label: "5M+", mode: "adjusted", multiplier: 0.4 });
   });
 });
 
-describe("P2 – IG ER follower gate", () => {
-  it("caps at 1 for <10K followers regardless of ER", () => {
+describe("getFcrListenerTier", () => {
+  it("resolves each band correctly", () => {
+    expect(getFcrListenerTier(10_000).tier).toBe(1);
+    expect(getFcrListenerTier(49_999).tier).toBe(1);
+    expect(getFcrListenerTier(50_000).tier).toBe(2);
+    expect(getFcrListenerTier(249_999).tier).toBe(2);
+    expect(getFcrListenerTier(250_000).tier).toBe(3);
+    expect(getFcrListenerTier(999_999).tier).toBe(3);
+    expect(getFcrListenerTier(1_000_000).tier).toBe(4);
+    expect(getFcrListenerTier(4_999_999).tier).toBe(4);
+    expect(getFcrListenerTier(5_000_000).tier).toBe(5);
+    expect(getFcrListenerTier(50_000_000).tier).toBe(5);
+  });
+});
+
+describe("formatFcrTierLabel", () => {
+  it("matches the specified display format for an adjusted tier", () => {
+    const tier = getFcrListenerTier(500_000); // Tier 3: 250K-1M
+    expect(formatFcrTierLabel(15.0, tier)).toBe("FCR 15.0% (Tier 3: 250K-1M adjusted)");
+  });
+});
+
+describe("P2 – IG ER follower-tiered thresholds", () => {
+  it("Tier 1 (<10K followers): caps IG ER score at 2 regardless of ER", () => {
     const r = score({ genre: "Pop", ig_followers: 5_000, ig_er_pct: 20 });
-    expect(r.p2.sub_scores.IG_ER).toBe(1);
+    expect(r.p2.sub_scores.IG_ER).toBe(2);
+    expect(r.p2.ig_er_tier).toMatchObject({ tier: 1, range_label: "<10K", mode: "capped", cap_score: 2 });
   });
-  it("caps at 3 for 10-50K followers", () => {
+  it("Tier 2 (10K-50K followers): baseline thresholds, no cap", () => {
     const r = score({ genre: "Pop", ig_followers: 30_000, ig_er_pct: 20 });
-    expect(r.p2.sub_scores.IG_ER).toBe(3);
+    expect(r.p2.sub_scores.IG_ER).toBe(5);
+    expect(r.p2.ig_er_tier).toMatchObject({ tier: 2, range_label: "10K-50K", mode: "baseline", multiplier: 1.0 });
   });
-  it("allows 5 for 50K+ followers with high ER", () => {
+  it("Tier 3 (50K-200K followers): thresholds ×0.7", () => {
+    // base T3=4, T4=7 → ×0.7 = 2.8/4.9; ER=3 → score 4
+    const r = score({ genre: "Pop", ig_followers: 100_000, ig_er_pct: 3 });
+    expect(r.p2.sub_scores.IG_ER).toBe(4);
+    expect(r.p2.ig_er_tier).toMatchObject({ tier: 3, range_label: "50K-200K", mode: "adjusted", multiplier: 0.7 });
+  });
+  it("Tier 4 (200K-500K followers): thresholds ×0.5", () => {
+    // base T2=2, T3=4 → ×0.5 = 1/2; ER=1.5 → score 3
+    const r = score({ genre: "Pop", ig_followers: 300_000, ig_er_pct: 1.5 });
+    expect(r.p2.sub_scores.IG_ER).toBe(3);
+    expect(r.p2.ig_er_tier).toMatchObject({ tier: 4, range_label: "200K-500K", mode: "adjusted", multiplier: 0.5 });
+  });
+  it("Tier 5 (500K+ followers): thresholds ×0.4, allows 5 with high ER", () => {
     const r = score({ genre: "Pop", ig_followers: 500_000, ig_er_pct: 10 });
     expect(r.p2.sub_scores.IG_ER).toBe(5);
+    expect(r.p2.ig_er_tier).toMatchObject({ tier: 5, range_label: "500K+", mode: "adjusted", multiplier: 0.4 });
   });
 });
 
-describe("P2 – TikTok ER follower gate", () => {
-  it("caps at 1 for <15K followers", () => {
-    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 10_000, tiktok_avg_views: 50_000 });
+describe("formatIgErTierLabel", () => {
+  it("matches the specified display format for an adjusted tier", () => {
+    const tier = getIgErFollowerTier(300_000); // Tier 4: 200K-500K
+    expect(formatIgErTierLabel(1.5, tier)).toBe("IG ER 1.5% (Tier 4: 200K-500K adjusted)");
+  });
+});
+
+describe("P2 – TikTok ER (Chartmetric native)", () => {
+  it("caps at 1 for <15K followers regardless of ER", () => {
+    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 10_000, tiktok_er_pct: 15 });
     expect(r.p2.sub_scores.TikTok).toBe(1);
   });
-  it("caps at 3 for 15-75K followers", () => {
-    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 50_000, tiktok_avg_views: 500_000 });
+  it("caps at 3 for 15-50K followers", () => {
+    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 30_000, tiktok_er_pct: 15 });
     expect(r.p2.sub_scores.TikTok).toBe(3);
+  });
+  it("uncapped for 50K+ followers", () => {
+    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 100_000, tiktok_er_pct: 7 });
+    expect(r.p2.sub_scores.TikTok).toBe(4);
+  });
+  it("returns 0 when ER not entered", () => {
+    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 100_000, tiktok_er_pct: undefined });
+    expect(r.p2.sub_scores.TikTok).toBe(0);
+  });
+  ([
+    [0.5, 1],
+    [2, 2],
+    [4, 3],
+    [8, 4],
+    [12, 5],
+  ] as const).forEach(([erPct, expected]) => {
+    it(`ER ${erPct}% (uncapped followers) → score ${expected}`, () => {
+      const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 200_000, tiktok_er_pct: erPct });
+      expect(r.p2.sub_scores.TikTok).toBe(expected);
+    });
   });
 });
 
@@ -377,6 +464,69 @@ describe("P4 – Album Cycle Override", () => {
   it("does not boost when score already ≥3", () => {
     const r = score({ genre: "Pop", spotify_monthly_listeners: 200_000, spotify_yoy_pct: 35, album_cycle_override: "peak_declining" });
     expect(r.p4.sub_scores.spotify_yoy).toBe(4); // no boost
+  });
+});
+
+describe("P4 – Spotify YoY absolute gain floor", () => {
+  it("floors score to 4 when absolute gain >= 500K and raw score is lower", () => {
+    // 10M listeners × 8% = 800K gain (>= 500K). Raw score (>=2M bracket, yoy<10 → 3) floors to 4.
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 10_000_000, spotify_yoy_pct: 8 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(4);
+    expect(r.p4.yoy_floor).toMatchObject({ applied: true, floor: 4, gain_tier_label: "500K+" });
+  });
+
+  it("floors score to 3 when absolute gain >= 100K (but < 500K) and raw score is lower", () => {
+    // 10M listeners × 1.5% = 150K gain. Raw score (>=2M bracket, yoy<2 → 2) floors to 3.
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 10_000_000, spotify_yoy_pct: 1.5 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(3);
+    expect(r.p4.yoy_floor).toMatchObject({ applied: true, floor: 3, gain_tier_label: "100K+" });
+  });
+
+  it("never lowers a score already at or above the floor", () => {
+    // 3M listeners × 35% = 1.05M gain (>=500K), but raw score is already 5
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 3_000_000, spotify_yoy_pct: 35 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(5);
+    expect(r.p4.yoy_floor.applied).toBe(false);
+  });
+
+  it("does not apply a floor for negative growth, even with a huge listener base", () => {
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 10_000_000, spotify_yoy_pct: -10 });
+    expect(r.p4.yoy_floor).toMatchObject({ applied: false, floor: null, gain: 0, gain_tier_label: null });
+  });
+
+  it("does not apply a floor below the 100K gain threshold", () => {
+    // 1M listeners × 5% = 50K gain (< 100K)
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 1_000_000, spotify_yoy_pct: 5 });
+    expect(r.p4.yoy_floor.applied).toBe(false);
+  });
+});
+
+describe("getYoyAbsoluteGain", () => {
+  it("computes gain from current listeners × yoy%", () => {
+    expect(getYoyAbsoluteGain(1_000_000, 10)).toBeCloseTo(100_000, 5);
+  });
+  it("returns 0 for zero, negative, or missing yoy%", () => {
+    expect(getYoyAbsoluteGain(1_000_000, 0)).toBe(0);
+    expect(getYoyAbsoluteGain(1_000_000, -5)).toBe(0);
+    expect(getYoyAbsoluteGain(1_000_000, undefined)).toBe(0);
+  });
+});
+
+describe("getYoyFloor", () => {
+  it("applied is false when the raw score already meets the floor", () => {
+    const info = getYoyFloor(10_000_000, 8, 5);
+    expect(info).toMatchObject({ applied: false, floor: 4, gain_tier_label: "500K+" });
+  });
+});
+
+describe("formatYoyFloorLabel", () => {
+  it("matches the specified display format when a floor applies", () => {
+    const info = getYoyFloor(10_000_000, 8, 3); // gain 800K, floors 3→4
+    expect(formatYoyFloorLabel(3.2, info)).toBe("YoY 3.2% (500K+ gain — floor 4 applied)");
+  });
+  it("omits the parenthetical when no floor applies", () => {
+    const info = getYoyFloor(1_000_000, 5, 5); // gain 50K, no floor
+    expect(formatYoyFloorLabel(5, info)).toBe("YoY 5.0%");
   });
 });
 
@@ -594,33 +744,33 @@ describe("Tier classification thresholds", () => {
 
 describe("Demographic affinity multiplier", () => {
   it("defaults to 1.0 multiplier when no demographics", () => {
-    // Affinity = 0.55 / 0.55 = 1.0; clamped to [0.3, 2.0]
-    // We test indirectly: no demo = same IG ER thresholds as default
+    // Affinity = 0.55 / 0.55 = 1.0, clamped to [0.3, 2.0]; ig_followers=100_000 is
+    // Tier 3 (50K-200K, ×0.7), so thresholds are already scaled by the tier alone.
+    // We test indirectly: no demo = same IG ER thresholds as default affinity.
     const r = score({ genre: "Rock / Alt / Indie", ig_followers: 100_000, ig_er_pct: 1.5 });
-    // 1.5 < 2 (T2 threshold × 1.0) → score 2
-    expect(r.p2.sub_scores.IG_ER).toBe(2);
+    // T2 = 2 * 1.0(affinity) * 1.0(hisp) * 0.7(tier) = 1.4; 1.5 >= 1.4 → score 3
+    expect(r.p2.sub_scores.IG_ER).toBe(3);
   });
 
-  it("clamps multiplier to 2.0 max for very young audience", () => {
-    // All 13-17: TikTok affinity = 0.95, mult = 0.95/0.55 = 1.727, clamped to 2.0? No, 1.727 < 2.0
-    // All 18-24: TikTok affinity = 0.90, mult = 1.636 — not clamped
-    // To hit 2.0 we'd need > 0.55*2 = 1.1 affinity — only achievable with all in highest brackets
-    // 100% age 13-17: TikTok affinity = 0.95, mult = min(1.727, 2.0) = 1.727
+  it("a high-affinity young audience raises the required IG ER thresholds", () => {
+    // Isolate the affinity effect with a Tier 2 (10K-50K, baseline ×1.0) follower count.
+    // 100% age 18-24: IG_ER affinity = 0.85, mult = 0.85/0.55 = 1.545 (not clamped)
     const r = score({
-      genre: "EDM / Dance / Electronic",
-      demographics: { age_13_17: 100 },
-      tiktok_followers: 200_000, tiktok_avg_views: 2_001, // just above 1% ER before mult
+      genre: "Rock / Alt / Indie",
+      demographics: { age_18_24: 100 },
+      ig_followers: 30_000, ig_er_pct: 1.5,
     });
-    // ERPct = 1.0%, TikTok thresholds × 1.727: T1 = 2*1.727=3.45 > 1.0 → score 1
-    expect(r.p2.sub_scores.TikTok).toBe(1);
+    // T1 = 1 * 1.545 = 1.545%; 1.5% < 1.545% → score 1 (would be score 2 with no demo)
+    expect(r.p2.sub_scores.IG_ER).toBe(1);
   });
 
   it("clamps multiplier to 0.3 min for very old audience", () => {
-    // All 65+: TikTok affinity = 0.03, mult = 0.03/0.55 = 0.054, clamped to 0.3
+    // Isolate the affinity effect with a Tier 2 (10K-50K, baseline ×1.0) follower count.
+    // All 65+: IG_ER affinity = 0.15, mult = 0.15/0.55 = 0.273, clamped to 0.3
     const r = score({
       genre: "Rock / Alt / Indie",
       demographics: { age_65_plus: 100 },
-      ig_followers: 100_000, ig_er_pct: 0.25, // below T1=1% * 0.3=0.3%
+      ig_followers: 20_000, ig_er_pct: 0.25, // below T1=1% * 0.3=0.3%
     });
     // threshold T1 = 1 * 0.3 = 0.3%; 0.25% < 0.3% → score 1
     expect(r.p2.sub_scores.IG_ER).toBe(1);
@@ -629,32 +779,31 @@ describe("Demographic affinity multiplier", () => {
 
 describe("Ethnicity modifiers", () => {
   it("Hispanic >15%: IG ER thresholds multiply by 1.1", () => {
-    // Without ethnicity mod: IG ER T1 = 1%
+    // ig_followers=100_000 is Tier 3 (50K-200K, ×0.7) for both cases below.
+    // Without ethnicity mod: T1 = 1 * 0.7 = 0.7%
     const without = score({ genre: "Rock / Alt / Indie", ig_followers: 100_000, ig_er_pct: 1.05 });
-    // 1.05% > 1% → score 2 without mod
+    // 1.05% >= 0.7% (T1) and < 1.4% (T2) → score 2 without mod
     expect(without.p2.sub_scores.IG_ER).toBe(2);
 
-    // With Hispanic 20%: T1 = 1% * 1.1 = 1.1%; 1.05% < 1.1% → score 1
+    // With Hispanic 20%: T1 = 1 * 1.1 * 0.7 = 0.77%; T2 = 2 * 1.1 * 0.7 = 1.54%
+    // affinity mult from this age mix ≈ 1.382 (not clamped) also folds in — see below
     const with_hisp = score({
       genre: "Rock / Alt / Indie",
       demographics: { age_18_24: 50, age_25_34: 30, age_35_44: 20, hispanic: 20 },
       ig_followers: 100_000, ig_er_pct: 1.05,
     });
+    // affinity(≈1.382) * hisp(1.1) * tier(0.7) ≈ 1.064 → T1≈1.064%; 1.05% < 1.064% → score 1
     expect(with_hisp.p2.sub_scores.IG_ER).toBe(1);
   });
 
-  it("African American >30%: TikTok thresholds multiply by 1.2", () => {
-    // No mod: TikTok T1 = 2%; ER = 2.1% → score 2
-    const without = score({ genre: "Pop", tiktok_followers: 200_000, tiktok_avg_views: 4_200 }); // 2.1%
-    expect(without.p2.sub_scores.TikTok).toBeGreaterThanOrEqual(2);
-
-    // With AA 35%: T1 = 2*1.2=2.4%; 2.1% < 2.4% → score 1
-    const with_aa = score({
+  it("TikTok scoring ignores demographic/ethnicity modifiers (Chartmetric ER is platform-normalized)", () => {
+    const noDemo = score({ genre: "Pop", tiktok_followers: 200_000, tiktok_er_pct: 4 });
+    const withDemo = score({
       genre: "Pop",
       demographics: { age_18_24: 35, age_25_34: 35, age_35_44: 30, african_american: 35 },
-      tiktok_followers: 200_000, tiktok_avg_views: 4_200,
+      tiktok_followers: 200_000, tiktok_er_pct: 4,
     });
-    expect(with_aa.p2.sub_scores.TikTok).toBe(1);
+    expect(withDemo.p2.sub_scores.TikTok).toBe(noDemo.p2.sub_scores.TikTok);
   });
 });
 

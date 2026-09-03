@@ -508,6 +508,23 @@ function drawP1(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   return drawSubRows(doc, 0, first, rows);
 }
 
+// Compact scale-tier note for cramped PDF cells, e.g. "T3 adj" / "T1 cap".
+// Only rendered when a listener/follower-size correction actually applies.
+// Kept as a plain fragment (no parens/separators) so callers can fold it
+// into an existing parenthetical without breaking the PDF re-import parser,
+// which expects at most one trailing "(...)" per cell.
+function tierNote(tier: { tier: number; mode: "capped" | "baseline" | "adjusted" } | undefined): string | null {
+  if (!tier || tier.mode === "baseline") return null;
+  return `T${tier.tier} ${tier.mode === "capped" ? "cap" : "adj"}`;
+}
+
+// Combine a value with zero or more parenthetical fragments, e.g.
+// withParts("88.7%", ["2.1M listeners", "T3 adj"]) → "88.7% (2.1M listeners · T3 adj)"
+function withParts(value: string, parts: Array<string | null | undefined>): string {
+  const filtered = parts.filter((p): p is string => !!p);
+  return filtered.length ? `${value} (${filtered.join(" · ")})` : value;
+}
+
 // P2 — Fan Engagement
 function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const w     = r.pillar_weights;
@@ -516,18 +533,31 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   // When showing ER%, also append follower/subscriber count in parentheses so
   // the PDF parser can recover those raw values on re-import.
   const igERInput = inp.ig_er_pct
-    ? (inp.ig_followers
-        ? `${parseFloat(inp.ig_er_pct).toFixed(2)}% (${fK(inp.ig_followers)} flwrs)`
-        : `${parseFloat(inp.ig_er_pct).toFixed(2)}%`)
+    ? withParts(`${parseFloat(inp.ig_er_pct).toFixed(2)}%`, [
+        inp.ig_followers ? `${fK(inp.ig_followers)} flwrs` : null,
+        tierNote(r.p2.ig_er_tier),
+      ])
     : fK(inp.ig_followers);
 
-  // tikER: computed ER% (if both views+followers) or raw followers
-  const tikERInput = (inp.tiktok_avg_views && inp.tiktok_followers)
-    ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}% (${fK(inp.tiktok_followers)} flwrs, ${fK(inp.tiktok_avg_views)} avg)`
-    : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
+  // TikTok ER: Chartmetric native value with follower count. Falls back to the
+  // old views/followers calculation (flagged as legacy, marked with †) for
+  // older evaluations that haven't had a Chartmetric ER entered yet.
+  const isLegacyTikTokEr = !inp.tiktok_er_pct && !!inp.tiktok_avg_views && !!inp.tiktok_followers;
+  const tikERInput = inp.tiktok_er_pct
+    ? `${parseFloat(inp.tiktok_er_pct).toFixed(2)}% (${fK(inp.tiktok_followers)} flwrs)`
+    : isLegacyTikTokEr
+      ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}%† (${fK(inp.tiktok_followers)} flwrs, ${fK(inp.tiktok_avg_views)} avg)`
+      : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
 
   const rows: SubRow[] = [
-    { name: "Spotify FCR",     input: inp.spotify_monthly_listeners ? `${fP(inp.fan_concentration_ratio)} (${fK(inp.spotify_monthly_listeners)} listeners)` : fP(inp.fan_concentration_ratio), score: r.p2.sub_scores.FCR ?? 0 },
+    {
+      name: "Spotify FCR",
+      input: withParts(fP(inp.fan_concentration_ratio), [
+        inp.spotify_monthly_listeners ? `${fK(inp.spotify_monthly_listeners)} listeners` : null,
+        tierNote(r.p2.fcr_tier),
+      ]),
+      score: r.p2.sub_scores.FCR ?? 0,
+    },
     { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—",    score: r.p2.sub_scores.FanID ?? 0 },
     { name: "Instagram ER",    input: igERInput,                                                  score: r.p2.sub_scores.IG_ER ?? 0 },
     { name: "Reddit",          input: fK(inp.reddit_members),                                     score: r.p2.sub_scores.Reddit ?? 0 },
@@ -555,7 +585,14 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
     isBonus: true,
   });
 
-  return drawSubRows(doc, 1, first, rows);
+  const endY = drawSubRows(doc, 1, first, rows);
+
+  if (isLegacyTikTokEr) {
+    const note = "† Legacy calculated ER (views/followers) — enter Chartmetric ER for accurate scoring";
+    t(doc, note, PCOL_X[1] + 2, endY + 2.5, { sz: 5.5, italic: true, color: LT });
+  }
+
+  return endY;
 }
 
 // P3 — E-Commerce
@@ -579,10 +616,12 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const first = drawPillarColHeader(doc, 3, "P4  GROWTH", r.p4.final_score, Math.round(w.p4 * 100));
 
   // Spotify YoY: append monthly listeners in parentheses if entered so the
-  // parser can recover spotify_monthly_listeners on re-import.
-  const spotifyYoyInput = inp.spotify_monthly_listeners
-    ? `${fP(inp.spotify_yoy_pct)} (${fK(inp.spotify_monthly_listeners)})`
-    : fP(inp.spotify_yoy_pct);
+  // parser can recover spotify_monthly_listeners on re-import. Append the
+  // absolute-gain floor note when it actually raised the score.
+  const spotifyYoyInput = withParts(fP(inp.spotify_yoy_pct), [
+    inp.spotify_monthly_listeners ? fK(inp.spotify_monthly_listeners) : null,
+    r.p4.yoy_floor?.applied ? `floor ${r.p4.yoy_floor.floor}` : null,
+  ]);
 
   // IG Growth: append followers in parentheses if entered (and not already
   // shown in the IG ER row) so the parser can recover ig_followers.

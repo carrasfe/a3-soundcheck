@@ -81,7 +81,7 @@ export const CSV_TYPE_INFO: Record<Exclude<CSVType, "unknown">, {
   spotify_followers_trends:   { label: "Spotify Followers Trends",        hint: "Optional reference data",                platform: "spotify" },
   spotify_playlist_evolution: { label: "Playlist Evolution",              hint: "Suggests playlist score (1–5)",          platform: "spotify" },
   ig_followers_trends:        { label: "Instagram Followers Trends",      hint: "Fills IG followers + 90-day gain",       platform: "instagram" },
-  er_trends:                  { label: "Engagement Rate Trends",          hint: "IG or YouTube ER % (assign in step 2)",  platform: "all" },
+  er_trends:                  { label: "Engagement Rate Trends",          hint: "IG, YouTube, or TikTok ER % (assign in step 2)", platform: "all" },
   tiktok_followers_trends:    { label: "TikTok Followers Trends",         hint: "Fills TikTok followers",                 platform: "tiktok" },
   tiktok_avg_views_trends:    { label: "TikTok Average Views Trends",     hint: "Fills TikTok avg views",                 platform: "tiktok" },
   youtube_subscribers_trends: { label: "YouTube Subscribers Trends",      hint: "Fills YouTube subscribers",              platform: "youtube" },
@@ -136,10 +136,11 @@ export function detectCSVType(headers: string[], filename: string): CSVType {
 }
 
 /** Pre-resolve ER platform from filename without waiting for user input. */
-export function resolveERPlatformFromFilename(filename: string): "ig" | "youtube" | null {
+export function resolveERPlatformFromFilename(filename: string): "ig" | "youtube" | "tiktok" | null {
   const fn = norm(filename);
   if (fn.includes("instagram") || fn.includes("_ig_")) return "ig";
   if (fn.includes("youtube") || fn.includes("_yt_"))   return "youtube";
+  if (fn.includes("tiktok") || fn.includes("_tt_"))    return "tiktok";
   return null;
 }
 
@@ -552,7 +553,7 @@ export function extractDemographics(
 export interface ERTrendsEntry {
   file: File;
   csv: ParsedCSV;
-  resolvedPlatform: "ig" | "youtube" | null;
+  resolvedPlatform: "ig" | "youtube" | "tiktok" | null;
   latestER: string | null;
 }
 
@@ -653,6 +654,7 @@ export async function extractMultiCSV(files: File[]): Promise<MultiCSVExtract> {
     if (!entry.latestER) continue;
     if (entry.resolvedPlatform === "ig" && !fields.ig_er_pct) set("ig_er_pct", entry.latestER, entry.file.name);
     if (entry.resolvedPlatform === "youtube" && !fields.youtube_er_pct) set("youtube_er_pct", entry.latestER, entry.file.name);
+    if (entry.resolvedPlatform === "tiktok" && !fields.tiktok_er_pct) set("tiktok_er_pct", entry.latestER, entry.file.name);
   }
 
   const needsDisambiguation = erTrends.some((e) => e.resolvedPlatform === null);
@@ -677,6 +679,9 @@ export function applyERDisambiguation(
     } else if (entry.resolvedPlatform === "youtube" && !fields.youtube_er_pct) {
       fields.youtube_er_pct = entry.latestER;
       fieldSources["youtube_er_pct"] = entry.file.name;
+    } else if (entry.resolvedPlatform === "tiktok" && !fields.tiktok_er_pct) {
+      fields.tiktok_er_pct = entry.latestER;
+      fieldSources["tiktok_er_pct"] = entry.file.name;
     }
   }
 

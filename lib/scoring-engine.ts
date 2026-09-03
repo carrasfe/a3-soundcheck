@@ -102,7 +102,8 @@ export interface ScoringInputs {
   discord_members?: number;
   merch_sentiment: number;        // 1–5 manual
   tiktok_followers: number;
-  tiktok_avg_views?: number;      // used to calc TikTok ER
+  tiktok_avg_views?: number;      // used for Viral Signal bonus (P4) only
+  tiktok_er_pct?: number;         // Chartmetric native engagement rate %, entered directly
   youtube_subscribers: number;
   youtube_er_pct?: number;        // engagement rate % entered directly (e.g. 2.5 means 2.5%)
 
@@ -129,6 +130,23 @@ export interface PillarBreakdown {
   final_score: number;
 }
 
+/** A listener/follower-size band used to scale genre thresholds at scale. */
+export interface MetricTier {
+  tier: number;             // 1 (smallest) – 5 (largest)
+  range_label: string;      // e.g. "250K-1M"
+  multiplier: number;       // threshold multiplier applied for this tier
+  mode: "capped" | "baseline" | "adjusted";
+  cap_score?: number;       // only present when mode === "capped"
+}
+
+/** Result of checking the Spotify YoY absolute-listener-gain floor. */
+export interface YoyFloorInfo {
+  applied: boolean;               // true only when the floor actually raised the score
+  floor: number | null;           // the floor score (4 or 3), or null if no floor tier reached
+  gain: number;                   // computed absolute listener gain
+  gain_tier_label: "500K+" | "100K+" | null;
+}
+
 export interface ScoringResult {
   genre: Genre;
   genre_group: GenreGroup;
@@ -140,9 +158,13 @@ export interface ScoringResult {
     sub_weights: Record<string, number>;
     tiktok_age_adjusted_weight: number;
     youtube_excluded: boolean;
+    fcr_tier: MetricTier;
+    ig_er_tier: MetricTier;
   };
   p3: PillarBreakdown;
-  p4: PillarBreakdown;
+  p4: PillarBreakdown & {
+    yoy_floor: YoyFloorInfo;
+  };
   total_score: number;
   revenue_tier: "PREMIUM" | "HIGH" | "STANDARD" | "LOW";
   tier_label: "Priority" | "Active" | "Watch" | "Pass";
@@ -253,6 +275,111 @@ const FCR_THRESHOLDS: Record<Genre, [number, number, number, number]> = {
   "Jazz / Blues (Traditional)":  [8,  18, 30, 42],
   "Broadway / Theater":           [5,  12, 20, 32],
 };
+
+// ─── Listener/follower-size tiers (scale-distortion correction) ──────────────
+// Larger artists' engagement RATES compress mathematically at scale — a 500K-
+// listener artist can't hit the same FCR% or ER% as a 5K-listener artist even
+// with equally engaged fans. These tiers scale genre thresholds down (or cap
+// the score) so raw percentages are judged relative to audience size.
+
+interface TierBand {
+  max: number;               // exclusive upper bound (Infinity for the top band)
+  range_label: string;
+  multiplier: number;
+  mode: "capped" | "baseline" | "adjusted";
+  cap_score?: number;
+}
+
+function resolveTier(value: number, bands: TierBand[]): MetricTier {
+  const v = Math.max(0, value || 0);
+  const idx = bands.findIndex((b) => v < b.max);
+  const bandIdx = idx === -1 ? bands.length - 1 : idx;
+  const band = bands[bandIdx];
+  return {
+    tier: bandIdx + 1,
+    range_label: band.range_label,
+    multiplier: band.multiplier,
+    mode: band.mode,
+    cap_score: band.cap_score,
+  };
+}
+
+const FCR_LISTENER_TIERS: TierBand[] = [
+  { max: 50_000,      range_label: "<50K",       multiplier: 1.0, mode: "capped",   cap_score: 3 },
+  { max: 250_000,     range_label: "50K-250K",    multiplier: 1.0, mode: "baseline" },
+  { max: 1_000_000,   range_label: "250K-1M",     multiplier: 0.7, mode: "adjusted" },
+  { max: 5_000_000,   range_label: "1M-5M",       multiplier: 0.5, mode: "adjusted" },
+  { max: Infinity,    range_label: "5M+",         multiplier: 0.4, mode: "adjusted" },
+];
+
+const IG_ER_FOLLOWER_TIERS: TierBand[] = [
+  { max: 10_000,       range_label: "<10K",       multiplier: 1.0, mode: "capped",   cap_score: 2 },
+  { max: 50_000,       range_label: "10K-50K",     multiplier: 1.0, mode: "baseline" },
+  { max: 200_000,      range_label: "50K-200K",    multiplier: 0.7, mode: "adjusted" },
+  { max: 500_000,      range_label: "200K-500K",   multiplier: 0.5, mode: "adjusted" },
+  { max: Infinity,     range_label: "500K+",       multiplier: 0.4, mode: "adjusted" },
+];
+
+export function getFcrListenerTier(monthlyListeners: number): MetricTier {
+  return resolveTier(monthlyListeners, FCR_LISTENER_TIERS);
+}
+
+export function getIgErFollowerTier(igFollowers: number): MetricTier {
+  return resolveTier(igFollowers, IG_ER_FOLLOWER_TIERS);
+}
+
+function tierSuffix(tier: MetricTier): string {
+  if (tier.mode === "capped")   return ` — capped at ${tier.cap_score}`;
+  if (tier.mode === "adjusted") return " adjusted";
+  return "";
+}
+
+/** e.g. "FCR 15.0% (Tier 3: 250K-1M adjusted)" */
+export function formatFcrTierLabel(fcrPct: number, tier: MetricTier): string {
+  return `FCR ${fcrPct.toFixed(1)}% (Tier ${tier.tier}: ${tier.range_label}${tierSuffix(tier)})`;
+}
+
+/** e.g. "IG ER 1.5% (Tier 4: 200K-500K adjusted)" */
+export function formatIgErTierLabel(erPct: number, tier: MetricTier): string {
+  return `IG ER ${erPct.toFixed(1)}% (Tier ${tier.tier}: ${tier.range_label}${tierSuffix(tier)})`;
+}
+
+// ─── Spotify YoY absolute-gain floor ──────────────────────────────────────────
+// A large artist can post modest YoY % growth while adding hundreds of
+// thousands of raw listeners — the percentage-only score can't see that.
+// These floors set a score minimum based on the absolute listener gain,
+// and only ever raise the percentage-based score, never lower it.
+
+/**
+ * Absolute listener gain implied by the YoY %, given the current listener count.
+ * Only positive growth produces a gain (declines don't qualify for a floor).
+ */
+export function getYoyAbsoluteGain(currentListeners: number, yoyPct: number | undefined | null): number {
+  if (yoyPct === undefined || yoyPct === null || yoyPct <= 0) return 0;
+  return currentListeners * (yoyPct / 100);
+}
+
+export function getYoyFloor(
+  currentListeners: number,
+  yoyPct: number | undefined | null,
+  rawScore: number
+): YoyFloorInfo {
+  const gain = getYoyAbsoluteGain(currentListeners, yoyPct);
+  if (gain >= 500_000) {
+    return { applied: rawScore < 4, floor: 4, gain, gain_tier_label: "500K+" };
+  }
+  if (gain >= 100_000) {
+    return { applied: rawScore < 3, floor: 3, gain, gain_tier_label: "100K+" };
+  }
+  return { applied: false, floor: null, gain, gain_tier_label: null };
+}
+
+/** e.g. "YoY 3.2% (500K+ gain — floor 4 applied)" — only annotated when the floor actually applied. */
+export function formatYoyFloorLabel(yoyPct: number, floorInfo: YoyFloorInfo): string {
+  const base = `YoY ${yoyPct.toFixed(1)}%`;
+  if (!floorInfo.applied || floorInfo.floor === null) return base;
+  return `${base} (${floorInfo.gain_tier_label} gain — floor ${floorInfo.floor} applied)`;
+}
 
 // Reddit genre tiers
 const REDDIT_HIGH_GENRES = new Set<Genre>([
@@ -456,31 +583,32 @@ function computeP1(inputs: ScoringInputs): PillarBreakdown {
 function scoreFCR(genre: Genre, fcr: number, monthlyListeners: number): number {
   if (fcr > 60) return 3; // micro-artist gate cap
 
-  const listenerMult = monthlyListeners >= 3_000_000 ? 0.65
-                     : monthlyListeners >= 1_000_000 ? 0.80
-                     : 1.0;
+  const tier = getFcrListenerTier(monthlyListeners);
+  const [t1, t2, t3, t4] = (FCR_THRESHOLDS[genre] ?? FCR_THRESHOLDS["Rock / Alt / Indie"]).map(t => t * tier.multiplier);
 
-  const [t1, t2, t3, t4] = (FCR_THRESHOLDS[genre] ?? FCR_THRESHOLDS["Rock / Alt / Indie"]).map(t => t * listenerMult);
+  let score: number;
+  if (fcr < t1) score = 1;
+  else if (fcr < t2) score = 2;
+  else if (fcr < t3) score = 3;
+  else if (fcr < t4) score = 4;
+  else score = 5;
 
-  if (fcr < t1) return 1;
-  if (fcr < t2) return 2;
-  if (fcr < t3) return 3;
-  if (fcr < t4) return 4;
-  return 5;
+  if (tier.mode === "capped" && tier.cap_score !== undefined) score = Math.min(score, tier.cap_score);
+  return score;
 }
 
 function scoreIgEr(igFollowers: number, igErPct: number | undefined, demo?: DemographicsInput): number {
   if (igErPct === undefined || igErPct === null) return 0;
 
-  const maxScore = igFollowers < 10_000 ? 1 : igFollowers < 50_000 ? 3 : 5;
-  const mult     = affinityMultiplier("IG_ER", demo);
+  const tier = getIgErFollowerTier(igFollowers);
+  const mult = affinityMultiplier("IG_ER", demo);
 
   const hispMod = (() => {
     const h = demo?.hispanic ?? 0;
     return h > 30 ? 1.2 : h > 15 ? 1.1 : 1.0;
   })();
 
-  const [t1, t2, t3, t4] = [1, 2, 4, 7].map(t => t * mult * hispMod);
+  const [t1, t2, t3, t4] = [1, 2, 4, 7].map(t => t * mult * hispMod * tier.multiplier);
 
   let score: number;
   if (igErPct < t1) score = 1;
@@ -489,7 +617,8 @@ function scoreIgEr(igFollowers: number, igErPct: number | undefined, demo?: Demo
   else if (igErPct < t4) score = 4;
   else score = 5;
 
-  return Math.min(score, maxScore);
+  if (tier.mode === "capped" && tier.cap_score !== undefined) score = Math.min(score, tier.cap_score);
+  return score;
 }
 
 function scoreReddit(genre: Genre, members: number, demo?: DemographicsInput): number {
@@ -521,19 +650,16 @@ function discordBonus(members?: number): number {
   return 0.30;
 }
 
-function scoreTikTokEr(followers: number, avgViews?: number, demo?: DemographicsInput): number {
-  if (avgViews === undefined || avgViews === null) return 0;
+// Chartmetric's native TikTok ER (engagement per view) — a platform-normalized
+// metric, so unlike FCR/IG ER it isn't scaled by listener/follower size or by
+// audience demographics; only the follower gate below still applies.
+const TIKTOK_ER_THRESHOLDS: [number, number, number, number] = [1, 3, 6, 10];
 
-  const maxScore = followers < 15_000 ? 1 : followers < 75_000 ? 3 : 5;
-  const erPct    = followers > 0 ? (avgViews / followers) * 100 : 0;
-  const mult     = affinityMultiplier("TikTok", demo);
+function scoreTikTokEr(followers: number, erPct?: number): number {
+  if (erPct === undefined || erPct === null) return 0;
 
-  const aaMod = (() => {
-    const aa = demo?.african_american ?? 0;
-    return aa > 30 ? 1.2 : aa > 15 ? 1.1 : 1.0;
-  })();
-
-  const [t1, t2, t3, t4] = [2, 4, 6, 10].map(t => t * mult * aaMod);
+  const maxScore = followers < 15_000 ? 1 : followers < 50_000 ? 3 : 5;
+  const [t1, t2, t3, t4] = TIKTOK_ER_THRESHOLDS;
 
   let score: number;
   if (erPct < t1) score = 1;
@@ -582,6 +708,8 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   sub_weights: Record<string, number>;
   tiktok_age_adjusted_weight: number;
   youtube_excluded: boolean;
+  fcr_tier: MetricTier;
+  ig_er_tier: MetricTier;
 } {
   const group = GENRE_GROUP_MAP[inputs.genre] ?? "ROCK";
   const [wFCR, wFanID, wIGER, wReddit, wMerch, wTikTok, wYT] = P2_SUB_WEIGHTS[group];
@@ -592,8 +720,11 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   const igErScore    = scoreIgEr(inputs.ig_followers, inputs.ig_er_pct, inputs.demographics);
   const redditScore  = scoreReddit(inputs.genre, inputs.reddit_members, inputs.demographics);
   const merchScore   = inputs.merch_sentiment;
-  const tiktokScore  = scoreTikTokEr(inputs.tiktok_followers, inputs.tiktok_avg_views, inputs.demographics);
+  const tiktokScore  = scoreTikTokEr(inputs.tiktok_followers, inputs.tiktok_er_pct);
   const ytScore      = scoreYouTubeEr(inputs.genre, inputs.youtube_subscribers, inputs.youtube_er_pct);
+
+  const fcrTier   = getFcrListenerTier(inputs.spotify_monthly_listeners);
+  const igErTier  = getIgErFollowerTier(inputs.ig_followers);
 
   // TikTok age-adjusted weight
   const ttAdjWeight  = tiktokAgeAdjustedWeight(wTikTok, inputs.demographics);
@@ -653,6 +784,8 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
     sub_weights: finalWeights,
     tiktok_age_adjusted_weight: ttAdjWeight,
     youtube_excluded: ytExcluded,
+    fcr_tier: fcrTier,
+    ig_er_tier: igErTier,
     weighted_score: weighted,
     bonus: totalBonus,
     final_score: weighted + totalBonus,
@@ -779,12 +912,19 @@ export function tiktokViralBonus(followers: number, avgViews?: number): number {
   return avgViews >= 50_000 ? 1.0 : 0.5;
 }
 
-function computeP4(inputs: ScoringInputs): PillarBreakdown {
+function computeP4(inputs: ScoringInputs): PillarBreakdown & { yoy_floor: YoyFloorInfo } {
   let yoyScore = scoreSpotifyYoY(inputs.spotify_yoy_pct, inputs.spotify_monthly_listeners);
 
   // Album cycle override: boost by 1 if score < 3, max 3
   if (inputs.album_cycle_override && yoyScore < 3) {
     yoyScore = Math.min(yoyScore + 1, 3);
+  }
+
+  // Absolute-gain floor: a big artist can post modest YoY % while adding a
+  // huge number of raw listeners — floor the score up (never down) for that.
+  const yoyFloor = getYoyFloor(inputs.spotify_monthly_listeners, inputs.spotify_yoy_pct, yoyScore);
+  if (yoyFloor.applied && yoyFloor.floor !== null) {
+    yoyScore = Math.max(yoyScore, yoyFloor.floor);
   }
 
   const venueScore    = scoreVenueProgression(inputs.venue_progression, inputs.venue_capacity);
@@ -813,6 +953,7 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown {
     weighted_score: weighted,
     bonus: viralBonus > 0 ? viralBonus : undefined,
     final_score: finalScore,
+    yoy_floor: yoyFloor,
   };
 }
 
