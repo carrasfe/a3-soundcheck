@@ -32,7 +32,7 @@ export default function AddAgentSection({
   agencyId: string;
 }) {
   const router = useRouter();
-  const [agents, setAgents] = useState(initialAgents);
+  const agents = initialAgents;
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,21 +58,10 @@ export default function AddAgentSection({
     });
     setSaving(false);
     if (result.error) { setError(result.error); return; }
-    const newAgent: AgentRow = {
-      id: result.id!,
-      name: name.trim(),
-      agency_id: agencyId,
-      agency_name: null,
-      email: email || null,
-      phone: phone || null,
-      notes: notes || null,
-      is_active: true,
-      artists: [],
-    };
-    setAgents((prev) => [...prev, newAgent]);
-    reset();
-    setAdding(false);
-    router.refresh();
+    if (!result.id) { setError("Agent created, but no ID was returned — refresh to see it."); return; }
+    // Redirect straight to the new agent's detail page so the user can
+    // immediately paste in their roster.
+    router.push(`/contacts/agents/${result.id}`);
   }
 
   return (

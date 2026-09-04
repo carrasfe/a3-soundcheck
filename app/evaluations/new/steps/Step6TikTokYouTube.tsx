@@ -68,12 +68,12 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
         </div>
         <div className="mt-4">
           <Input
-            label="Avg Views per Video (10 non-viral posts)"
+            label="Avg Views per Video"
             type="number"
             min={0}
             value={data.tiktok_avg_views}
             onChange={set("tiktok_avg_views")}
-            placeholder="e.g. 8500"
+            placeholder="From Chartmetric overview"
             hint="Used only for the TikTok Viral Signal bonus below — no longer used for ER scoring"
             csvFilled={csvFilled.has("tiktok_avg_views")}
           />

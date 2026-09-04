@@ -371,13 +371,24 @@ export default function ContactsClient({
 
   // ── Submit helpers ─────────────────────────────────────────
 
-  async function handleSubmit(fn: () => Promise<{ error: string | null } | { id: string | null; error: string | null }>) {
+  // `redirectTo` — when provided and the action returns a new record `id`,
+  // navigate straight to that record's detail page instead of refreshing the
+  // list in place (used for the "create" flows so the user can immediately
+  // add managers/agents to the thing they just created).
+  async function handleSubmit(
+    fn: () => Promise<{ error: string | null } | { id: string | null; error: string | null }>,
+    redirectTo?: (id: string) => string
+  ) {
     setSaving(true);
     setFormError(null);
     const result = await fn();
     setSaving(false);
     if (result.error) { setFormError(result.error); return; }
     closeModal();
+    if (redirectTo && "id" in result && result.id) {
+      router.push(redirectTo(result.id));
+      return;
+    }
     refresh();
   }
 
@@ -398,7 +409,10 @@ export default function ContactsClient({
               name = fd.get("name") as string;
               website = fd.get("website") as string;
               notes = fd.get("notes") as string;
-              handleSubmit(() => createManagementCompany({ name, website, notes }));
+              handleSubmit(
+                () => createManagementCompany({ name, website, notes }),
+                (id) => `/contacts/management/${id}`
+              );
             }}
           >
             <FieldRow label="Company Name *">
@@ -470,12 +484,14 @@ export default function ContactsClient({
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              handleSubmit(() =>
-                createAgency({
-                  name: fd.get("name") as string,
-                  website: fd.get("website") as string,
-                  notes: fd.get("notes") as string,
-                })
+              handleSubmit(
+                () =>
+                  createAgency({
+                    name: fd.get("name") as string,
+                    website: fd.get("website") as string,
+                    notes: fd.get("notes") as string,
+                  }),
+                (id) => `/contacts/agencies/${id}`
               );
             }}
           >
@@ -548,14 +564,16 @@ export default function ContactsClient({
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              handleSubmit(() =>
-                createManager({
-                  name: fd.get("name") as string,
-                  management_company_id: modal.companyId || null,
-                  email: fd.get("email") as string,
-                  phone: fd.get("phone") as string,
-                  notes: fd.get("notes") as string,
-                })
+              handleSubmit(
+                () =>
+                  createManager({
+                    name: fd.get("name") as string,
+                    management_company_id: modal.companyId || null,
+                    email: fd.get("email") as string,
+                    phone: fd.get("phone") as string,
+                    notes: fd.get("notes") as string,
+                  }),
+                (id) => `/contacts/managers/${id}`
               );
             }}
           >
@@ -650,14 +668,16 @@ export default function ContactsClient({
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              handleSubmit(() =>
-                createAgent({
-                  name: fd.get("name") as string,
-                  agency_id: modal.agencyId || null,
-                  email: fd.get("email") as string,
-                  phone: fd.get("phone") as string,
-                  notes: fd.get("notes") as string,
-                })
+              handleSubmit(
+                () =>
+                  createAgent({
+                    name: fd.get("name") as string,
+                    agency_id: modal.agencyId || null,
+                    email: fd.get("email") as string,
+                    phone: fd.get("phone") as string,
+                    notes: fd.get("notes") as string,
+                  }),
+                (id) => `/contacts/agents/${id}`
               );
             }}
           >

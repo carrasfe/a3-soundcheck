@@ -32,7 +32,7 @@ export default function AddManagerSection({
   companyId: string;
 }) {
   const router = useRouter();
-  const [managers, setManagers] = useState(initialManagers);
+  const managers = initialManagers;
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,21 +58,10 @@ export default function AddManagerSection({
     });
     setSaving(false);
     if (result.error) { setError(result.error); return; }
-    const newManager: ManagerRow = {
-      id: result.id!,
-      name: name.trim(),
-      management_company_id: companyId,
-      management_company_name: null,
-      email: email || null,
-      phone: phone || null,
-      notes: notes || null,
-      is_active: true,
-      artists: [],
-    };
-    setManagers((prev) => [...prev, newManager]);
-    reset();
-    setAdding(false);
-    router.refresh();
+    if (!result.id) { setError("Manager created, but no ID was returned — refresh to see it."); return; }
+    // Redirect straight to the new manager's detail page so the user can
+    // immediately paste in their roster.
+    router.push(`/contacts/managers/${result.id}`);
   }
 
   return (
