@@ -9,6 +9,7 @@ import {
   formatFcrTierLabel,
   formatIgErTierLabel,
   formatYoyFloorLabel,
+  formatYoyPct,
   type ScoringInputs,
 } from "./scoring-engine";
 
@@ -450,6 +451,26 @@ describe("P4 – Spotify YoY size-adjusted", () => {
   });
 });
 
+describe("P4 – Spotify YoY above 100%", () => {
+  it("<500K: 250% → 5 (score caps at 5, value is not capped)", () => {
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 200_000, spotify_yoy_pct: 250 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(5);
+  });
+  it("500K-2M: 605% → 5", () => {
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 800_000, spotify_yoy_pct: 605 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(5);
+  });
+  it("2M+: 1200% → 5", () => {
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 3_000_000, spotify_yoy_pct: 1200 });
+    expect(r.p4.sub_scores.spotify_yoy).toBe(5);
+  });
+  it("does not overflow the pillar: P4 final score stays within 1-5", () => {
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 3_000_000, spotify_yoy_pct: 1200 });
+    expect(r.p4.final_score).toBeLessThanOrEqual(5);
+    expect(r.p4.final_score).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("P4 – Album Cycle Override", () => {
   it("boosts YoY score by 1 when score <3", () => {
     const without = score({ genre: "Pop", spotify_monthly_listeners: 200_000, spotify_yoy_pct: -1 });
@@ -494,6 +515,23 @@ describe("P4 – Spotify YoY absolute gain floor", () => {
     expect(r.p4.yoy_floor).toMatchObject({ applied: false, floor: null, gain: 0, gain_tier_label: null });
   });
 
+  it("computes a 1M gain from 500% growth on 200K listeners (500K+ tier)", () => {
+    // The gain tier is reached, but 500% on a <500K artist already scores 5,
+    // so the floor has nothing to raise — applied stays false by design.
+    const r = score({ genre: "Pop", spotify_monthly_listeners: 200_000, spotify_yoy_pct: 500 });
+    expect(r.p4.yoy_floor.gain).toBe(1_000_000);
+    expect(r.p4.sub_scores.spotify_yoy).toBe(5);
+    expect(r.p4.yoy_floor.applied).toBe(false);
+  });
+
+  it("applies the 500K+ floor from a high percentage on a declining-tier score", () => {
+    // Album cycle pushes nothing here: 2M+ artist at 120% already scores 5.
+    // Use getYoyFloor directly to confirm the tier lands on 500K+ at high %.
+    const info = getYoyFloor(200_000, 500, 2);
+    expect(info).toMatchObject({ applied: true, floor: 4, gain_tier_label: "500K+" });
+    expect(info.gain).toBe(1_000_000);
+  });
+
   it("does not apply a floor below the 100K gain threshold", () => {
     // 1M listeners × 5% = 50K gain (< 100K)
     const r = score({ genre: "Pop", spotify_monthly_listeners: 1_000_000, spotify_yoy_pct: 5 });
@@ -527,6 +565,24 @@ describe("formatYoyFloorLabel", () => {
   it("omits the parenthetical when no floor applies", () => {
     const info = getYoyFloor(1_000_000, 5, 5); // gain 50K, no floor
     expect(formatYoyFloorLabel(5, info)).toBe("YoY 5.0%");
+  });
+  it("shows a high percentage in full", () => {
+    const info = getYoyFloor(200_000, 500, 2); // gain 1M, floors 2→4
+    expect(formatYoyFloorLabel(605, info)).toBe("YoY 605% (500K+ gain — floor 4 applied)");
+  });
+});
+
+describe("formatYoyPct", () => {
+  it("keeps one decimal below 100%", () => {
+    expect(formatYoyPct(3.24)).toBe("3.2%");
+    expect(formatYoyPct(99.9)).toBe("99.9%");
+    expect(formatYoyPct(-12.5)).toBe("-12.5%");
+  });
+  it("drops the decimal at 100% and above", () => {
+    expect(formatYoyPct(100)).toBe("100%");
+    expect(formatYoyPct(250)).toBe("250%");
+    expect(formatYoyPct(604.7)).toBe("605%");
+    expect(formatYoyPct(1200)).toBe("1200%");
   });
 });
 

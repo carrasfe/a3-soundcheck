@@ -6,6 +6,7 @@
 
 import jsPDF from "jspdf";
 import type { ScoringResult } from "@/lib/scoring-engine";
+import { formatYoyPct } from "@/lib/scoring-engine";
 import type { EvalFormData } from "@/app/evaluations/new/types";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 
@@ -191,6 +192,13 @@ function fP(s: string | undefined | null): string {
   if (!s || s.trim() === "") return "—";
   const v = parseFloat(s);
   return isNaN(v) ? "—" : `${v.toFixed(1)}%`;
+}
+
+/** Like fP, but drops the decimal at 100%+ — see formatYoyPct. */
+function fYoy(s: string | undefined | null): string {
+  if (!s || s.trim() === "") return "—";
+  const v = parseFloat(s);
+  return isNaN(v) ? "—" : formatYoyPct(v);
 }
 
 function fs(v: number): string { return v.toFixed(2); }
@@ -618,7 +626,9 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   // Spotify YoY: append monthly listeners in parentheses if entered so the
   // parser can recover spotify_monthly_listeners on re-import. Append the
   // absolute-gain floor note when it actually raised the score.
-  const spotifyYoyInput = withParts(fP(inp.spotify_yoy_pct), [
+  // fYoy, not fP: YoY is uncapped and may read "605%" or "1200%", where the
+  // decimal fP adds would push the cell into the score column.
+  const spotifyYoyInput = withParts(fYoy(inp.spotify_yoy_pct), [
     inp.spotify_monthly_listeners ? fK(inp.spotify_monthly_listeners) : null,
     r.p4.yoy_floor?.applied ? `floor ${r.p4.yoy_floor.floor}` : null,
   ]);

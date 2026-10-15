@@ -374,9 +374,18 @@ export function getYoyFloor(
   return { applied: false, floor: null, gain, gain_tier_label: null };
 }
 
+/**
+ * YoY % formatted for display. Explosive growth runs into triple and quadruple
+ * digits ("605%", "1200%"), where a decimal place is noise and costs width in
+ * the PDF scorecard's sub-row cell — so it is dropped at 100% and above.
+ */
+export function formatYoyPct(yoyPct: number): string {
+  return Math.abs(yoyPct) >= 100 ? `${Math.round(yoyPct)}%` : `${yoyPct.toFixed(1)}%`;
+}
+
 /** e.g. "YoY 3.2% (500K+ gain — floor 4 applied)" — only annotated when the floor actually applied. */
 export function formatYoyFloorLabel(yoyPct: number, floorInfo: YoyFloorInfo): string {
-  const base = `YoY ${yoyPct.toFixed(1)}%`;
+  const base = `YoY ${formatYoyPct(yoyPct)}`;
   if (!floorInfo.applied || floorInfo.floor === null) return base;
   return `${base} (${floorInfo.gain_tier_label} gain — floor ${floorInfo.floor} applied)`;
 }

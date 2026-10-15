@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { EvaluationRecord } from "./page";
 import type { ScoringResult, PillarBreakdown } from "@/lib/scoring-engine";
-import { formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel } from "@/lib/scoring-engine";
+import { formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel, formatYoyPct } from "@/lib/scoring-engine";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
@@ -224,7 +224,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
     const yoyStr = (() => {
       if (!yoyRaw) return "—";
       const yoyNum = parseFloat(yoyRaw);
-      const pct = `${yoyNum > 0 ? "+" : ""}${yoyNum.toFixed(1)}%`;
+      const pct = `${yoyNum > 0 ? "+" : ""}${formatYoyPct(yoyNum)}`;
       return listeners > 0 ? `${pct} (${fmtNum(listeners)})` : pct;
     })();
 

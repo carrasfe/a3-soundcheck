@@ -68,7 +68,7 @@ export default function Step6Growth({ data, onChange, csvFilled, errors }: StepP
                 value={data.spotify_yoy_pct}
                 onChange={set("spotify_yoy_pct")}
                 placeholder="e.g. 12"
-                hint={yoyTierHint ?? "Enter as 12, not 0.12. Negative values OK."}
+                hint={yoyTierHint ?? "Enter as 12, not 0.12. Negative values and 100%+ breakout growth (e.g. 605) both OK."}
                 csvFilled={csvFilled.has("spotify_yoy_pct")}
               />
             </div>

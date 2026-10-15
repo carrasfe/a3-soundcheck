@@ -73,9 +73,11 @@ function validateStep(step: number, data: EvalFormData): Errors {
       e.spotify_monthly_listeners = "Must be 0 or greater";
     pct(data.fan_concentration_ratio, "fan_concentration_ratio");
     if (data.spotify_yoy_pct) {
+      // No upper bound — breakout artists post 250%, 605%, 1200% YoY and the
+      // scorecard needs to show it. Only -100% (total loss) is a real floor.
       const yoy = parseFloat(data.spotify_yoy_pct);
-      if (isNaN(yoy) || yoy < -100 || yoy > 1000)
-        e.spotify_yoy_pct = "Enter as a percentage, e.g. 25 for 25% growth";
+      if (isNaN(yoy) || yoy < -100)
+        e.spotify_yoy_pct = "Enter as a percentage, e.g. 25 for 25% growth (minimum -100)";
     }
     if (!data.playlist_score) e.playlist_score = "Required";
   }
