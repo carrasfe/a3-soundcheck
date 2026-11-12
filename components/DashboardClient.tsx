@@ -328,7 +328,9 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
           </div>
           <div className="flex flex-wrap gap-2">
             {localDrafts.map((d) => {
-              const isCompleted = completedArtistNames.has(d.artist_name?.toLowerCase());
+              // Superseded drafts are auto-deleted server-side, so a draft for an artist
+              // with a completed evaluation is a newer re-evaluation in progress.
+              const isReeval = completedArtistNames.has(d.artist_name?.toLowerCase());
               const isConfirming = confirmDeleteId === d.id;
 
               if (isConfirming) {
@@ -366,9 +368,12 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
                     className="flex items-center gap-2 px-3 py-2 text-sm"
                   >
                     <span className="font-semibold text-[#001489]">{d.artist_name}</span>
-                    {isCompleted && (
-                      <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-                        Completed
+                    {isReeval && (
+                      <span
+                        className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-[#001489]"
+                        title="This artist has an earlier completed evaluation"
+                      >
+                        Re-evaluation
                       </span>
                     )}
                     <span className="text-xs text-gray-500">by {d.evaluator_name}</span>

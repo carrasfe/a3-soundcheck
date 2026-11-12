@@ -81,7 +81,10 @@ export async function createDraft(body: Record<string, unknown>, origin: string)
       booking_agent: formData.booking_agent || null,
       current_merch_provider: formData.merch_provider || null,
     }).select("id").single();
-    if (insErr) throw insErr;
+    if (insErr) {
+      console.error("[create_draft] Artist insert failed:", JSON.stringify({ artistName, insErr }));
+      throw insErr;
+    }
     artistId = inserted.id;
     artistCreated = true;
   }
@@ -96,7 +99,14 @@ export async function createDraft(body: Record<string, unknown>, origin: string)
     inputs: formData as unknown as Record<string, unknown>,
     results: null,
   }).select("id").single();
-  if (draftErr) throw draftErr;
+  if (draftErr) {
+    console.error("[create_draft] Draft insert failed:", JSON.stringify({ artistName, artistId, evaluatedBy, draftErr }));
+    throw draftErr;
+  }
+  console.log("[create_draft] Draft created:", JSON.stringify({
+    draft_id: draft.id, artist_id: artistId, artist_name: artistName, artist_created: artistCreated,
+    evaluated_by: evaluatedBy, fields_applied: applied.length, fields_ignored: ignored,
+  }));
 
   await sb.from("audit_log").insert({
     event_type: "mcp_draft_created",

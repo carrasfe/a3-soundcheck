@@ -4,6 +4,7 @@ import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "@/components/DashboardClient";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import { getArtistIdsWithA3Relationship } from "@/app/contacts/actions";
+import { cleanupSupersededDrafts } from "@/lib/drafts";
 
 export type EvaluationRow = {
   id: string;
@@ -120,7 +121,22 @@ export default async function DashboardPage() {
   // Use evaluated_at for ordering — it's explicitly set in saveEvaluation; updated_at
   // may not auto-update on row updates (no trigger) or may not exist in all schemas.
   try {
-    const draftClient = tryCreateAdminClient() ?? supabase;
+    const adminClient = tryCreateAdminClient();
+    const draftClient = adminClient ?? supabase;
+
+    // Auto-clean drafts superseded by a completed evaluation of the same artist.
+    // Needs the service-role client to see/delete every user's drafts.
+    if (adminClient) {
+      try {
+        const removed = await cleanupSupersededDrafts(adminClient);
+        if (removed > 0) console.log(`[DashboardPage] Cleaned up ${removed} superseded drafts`);
+      } catch (cleanupErr) {
+        console.error("[DashboardPage] Draft cleanup failed:", JSON.stringify(cleanupErr));
+      }
+    } else {
+      console.warn("[DashboardPage] SUPABASE_SERVICE_ROLE_KEY missing — drafts limited by RLS, cleanup skipped");
+    }
+
     const { data: draftRows, error: draftError } = await draftClient
       .from("evaluations")
       .select("id, artists(name), evaluated_at, evaluated_by")

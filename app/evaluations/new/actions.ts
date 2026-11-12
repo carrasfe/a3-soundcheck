@@ -31,6 +31,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
+import { deleteDraftsForArtist } from "@/lib/drafts";
 import { calculateScore } from "@/lib/scoring-engine";
 import { buildScoringInputs, getAgeProfileLabel } from "./types";
 import type { EvalFormData } from "./types";
@@ -65,6 +66,17 @@ function buildDebugInfo(
     `Code: ${err.code ?? "none"}`,
     `Payload: ${JSON.stringify(safePayload, null, 2)}`,
   ].join("\n");
+}
+
+/** Delete all drafts for an artist after a complete save (service-role: drafts are shared). */
+async function clearArtistDrafts(artistId: string, keepId: string) {
+  const admin = tryCreateAdminClient();
+  if (!admin) return;
+  try {
+    await deleteDraftsForArtist(admin, artistId, keepId);
+  } catch (err) {
+    console.error("[saveEvaluation] Draft cleanup failed:", err);
+  }
 }
 
 export async function saveEvaluation(
@@ -191,7 +203,9 @@ export async function saveEvaluation(
       // Fall through to INSERT a fresh evaluation.
       console.warn("[saveEvaluation] Update affected 0 rows for existingId:", existingId, "— inserting new row");
     } else {
-      return { id: updated[0].id as string, error: null };
+      const savedId = updated[0].id as string;
+      if (status === "complete" && artistId) await clearArtistDrafts(artistId, savedId);
+      return { id: savedId, error: null };
     }
   }
 
@@ -210,6 +224,9 @@ export async function saveEvaluation(
     const dbg = buildDebugInfo("insert", error, payload);
     return { id: null, error: error.message, debugInfo: dbg };
   }
+
+  // A completed evaluation supersedes any open drafts for the same artist
+  if (status === "complete" && artistId) await clearArtistDrafts(artistId, data.id);
 
   // Save junction records + ensure known_artist entries — fire and forget
   if (artistId && status === "complete") {
