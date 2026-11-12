@@ -3,6 +3,12 @@ import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // MCP API routes authenticate with an x-api-key header (see lib/mcp/http.ts),
+  // not a Supabase session — skip the login redirect for them.
+  if (request.nextUrl.pathname.startsWith("/api/mcp/")) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

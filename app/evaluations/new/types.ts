@@ -211,7 +211,7 @@ export function getAgeProfileLabel(
   return `${dom.label} Core (${dom.total.toFixed(1)}%) × ${genderPct}% ${genderLabel}`;
 }
 
-const VALID_GENRES: Genre[] = [
+export const VALID_GENRES: Genre[] = [
   "Rock / Alt / Indie",
   "Country / Americana",
   "Metal / Hard Rock",

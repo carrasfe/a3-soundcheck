@@ -30,6 +30,7 @@
 */
 
 import { createClient } from "@/lib/supabase/server";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { calculateScore } from "@/lib/scoring-engine";
 import { buildScoringInputs, getAgeProfileLabel } from "./types";
 import type { EvalFormData } from "./types";
@@ -163,7 +164,15 @@ export async function saveEvaluation(
   };
 
   if (existingId) {
-    const { data: updated, error } = await supabase
+    // Drafts are shared — any user can continue anyone's draft (including drafts
+    // created via the MCP API). Use the service-role client for draft rows so
+    // per-user RLS doesn't turn the update into a duplicate insert.
+    const { data: existingRow } = await (tryCreateAdminClient() ?? supabase)
+      .from("evaluations").select("status").eq("id", existingId).maybeSingle();
+    const updateClient = existingRow?.status === "draft"
+      ? (tryCreateAdminClient() ?? supabase)
+      : supabase;
+    const { data: updated, error } = await updateClient
       .from("evaluations")
       .update(payload)
       .eq("id", existingId)
@@ -253,11 +262,11 @@ export async function getDraftCount(): Promise<number> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return 0;
 
-  const { count, error } = await supabase
+  // Drafts are shared across all users
+  const { count, error } = await (tryCreateAdminClient() ?? supabase)
     .from("evaluations")
     .select("id", { count: "exact", head: true })
-    .eq("status", "draft")
-    .eq("evaluated_by", user.id);
+    .eq("status", "draft");
 
   return error ? 0 : (count ?? 0);
 }
@@ -272,7 +281,8 @@ export async function loadEvaluationInputs(id: string): Promise<LoadResult> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: "Not authenticated" };
 
-  const { data: row, error } = await supabase
+  // Service-role read so shared drafts created by other users (or the MCP API) load
+  const { data: row, error } = await (tryCreateAdminClient() ?? supabase)
     .from("evaluations")
     .select("inputs")
     .eq("id", id)
@@ -289,14 +299,26 @@ export async function deleteDraftEvaluation(id: string): Promise<{ error: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { error } = await supabase
+  // Anyone can delete their own drafts; admins can delete any draft.
+  const { data: profile } = await supabase
+    .from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role === "admin") {
+    const { error } = await (tryCreateAdminClient() ?? supabase)
+      .from("evaluations").delete().eq("id", id).eq("status", "draft");
+    return { error: error?.message ?? null };
+  }
+
+  const { data: deleted, error } = await supabase
     .from("evaluations")
     .delete()
     .eq("id", id)
     .eq("status", "draft")
-    .eq("evaluated_by", user.id);
+    .eq("evaluated_by", user.id)
+    .select("id");
 
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+  if (!deleted || deleted.length === 0) return { error: "Only the draft's creator or an admin can delete it." };
+  return { error: null };
 }
 
 export async function deleteAllDrafts(): Promise<{ error: string | null }> {

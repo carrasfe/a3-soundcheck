@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "@/components/DashboardClient";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import { getArtistIdsWithA3Relationship } from "@/app/contacts/actions";
@@ -20,6 +21,8 @@ export type DraftRow = {
   id: string;
   artist_name: string;
   updated_at: string;
+  evaluator_id: string | null;
+  evaluator_name: string;
 };
 
 export default async function DashboardPage() {
@@ -113,16 +116,17 @@ export default async function DashboardPage() {
   }
 
   // Fetch drafts in a separate query so any error here never blocks the evaluations list.
+  // Drafts are shared: every user sees every draft (including ones created via the MCP API).
   // Use evaluated_at for ordering — it's explicitly set in saveEvaluation; updated_at
   // may not auto-update on row updates (no trigger) or may not exist in all schemas.
   try {
-    const { data: draftRows, error: draftError } = await supabase
+    const draftClient = tryCreateAdminClient() ?? supabase;
+    const { data: draftRows, error: draftError } = await draftClient
       .from("evaluations")
-      .select("id, artists(name), evaluated_at")
+      .select("id, artists(name), evaluated_at, evaluated_by")
       .eq("status", "draft")
-      .eq("evaluated_by", user.id)
       .order("evaluated_at", { ascending: false })
-      .limit(10);
+      .limit(50);
 
     if (draftError) {
       console.error("[DashboardPage] Drafts query error:", JSON.stringify(draftError));
@@ -131,6 +135,15 @@ export default async function DashboardPage() {
     }
 
     if (draftRows && draftRows.length > 0) {
+      const creatorIds = Array.from(new Set(draftRows.map((d) => d.evaluated_by).filter(Boolean)));
+      const creatorMap = new Map<string, string>();
+      if (creatorIds.length > 0) {
+        const { data: creators } = await draftClient
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", creatorIds);
+        (creators ?? []).forEach((p) => creatorMap.set(p.id, p.full_name || p.email || "Unknown"));
+      }
       drafts = draftRows.map((d) => {
         const artistsData = d.artists as unknown;
         const artistName = Array.isArray(artistsData)
@@ -140,6 +153,10 @@ export default async function DashboardPage() {
           id: d.id,
           artist_name: artistName,
           updated_at: (d as Record<string, unknown>).evaluated_at as string ?? "",
+          evaluator_id: d.evaluated_by ?? null,
+          evaluator_name: d.evaluated_by === user.id
+            ? "You"
+            : creatorMap.get(d.evaluated_by) ?? "Unknown",
         };
       });
     }
@@ -147,5 +164,13 @@ export default async function DashboardPage() {
     console.error("[DashboardPage] Drafts fetch threw:", draftErr);
   }
 
-  return <DashboardClient evaluations={evaluations} drafts={drafts} isAdmin={isAdmin} dbError={dbError} />;
+  return (
+    <DashboardClient
+      evaluations={evaluations}
+      drafts={drafts}
+      isAdmin={isAdmin}
+      currentUserId={user.id}
+      dbError={dbError}
+    />
+  );
 }

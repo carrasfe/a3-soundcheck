@@ -56,10 +56,11 @@ interface Props {
   evaluations: EvaluationRow[];
   drafts: DraftRow[];
   isAdmin: boolean;
+  currentUserId: string;
   dbError?: string | null;
 }
 
-export default function DashboardClient({ evaluations, drafts, isAdmin, dbError }: Props) {
+export default function DashboardClient({ evaluations, drafts, isAdmin, currentUserId, dbError }: Props) {
   const [search, setSearch] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [filterTier, setFilterTier] = useState("");
@@ -75,6 +76,10 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [draftDeleting, setDraftDeleting] = useState(false);
+
+  // Drafts are shared across users; only the creator or an admin can delete one.
+  const myDraftCount = localDrafts.filter((d) => d.evaluator_id === currentUserId).length;
+  const canDeleteDraft = (d: DraftRow) => isAdmin || d.evaluator_id === currentUserId;
 
   const completedArtistNames = useMemo(
     () => new Set(evaluations.map((e) => e.artist_name?.toLowerCase()).filter(Boolean)),
@@ -95,7 +100,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
     setDraftDeleting(true);
     const { error } = await deleteAllDrafts();
     if (!error) {
-      setLocalDrafts([]);
+      setLocalDrafts((prev) => prev.filter((d) => d.evaluator_id !== currentUserId));
       setConfirmClearAll(false);
     }
     setDraftDeleting(false);
@@ -294,16 +299,16 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
             <p className="text-sm font-semibold uppercase tracking-wider text-amber-800">
               Saved Drafts ({localDrafts.length})
             </p>
-            {!confirmClearAll ? (
+            {myDraftCount === 0 ? null : !confirmClearAll ? (
               <button
                 onClick={() => setConfirmClearAll(true)}
                 className="text-xs text-amber-700 transition hover:text-red-600"
               >
-                Clear All Drafts
+                Clear My Drafts ({myDraftCount})
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-700">Delete all drafts?</span>
+                <span className="text-xs text-red-700">Delete your {myDraftCount} draft{myDraftCount === 1 ? "" : "s"}?</span>
                 <button
                   onClick={handleClearAllDrafts}
                   disabled={draftDeleting}
@@ -366,19 +371,22 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, dbError 
                         Completed
                       </span>
                     )}
+                    <span className="text-xs text-gray-500">by {d.evaluator_name}</span>
                     <span className="text-xs text-gray-400">
                       {d.updated_at ? new Date(d.updated_at).toLocaleDateString() : ""}
                     </span>
                     <span className="text-xs font-medium text-amber-700">Continue →</span>
                   </Link>
-                  <button
-                    onClick={() => setConfirmDeleteId(d.id)}
-                    className="px-2 py-2 text-gray-400 transition hover:text-red-600"
-                    title="Delete draft"
-                    aria-label="Delete draft"
-                  >
-                    ×
-                  </button>
+                  {canDeleteDraft(d) && (
+                    <button
+                      onClick={() => setConfirmDeleteId(d.id)}
+                      className="px-2 py-2 text-gray-400 transition hover:text-red-600"
+                      title="Delete draft"
+                      aria-label="Delete draft"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               );
             })}

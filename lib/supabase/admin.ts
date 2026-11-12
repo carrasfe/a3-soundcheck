@@ -20,3 +20,16 @@ export function createAdminClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/**
+ * Service-role client, or null when SUPABASE_SERVICE_ROLE_KEY isn't configured.
+ * Used for shared-draft access (any user can view/continue any draft) so it
+ * works regardless of per-user RLS on the evaluations table.
+ */
+export function tryCreateAdminClient() {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+}
