@@ -7,11 +7,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(claude\.ai|anthropic\.com)$/i;
 
-function corsHeaders(req: NextRequest): Record<string, string> {
+export function corsHeaders(req: NextRequest): Record<string, string> {
   const origin = req.headers.get("origin");
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-api-key",
+    "Access-Control-Allow-Headers": "Content-Type, x-api-key, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
@@ -27,9 +27,15 @@ export function preflight(req: NextRequest): NextResponse {
   return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
 }
 
-function isAuthorized(req: NextRequest): boolean {
+/**
+ * The key is normally sent as an x-api-key header. Authorization: Bearer and a
+ * ?key= query param are also accepted because the claude.ai custom-connector
+ * UI can't attach custom headers — it only takes a URL.
+ */
+export function isAuthorized(req: NextRequest): boolean {
   const expected = process.env.SOUNDCHECK_MCP_KEY;
-  const provided = req.headers.get("x-api-key");
+  const bearer = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const provided = req.headers.get("x-api-key") ?? bearer ?? req.nextUrl.searchParams.get("key");
   if (!expected || !provided) return false;
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);

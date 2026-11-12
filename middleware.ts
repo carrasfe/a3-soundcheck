@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   // MCP API routes authenticate with an x-api-key header (see lib/mcp/http.ts),
   // not a Supabase session — skip the login redirect for them.
-  if (request.nextUrl.pathname.startsWith("/api/mcp/")) {
+  if (request.nextUrl.pathname === "/api/mcp" || request.nextUrl.pathname.startsWith("/api/mcp/")) {
     return NextResponse.next();
   }
 
@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // api/mcp is excluded: it authenticates with an API key, not a session
+    "/((?!api/mcp|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
