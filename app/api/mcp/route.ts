@@ -13,10 +13,11 @@ export const dynamic = "force-dynamic";
 // MCP server (Model Context Protocol) — Streamable HTTP transport, stateless.
 //
 // POST /api/mcp  — JSON-RPC 2.0 request(s); responses returned as JSON.
-// GET  /api/mcp  — 405: the spec lets a server decline the optional
-//                  server→client SSE stream, and this server never sends
-//                  unsolicited messages (a long-lived stream would also just
-//                  burn a Vercel function until it times out).
+//                  `initialize` (and notifications) work without the API key
+//                  so connector health checks succeed; everything else needs it.
+// GET  /api/mcp  — plain JSON health check (no SSE stream: this server never
+//                  sends unsolicited messages, and a long-lived stream would
+//                  just burn a Vercel function until it times out).
 //
 // The tool logic is shared with the REST routes under /api/mcp/*.
 // ─────────────────────────────────────────────────────────────
@@ -219,9 +220,14 @@ function unauthorized(req: NextRequest) {
   return reply(req, rpcError(null, -32001, "Unauthorized: missing or invalid API key"), 401);
 }
 
-export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) return unauthorized(req);
+/** Handshake messages that are allowed without the API key. */
+function isPublicMessage(m: unknown): boolean {
+  const msg = m as RpcRequest | null;
+  if (!msg || typeof msg !== "object") return false;
+  return msg.method === "initialize" || msg.id === undefined; // notifications carry no id
+}
 
+export async function POST(req: NextRequest) {
   let payload: unknown;
   try {
     payload = await req.json();
@@ -233,6 +239,10 @@ export async function POST(req: NextRequest) {
   const messages = Array.isArray(payload) ? payload : [payload];
   if (messages.length === 0) return reply(req, rpcError(null, -32600, "Invalid Request"), 400);
 
+  // initialize returns only server info, so connector health checks can run it
+  // without the key. tools/list, tools/call, ping, etc. require it.
+  if (!isAuthorized(req) && !messages.every(isPublicMessage)) return unauthorized(req);
+
   const responses = (await Promise.all(messages.map((m) => handleMessage(m as RpcRequest, origin))))
     .filter((r) => r !== null);
 
@@ -242,8 +252,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) return unauthorized(req);
-  return new NextResponse(null, { status: 405, headers: { ...corsHeaders(req), Allow: "POST, OPTIONS" } });
+  // Unauthenticated health check — exposes nothing beyond the server name
+  return reply(req, {
+    name: SERVER_INFO.title,
+    status: "ok",
+    version: SERVER_INFO.version,
+    transport: "streamable-http (POST JSON-RPC to this URL)",
+  });
 }
 
 export async function DELETE(req: NextRequest) {
