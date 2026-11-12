@@ -57,7 +57,6 @@ export default function Step4Spotify({ data, onChange, csvFilled, errors }: Step
                 required
                 type="number"
                 min={0}
-                max={100}
                 value={data.fan_concentration_ratio}
                 onChange={set("fan_concentration_ratio")}
                 placeholder="e.g. 22"

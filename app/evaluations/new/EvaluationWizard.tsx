@@ -59,11 +59,11 @@ function validateStep(step: number, data: EvalFormData): Errors {
     pos(data.num_dates,        "num_dates");
     if (!data.market_coverage)   e.market_coverage   = "Required";
     if (!data.venue_progression) e.venue_progression = "Required";
+    // Face value / resale price are optional even when sold out — without
+    // them, resale scoring falls back to the sold-out status alone.
     if (data.resale_situation !== "not_sold_out") {
-      if (!data.face_value)   e.face_value   = "Required when sold out";
-      else if (parseFloat(data.face_value) <= 0) e.face_value = "Must be greater than 0";
-      if (!data.resale_price) e.resale_price = "Required when sold out";
-      else if (parseFloat(data.resale_price) <= 0) e.resale_price = "Must be greater than 0";
+      if (data.face_value && !(parseFloat(data.face_value) > 0))     e.face_value   = "Must be greater than 0";
+      if (data.resale_price && !(parseFloat(data.resale_price) > 0)) e.resale_price = "Must be greater than 0";
     }
   }
 
@@ -71,7 +71,13 @@ function validateStep(step: number, data: EvalFormData): Errors {
     if (!data.spotify_monthly_listeners) e.spotify_monthly_listeners = "Required";
     else if (parseFloat(data.spotify_monthly_listeners) < 0)
       e.spotify_monthly_listeners = "Must be 0 or greater";
-    pct(data.fan_concentration_ratio, "fan_concentration_ratio");
+    // FCR has no upper bound — legacy/cult artists can have more followers
+    // than monthly listeners (e.g. 181%).
+    if (!data.fan_concentration_ratio) e.fan_concentration_ratio = "Required";
+    else {
+      const fcr = parseFloat(data.fan_concentration_ratio);
+      if (isNaN(fcr) || fcr < 0) e.fan_concentration_ratio = "Must be 0 or greater";
+    }
     if (data.spotify_yoy_pct) {
       // No upper bound — breakout artists post 250%, 605%, 1200% YoY and the
       // scorecard needs to show it. Only -100% (total loss) is a real floor.

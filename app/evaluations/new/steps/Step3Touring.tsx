@@ -207,7 +207,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
               value={data.face_value}
               onChange={set("face_value")}
               placeholder="e.g. 55"
-              hint="Average face-value ticket price ($)"
+              hint="Optional — average face-value ticket price ($)"
               error={errors.face_value}
             />
             <Input
@@ -217,7 +217,7 @@ export default function Step3Touring({ data, onChange, onCsvFill, errors }: Step
               value={data.resale_price}
               onChange={set("resale_price")}
               placeholder="e.g. 120"
-              hint="Average resale price on secondary market ($)"
+              hint="Optional — average resale price on secondary market ($)"
               error={errors.resale_price}
             />
             {data.face_value && data.resale_price && parseFloat(data.face_value) > 0 && (

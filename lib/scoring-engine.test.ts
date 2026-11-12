@@ -141,6 +141,28 @@ describe("P1 – Resale Demand Signal", () => {
     expect(ss.p1.sub_scores.resale).toBeGreaterThanOrEqual(ns.p1.sub_scores.resale);
   });
 
+  it("Some Sold Out without pricing data scores above Not Sold Out, below 5", () => {
+    for (const venue_capacity of [300, 2500, 20000]) {
+      const base = { genre: "Rock / Alt / Indie" as const, venue_capacity, sell_through_pct: 85, num_dates: 30, market_coverage: 4 };
+      const ns = score({ ...base, resale_situation: "not_sold_out" });
+      const ss = score({ ...base, resale_situation: "some_sold_out", resale_to_face_ratio: undefined });
+      expect(ss.p1.sub_scores.resale).toBeGreaterThan(ns.p1.sub_scores.resale);
+      expect(ss.p1.sub_scores.resale).toBeLessThan(5);
+    }
+  });
+
+  it("All Sold Out without pricing data scores ≥ Some Sold Out, ≥3, below 5", () => {
+    for (const venue_capacity of [300, 2500, 20000]) {
+      const base = { genre: "Rock / Alt / Indie" as const, venue_capacity, sell_through_pct: 85, num_dates: 30, market_coverage: 4 };
+      const ss = score({ ...base, resale_situation: "some_sold_out" });
+      const as = score({ ...base, resale_situation: "all_sold_out" });
+      expect(as.p1.sub_scores.resale).toBeGreaterThanOrEqual(ss.p1.sub_scores.resale);
+      expect(as.p1.sub_scores.resale).toBeGreaterThanOrEqual(3);
+      expect(as.p1.sub_scores.resale).toBeLessThan(5);
+      expect(Number.isFinite(as.p1.final_score)).toBe(true);
+    }
+  });
+
   it("All Sold Out with 3x ratio → 5", () => {
     const r = score({
       genre: "Pop", venue_capacity: 5000, sell_through_pct: 100, num_dates: 50,
@@ -176,9 +198,17 @@ describe("P1 – VIP bonus", () => {
 // ============================================================
 
 describe("P2 – FCR listener-tiered thresholds", () => {
-  it("caps at 3 when FCR >60% (micro-artist gate)", () => {
-    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 65, spotify_monthly_listeners: 100_000 });
+  it("FCR over 100% scores 5 (followers > monthly listeners)", () => {
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 181.02, spotify_monthly_listeners: 100_000 });
+    expect(r.p2.sub_scores.FCR).toBe(5);
+  });
+  it("FCR over 100% still respects Tier 1 (<50K) cap of 3", () => {
+    const r = score({ genre: "Rock / Alt / Indie", fan_concentration_ratio: 181.02, spotify_monthly_listeners: 30_000 });
     expect(r.p2.sub_scores.FCR).toBe(3);
+  });
+  it("FCR over 100% scores 5 in adjusted tiers (5M+)", () => {
+    const r = score({ genre: "Pop", fan_concentration_ratio: 150, spotify_monthly_listeners: 8_000_000 });
+    expect(r.p2.sub_scores.FCR).toBe(5);
   });
   it("Tier 1 (<50K listeners): caps FCR score at 3 regardless of high percentage", () => {
     // Rock T4=40 → FCR=45 would normally score 5, but tier1 caps at 3

@@ -560,7 +560,10 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   const rows: SubRow[] = [
     {
       name: "Spotify FCR",
-      input: withParts(fP(inp.fan_concentration_ratio), [
+      input: withParts(
+        inp.fan_concentration_ratio && !isNaN(parseFloat(inp.fan_concentration_ratio))
+          ? `${parseFloat(inp.fan_concentration_ratio).toFixed(2)}%`
+          : "—", [
         inp.spotify_monthly_listeners ? `${fK(inp.spotify_monthly_listeners)} listeners` : null,
         tierNote(r.p2.fcr_tier),
       ]),

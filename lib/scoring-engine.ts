@@ -89,12 +89,12 @@ export interface ScoringInputs {
   num_dates: number;
   market_coverage: number;        // 1–5 manual
   resale_situation: ResaleSituation;
-  resale_to_face_ratio?: number;  // e.g. 2.5 means 2.5x face; required for some/all sold out
+  resale_to_face_ratio?: number;  // e.g. 2.5 means 2.5x face; optional — status-only fallback when absent
   vip_level: VipLevel;
 
   // ── Pillar 2 ──
   spotify_monthly_listeners: number;
-  fan_concentration_ratio: number; // FCR as percentage 0–100
+  fan_concentration_ratio: number; // FCR as percentage; can exceed 100 (followers > monthly listeners)
   p2_fan_identity: number;         // 1–5 manual: Fan Identity Signaling (1=No fan culture … 5=Deep tribal identity)
   ig_followers: number;
   ig_er_pct?: number;             // if provided directly; else calculated from followers
@@ -543,7 +543,14 @@ function scoreResale(
   const ps = profileScore(otherP1Avg);
   if (situation === "not_sold_out") return ps;
 
-  const ms = multiplierScore(ratio ?? 1);
+  // No pricing data: score on sold-out status alone. Always beats Not Sold
+  // Out, but stays below 5 since the resale demand signal is missing.
+  if (ratio === undefined || ratio === null || !isFinite(ratio) || ratio <= 0) {
+    if (situation === "some_sold_out") return ps + 0.5;
+    return Math.min(4.5, Math.max(ps + 1, 3));
+  }
+
+  const ms = multiplierScore(ratio);
 
   if (situation === "some_sold_out") {
     return Math.max(ps, ms);
@@ -551,7 +558,7 @@ function scoreResale(
 
   // all_sold_out
   const floor = otherP1Avg > 3 ? 3 : 2;
-  if (!ratio || ratio <= 1) return Math.max(floor, ps);
+  if (ratio <= 1) return Math.max(floor, ps);
   if (ratio <= 1.5) return 3;
   if (ratio <= 2.5) return 4;
   return 5;
@@ -590,8 +597,6 @@ function computeP1(inputs: ScoringInputs): PillarBreakdown {
 // ============================================================
 
 function scoreFCR(genre: Genre, fcr: number, monthlyListeners: number): number {
-  if (fcr > 60) return 3; // micro-artist gate cap
-
   const tier = getFcrListenerTier(monthlyListeners);
   const [t1, t2, t3, t4] = (FCR_THRESHOLDS[genre] ?? FCR_THRESHOLDS["Rock / Alt / Indie"]).map(t => t * tier.multiplier);
 
