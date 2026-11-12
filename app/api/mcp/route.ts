@@ -5,6 +5,7 @@ import { getEvaluation } from "@/lib/mcp/tools/get-evaluation";
 import { getContacts } from "@/lib/mcp/tools/get-contacts";
 import { listArtists } from "@/lib/mcp/tools/list-artists";
 import { createDraft } from "@/lib/mcp/tools/create-draft";
+import { listDrafts } from "@/lib/mcp/tools/list-drafts";
 import { INITIAL_FORM_DATA, VALID_GENRES } from "@/app/evaluations/new/types";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,8 @@ const INSTRUCTIONS =
   "(P1 Touring, P2 Fan Engagement, P3 E-Commerce, P4 Growth) into a total score and a tier " +
   "(Priority, Active, Watch, Pass). Use search_artist / list_artists to find artists, get_evaluation " +
   "for full scoring detail, get_contacts for managers/agents and their rosters, and create_draft to " +
-  "start a new evaluation that a person finishes in the app.";
+  "start a new evaluation that a person finishes in the app. Use list_drafts to see which evaluations " +
+  "are started but unfinished.";
 
 type Json = Record<string, unknown>;
 interface Tool {
@@ -111,6 +113,25 @@ const TOOLS: Tool[] = [
     },
     annotations: READ_ONLY,
     run: (a, origin) => listArtists({ filter: str(a.filter), limit: str(a.limit) }, origin),
+  },
+  {
+    name: "list_drafts",
+    title: "List draft evaluations",
+    description:
+      "List unfinished draft evaluations in Soundcheck. Shows which artists have been started but not " +
+      "completed, who started them, and when. Use this to check what needs to be finished.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          enum: ["all", "mine"],
+          description: "all (default) = every user's drafts; mine = drafts created through this API",
+        },
+      },
+    },
+    annotations: READ_ONLY,
+    run: (a, origin) => listDrafts({ filter: str(a.filter) }, origin),
   },
   {
     name: "create_draft",
