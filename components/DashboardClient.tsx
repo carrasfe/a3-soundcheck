@@ -261,6 +261,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
       {showUploadPDFModal && <UploadPDFModal onClose={() => setShowUploadPDFModal(false)} />}
       {showQuickResearch && (
         <QuickResearchModal
+          drafts={localDrafts}
           onClose={() => setShowQuickResearch(false)}
           onDone={showToast}
         />

@@ -1,60 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { VALID_GENRES } from "@/app/evaluations/new/types";
 import { createResearchDrafts } from "@/app/research/actions";
+import type { DraftRow } from "@/app/page";
+import { buildResearchPrompt, type ResearchArtist } from "@/lib/research-prompt";
 
 const MAX_ARTISTS = 10; // keep in sync with app/research/actions.ts
 const DEFAULT_GENRE = "Rock / Alt / Indie";
 
-type Row = { key: number; name: string; genre: string };
-type Artist = { name: string; genre: string };
+/** draftId set = row came from "Add from Saved Drafts" and updates that draft */
+type Row = { key: number; name: string; genre: string; draftId?: string };
+type Artist = ResearchArtist;
 
-export function buildResearchPrompt(artists: Artist[]): string {
-  const list = artists.map((a, i) => `${i + 1}. ${a.name} (${a.genre})`).join("\n");
-  return `Run A3 Soundcheck research for ${artists.length} artist${artists.length === 1 ? "" : "s"}. Work through them one at a time. After each artist, use the update_draft or create_draft Soundcheck tool to push the data before moving to the next.
-
-ARTISTS:
-${list}
-
-For each artist, complete these steps:
-
-CHARTMETRIC (app.chartmetric.com):
-- Search for the artist
-- Overview tab: read Spotify monthly listeners, Spotify followers, TikTok followers, YouTube subscribers, Instagram followers
-- Click Social & Streaming Stats tab: read Instagram engagement rate, TikTok engagement rate (Chartmetric native ER), YouTube engagement rate, TikTok average views per video, Spotify Fan Conversion Rate
-- Click the List view icon (horizontal lines icon) to switch to table view. Read the historical data to find: Spotify monthly listeners from 12 months ago (calculate YoY % change), Instagram followers from 90 days ago (calculate 90-day gain)
-- Click Audience tab: read all age demographics (13-17, 18-24, 25-34, 35-44, 45-64, 65+) split by Male and Female percentages, and ethnicity breakdown (White, Hispanic, African American, Asian)
-- Click Playlists tab: read editorial playlist count and total reach
-
-ROSTR (rostr.co):
-- Search for the artist
-- Click their Team tab
-- Read: management company, individual manager names, booking agencies with territory (North America, UK/EU, Worldwide), individual agent names, label, publisher
-- Use Soundcheck get_contacts to check which companies, agencies, managers, and agents already exist in the database
-
-POLLSTAR (pollstar.com):
-- Search for the artist
-- Click Explore in Datacloud on their artist page
-- Read: venue capacities for recent shows, sell-through percentages
-- Note the data for touring metrics
-
-PUSH TO SOUNDCHECK:
-After collecting all data for this artist, use the update_draft tool (search for the artist first to find the existing draft) or create_draft to push everything. Use these field names:
-- spotify_monthly_listeners, fan_concentration_ratio, spotify_yoy_pct
-- ig_followers, ig_er_pct, ig_90day_gain
-- tiktok_followers, tiktok_avg_views, tiktok_er_pct
-- youtube_subscribers, youtube_er_pct
-- reddit_members, discord_members
-- store_quality, merch_range, price_point_highest, d2c_level, merch_provider
-- press_score, playlist_score
-- num_dates, market_coverage, venue_capacity, sell_through_pct
-- management_company, manager_names, booking_agent
-- All demographics: d_13_17_m, d_13_17_f, d_18_24_m, d_18_24_f, d_25_34_m, d_25_34_f, d_35_44_m, d_35_44_f, d_45_64_m, d_45_64_f, d_65_m, d_65_f, eth_white, eth_hispanic, eth_aa, eth_asian
-Enter percentages as numbers (22 for 22%, not 0.22).
-
-After each artist, summarize what was found and what's still missing. Then move to the next artist.`;
-}
+const normName = (s: string) => s.trim().toLowerCase();
+const toGenre = (g: string | null | undefined) =>
+  VALID_GENRES.find((v) => v.toLowerCase() === (g ?? "").trim().toLowerCase()) ?? DEFAULT_GENRE;
 
 /** Split pasted text into names: one per line, or comma-separated when it's a single line. */
 function splitNames(text: string): string[] {
@@ -81,21 +42,68 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 interface Props {
+  drafts: DraftRow[];
   onClose: () => void;
   onDone: (message: string, kind?: "success" | "error") => void;
 }
 
-export default function QuickResearchModal({ onClose, onDone }: Props) {
+export default function QuickResearchModal({ drafts, onClose, onDone }: Props) {
   const nextKey = useRef(1);
-  const newRow = (name = "", genre = DEFAULT_GENRE): Row => ({ key: nextKey.current++, name, genre });
+  const newRow = (name = "", genre = DEFAULT_GENRE, draftId?: string): Row =>
+    ({ key: nextKey.current++, name, genre, draftId });
 
   const [rows, setRows] = useState<Row[]>(() => [newRow()]);
   const [busy, setBusy] = useState<null | "chrome" | "drafts">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const inputRefs = useRef(new Map<number, HTMLInputElement>());
 
-  const artists: Artist[] = rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), genre: r.genre }));
+  // Typed names that match a saved draft are treated as existing drafts too,
+  // so they get update_draft in the prompt instead of a duplicate draft.
+  const draftNames = useMemo(() => new Set(drafts.map((d) => normName(d.artist_name))), [drafts]);
+  const isExisting = (r: Row) => !!r.draftId || draftNames.has(normName(r.name));
+
+  const artists: Artist[] = rows
+    .filter((r) => r.name.trim())
+    .map((r) => ({ name: r.name.trim(), genre: r.genre, existing: isExisting(r) }));
+  const newArtists = artists.filter((a) => !a.existing);
   const atMax = rows.length >= MAX_ARTISTS;
+
+  // ── Saved drafts picker ──
+  const [pickerOpen, setPickerOpen] = useState(drafts.length > 0);
+  const [draftQuery, setDraftQuery] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const inBatch = new Set(rows.map((r) => r.draftId).filter(Boolean) as string[]);
+  const batchNames = new Set(rows.map((r) => normName(r.name)).filter(Boolean));
+  const availableDrafts = drafts
+    .filter((d) => !inBatch.has(d.id) && !batchNames.has(normName(d.artist_name)))
+    .filter((d) => !draftQuery.trim() || d.artist_name.toLowerCase().includes(draftQuery.trim().toLowerCase()))
+    .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const addSelectedDrafts = () => {
+    const picked = drafts.filter((d) => selected.has(d.id) && !inBatch.has(d.id));
+    if (picked.length === 0) return;
+    setRows((rs) => {
+      const filled = rs.filter((r) => r.name.trim()); // drop blank rows
+      const room = MAX_ARTISTS - filled.length;
+      const kept = picked.slice(0, Math.max(room, 0));
+      const skipped = picked.length - kept.length;
+      setNotice(skipped > 0
+        ? `Only ${MAX_ARTISTS} artists per batch — ${skipped} draft${skipped === 1 ? "" : "s"} not added.`
+        : null);
+      const next = [...filled, ...kept.map((d) => newRow(d.artist_name, toGenre(d.genre), d.id))];
+      return next.length ? next : [newRow()];
+    });
+    setSelected(new Set());
+    setDraftQuery("");
+  };
 
   const focusRow = (key: number) => setTimeout(() => inputRefs.current.get(key)?.focus(), 0);
 
@@ -116,6 +124,7 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
   };
 
   const handlePaste = (key: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (rows.find((r) => r.key === key)?.draftId) return; // draft rows are read-only
     const text = e.clipboardData.getData("text");
     if (!/[\n,]/.test(text)) return; // plain single name — let the input handle it
     const names = splitNames(text);
@@ -138,9 +147,11 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
     });
   };
 
+  /** Creates drafts for the NEW artists only — existing drafts are updated later by update_draft. */
   const createDrafts = async () => {
-    const { results, error } = await createResearchDrafts(artists);
-    if (error) return { ok: 0, failed: artists.length, error };
+    if (newArtists.length === 0) return { ok: 0, failed: 0, error: null };
+    const { results, error } = await createResearchDrafts(newArtists.map(({ name, genre }) => ({ name, genre })));
+    if (error) return { ok: 0, failed: newArtists.length, error };
     const failed = results.filter((r) => r.status === "error");
     return { ok: results.length - failed.length, failed: failed.length, error: failed[0]?.error ?? null };
   };
@@ -159,6 +170,7 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
     const { failed, error } = await createDrafts();
     setBusy(null);
     const n = artists.length;
+    // createDrafts only handled new artists; existing drafts need no server call
     onDone(
       `Prompt copied for ${n} artist${n === 1 ? "" : "s"}! Open any research site in Chrome and paste into Claude side panel.` +
         (failed ? ` (${failed} draft${failed === 1 ? "" : "s"} couldn't be created${error ? `: ${error}` : ""} — Claude will create them.)` : ""),
@@ -168,7 +180,7 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
   };
 
   const handleDraftsOnly = async () => {
-    if (artists.length === 0 || busy) return;
+    if (newArtists.length === 0 || busy) return;
     setBusy("drafts");
     const { ok, failed, error } = await createDrafts();
     setBusy(null);
@@ -176,9 +188,11 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
       setNotice(`Couldn't create drafts${error ? `: ${error}` : ""}`);
       return;
     }
+    const existingCount = artists.length - newArtists.length;
     onDone(
       `${ok} draft${ok === 1 ? "" : "s"} created in Soundcheck` +
-        (failed ? ` (${failed} failed${error ? `: ${error}` : ""})` : ""),
+        (existingCount ? ` (${existingCount} already had drafts)` : "") +
+        (failed ? ` — ${failed} failed${error ? `: ${error}` : ""}` : ""),
       failed ? "error" : "success"
     );
     onClose();
@@ -195,7 +209,7 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
           <div>
             <h2 className="text-lg font-bold text-[#001489]">Quick Research</h2>
             <p className="mt-0.5 text-xs text-gray-500">
-              One artist per row — paste a list (one per line or comma-separated) to fill rows. Max {MAX_ARTISTS}.
+              Pick saved drafts and/or type new artists — paste a list (one per line or comma-separated) to fill rows. Max {MAX_ARTISTS}.
             </p>
           </div>
           <button
@@ -210,8 +224,77 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
           </button>
         </div>
 
-        {/* Rows */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          {/* Saved drafts picker */}
+          {drafts.length > 0 && (
+            <div className="mb-5 rounded-lg border border-[#001489]/20 bg-[#001489]/[0.03]">
+              <button
+                type="button"
+                onClick={() => setPickerOpen((o) => !o)}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-left"
+                aria-expanded={pickerOpen}
+              >
+                <span className="text-sm font-semibold text-[#001489]">
+                  Add from Saved Drafts <span className="font-normal text-gray-500">({drafts.length})</span>
+                </span>
+                <span className="text-xs text-gray-400">{pickerOpen ? "▲" : "▼"}</span>
+              </button>
+
+              {pickerOpen && (
+                <div className="border-t border-[#001489]/10 px-4 pb-3 pt-3">
+                  <input
+                    value={draftQuery}
+                    onChange={(e) => setDraftQuery(e.target.value)}
+                    disabled={!!busy}
+                    placeholder="Search drafts by artist name…"
+                    className="mb-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-[#001489] focus:outline-none focus:ring-1 focus:ring-[#001489]"
+                  />
+                  <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+                    {availableDrafts.length === 0 ? (
+                      <p className="px-3 py-3 text-center text-xs text-gray-400">
+                        {draftQuery.trim() ? "No drafts match your search" : "All drafts are already in the batch"}
+                      </p>
+                    ) : (
+                      availableDrafts.map((d) => (
+                        <label
+                          key={d.id}
+                          className="flex cursor-pointer items-center gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.has(d.id)}
+                            onChange={() => toggleSelected(d.id)}
+                            disabled={!!busy}
+                            className="h-4 w-4 shrink-0 accent-[#001489]"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-gray-800">{d.artist_name}</p>
+                            <p className="truncate text-[11px] text-gray-500">
+                              {d.genre ?? "No genre"} · by {d.evaluator_name}
+                              {d.updated_at ? ` · ${new Date(d.updated_at).toLocaleDateString()}` : ""}
+                            </p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-400">{selected.size} selected</span>
+                    <button
+                      type="button"
+                      onClick={addSelectedDrafts}
+                      disabled={selected.size === 0 || !!busy}
+                      className="rounded-lg bg-[#001489] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#152238] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Add Selected{selected.size ? ` (${selected.size})` : ""}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Rows */}
           <div className="mb-1.5 grid grid-cols-[1.5rem_1fr_11rem_1.75rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
             <span />
             <span>Artist</span>
@@ -222,10 +305,13 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
             {rows.map((r, i) => (
               <div key={r.key} className="grid grid-cols-[1.5rem_1fr_11rem_1.75rem] items-center gap-2">
                 <span className="text-right text-xs tabular-nums text-gray-400">{i + 1}.</span>
+                <div className="relative min-w-0">
                 <input
                   ref={(el) => { if (el) inputRefs.current.set(r.key, el); else inputRefs.current.delete(r.key); }}
-                  autoFocus={i === 0}
+                  autoFocus={i === 0 && drafts.length === 0}
                   value={r.name}
+                  readOnly={!!r.draftId}
+                  title={r.draftId ? "From a saved draft — remove the row to change the artist" : undefined}
                   disabled={!!busy}
                   onChange={(e) => { updateRow(r.key, { name: e.target.value }); setNotice(null); }}
                   onPaste={(e) => handlePaste(r.key, e)}
@@ -239,8 +325,19 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
                     }
                   }}
                   placeholder={i === 0 ? "Artist name, or paste a list" : "Artist name"}
-                  className="min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-1 focus:ring-[#001489] disabled:bg-gray-50"
+                  className={`w-full min-w-0 rounded-lg border px-3 py-2 text-sm focus:border-[#001489] focus:outline-none focus:ring-1 focus:ring-[#001489] disabled:bg-gray-50 ${
+                    isExisting(r) && r.name.trim() ? "border-[#001489]/30 bg-[#001489]/[0.03] pr-14" : "border-gray-300"
+                  }`}
                 />
+                {isExisting(r) && r.name.trim() && (
+                  <span
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-[#001489] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                    title="Updates an existing draft instead of creating a new one"
+                  >
+                    Draft
+                  </span>
+                )}
+                </div>
                 <select
                   value={r.genre}
                   disabled={!!busy}
@@ -291,7 +388,8 @@ export default function QuickResearchModal({ onClose, onDone }: Props) {
           <button
             type="button"
             onClick={handleDraftsOnly}
-            disabled={artists.length === 0 || !!busy}
+            disabled={newArtists.length === 0 || !!busy}
+            title={artists.length > 0 && newArtists.length === 0 ? "Every artist in the batch already has a draft" : undefined}
             className="rounded-lg border-2 border-[#001489] px-4 py-2 text-sm font-semibold text-[#001489] transition hover:bg-[#001489]/5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy === "drafts" ? "Creating drafts…" : "Push to Artist Scores Only"}

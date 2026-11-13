@@ -21,6 +21,7 @@ export type EvaluationRow = {
 export type DraftRow = {
   id: string;
   artist_name: string;
+  genre: string | null;
   updated_at: string;
   evaluator_id: string | null;
   evaluator_name: string;
@@ -139,7 +140,7 @@ export default async function DashboardPage() {
 
     const { data: draftRows, error: draftError } = await draftClient
       .from("evaluations")
-      .select("id, artists(name), evaluated_at, evaluated_by")
+      .select("id, artists(name, genre), draft_genre:inputs->>genre, evaluated_at, evaluated_by")
       .eq("status", "draft")
       .order("evaluated_at", { ascending: false })
       .limit(50);
@@ -162,12 +163,14 @@ export default async function DashboardPage() {
       }
       drafts = draftRows.map((d) => {
         const artistsData = d.artists as unknown;
-        const artistName = Array.isArray(artistsData)
-          ? ((artistsData as Array<{ name: string }>)[0]?.name ?? "Unnamed draft")
-          : ((artistsData as { name: string } | null)?.name ?? "Unnamed draft");
+        const artist = (Array.isArray(artistsData) ? artistsData[0] : artistsData) as
+          { name: string; genre: string | null } | null | undefined;
+        const artistName = artist?.name ?? "Unnamed draft";
+        const draftGenre = (d as Record<string, unknown>).draft_genre as string | null | undefined;
         return {
           id: d.id,
           artist_name: artistName,
+          genre: draftGenre || artist?.genre || null,
           updated_at: (d as Record<string, unknown>).evaluated_at as string ?? "",
           evaluator_id: d.evaluated_by ?? null,
           evaluator_name: d.evaluated_by === user.id
