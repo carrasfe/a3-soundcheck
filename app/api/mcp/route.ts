@@ -6,6 +6,7 @@ import { getContacts } from "@/lib/mcp/tools/get-contacts";
 import { listArtists } from "@/lib/mcp/tools/list-artists";
 import { createDraft } from "@/lib/mcp/tools/create-draft";
 import { listDrafts } from "@/lib/mcp/tools/list-drafts";
+import { updateDraft } from "@/lib/mcp/tools/update-draft";
 import { INITIAL_FORM_DATA, VALID_GENRES } from "@/app/evaluations/new/types";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,8 @@ const INSTRUCTIONS =
   "(P1 Touring, P2 Fan Engagement, P3 E-Commerce, P4 Growth) into a total score and a tier " +
   "(Priority, Active, Watch, Pass). Use search_artist / list_artists to find artists, get_evaluation " +
   "for full scoring detail, get_contacts for managers/agents and their rosters, and create_draft to " +
-  "start a new evaluation that a person finishes in the app. Use list_drafts to see which evaluations " +
+  "start a new evaluation that a person finishes in the app. Use update_draft to add data to an existing draft " +
+  "without clearing what's there, and list_drafts to see which evaluations " +
   "are started but unfinished.";
 
 type Json = Record<string, unknown>;
@@ -158,6 +160,31 @@ const TOOLS: Tool[] = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     run: (a, origin) => createDraft(a, origin),
+  },
+  {
+    name: "update_draft",
+    title: "Update draft evaluation",
+    description:
+      "Update an existing draft evaluation with new input fields. Identify it by draft_id, or by artist_name " +
+      "(uses that artist's most recent draft). Only the fields you pass are changed — existing data is kept and " +
+      "blank values are ignored. If the artist has no draft, a new one is created (genre is then required unless " +
+      "the artist already has one). Use the same field names as create_draft; percentages are entered as 22 for 22%. " +
+      "Returns the draft id, an edit link, and which fields were updated.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        draft_id: { type: "string", description: "Draft evaluation UUID (from create_draft or list_drafts)" },
+        artist_name: { type: "string", description: "Used to find the draft when draft_id isn't given" },
+        genre: { type: "string", enum: VALID_GENRES },
+        ...Object.fromEntries(
+          Object.entries(INITIAL_FORM_DATA)
+            .filter(([k, v]) => k !== "artist_name" && k !== "genre" && !Array.isArray(v))
+            .map(([k, v]) => [k, typeof v === "boolean" ? { type: "boolean" } : { type: ["string", "number"] }])
+        ),
+      },
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: (a, origin) => updateDraft(a, origin),
   },
 ];
 

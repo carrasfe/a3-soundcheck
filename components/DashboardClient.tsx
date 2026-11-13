@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import type { EvaluationRow, DraftRow } from "@/app/page";
 import type { ScoringResult } from "@/lib/scoring-engine";
@@ -72,15 +72,17 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUploadPDFModal, setShowUploadPDFModal] = useState(false);
   const [showQuickResearch, setShowQuickResearch] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; kind: "success" | "error" } | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 6000);
+  const showToast = (msg: string, kind: "success" | "error" = "success") => {
+    setToast({ msg, kind });
+    window.setTimeout(() => setToast((t) => (t?.msg === msg ? null : t)), 7000);
   };
 
   // ── Draft management state ────────────────────────────────
   const [localDrafts, setLocalDrafts] = useState<DraftRow[]>(drafts);
+  // Pick up server-side changes (e.g. drafts created by Quick Research) on refresh
+  useEffect(() => { setLocalDrafts(drafts); }, [drafts]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [draftDeleting, setDraftDeleting] = useState(false);
@@ -260,16 +262,16 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
       {showQuickResearch && (
         <QuickResearchModal
           onClose={() => setShowQuickResearch(false)}
-          onCopied={() => showToast("Prompt copied! Paste it in Claude Chrome side panel on the artist's Chartmetric page.")}
+          onDone={showToast}
         />
       )}
       {toast && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg bg-[#001489] px-4 py-3 text-sm text-white shadow-lg"
+          className={`fixed bottom-6 left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg px-4 py-3 text-sm text-white shadow-lg ${toast.kind === "error" ? "bg-[#C8102E]" : "bg-[#001489]"}`}
         >
-          <span className="text-green-300">✓</span>
-          <span>{toast}</span>
+          <span className={toast.kind === "error" ? "text-white" : "text-green-300"}>{toast.kind === "error" ? "!" : "✓"}</span>
+          <span>{toast.msg}</span>
           <button onClick={() => setToast(null)} aria-label="Dismiss" className="ml-1 text-white/60 hover:text-white">✕</button>
         </div>
       )}
@@ -283,7 +285,27 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
 
       {/* ── Action cards ──────────────────────────────────── */}
       <div className="shrink-0 border-b border-gray-200 bg-gray-50 px-6 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Quick Research banner */}
+        <div className="mb-4 flex flex-col gap-4 rounded-xl bg-[#001489] px-6 py-5 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl" aria-hidden>🔎</span>
+            <div>
+              <p className="text-lg font-bold">Quick Research</p>
+              <p className="mt-0.5 text-sm text-white/70">
+                Pull data from Chartmetric, Rostr, and Pollstar into Soundcheck via Chrome
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowQuickResearch(true)}
+            className="shrink-0 rounded-lg bg-[#C8102E] px-6 py-3 text-base font-bold text-white shadow-md transition hover:bg-[#a60d26] hover:shadow-lg"
+          >
+            Start Research →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {/* Card 1 — New Evaluation */}
           <Link
             href="/evaluations/new"
@@ -294,18 +316,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
             <p className="mt-1 text-xs text-white/70">Start a new artist scorecard</p>
           </Link>
 
-          {/* Card 2 — Quick Research */}
-          <button
-            type="button"
-            onClick={() => setShowQuickResearch(true)}
-            className="group flex flex-col rounded-xl border-2 border-[#C8102E] bg-white p-5 text-left shadow-sm transition hover:bg-[#C8102E]/5 hover:shadow-md"
-          >
-            <span className="mb-3 text-2xl">🔎</span>
-            <p className="text-base font-bold text-[#C8102E]">Quick Research</p>
-            <p className="mt-1 text-xs text-gray-500">Copy a Claude research prompt for an artist</p>
-          </button>
-
-          {/* Card 3 — Current A3 Clients */}
+          {/* Card 2 — Current A3 Clients */}
           <Link
             href="/artists?filter=a3clients"
             className="group flex flex-col rounded-xl bg-[#001489] p-5 shadow-sm transition hover:bg-[#152238] hover:shadow-md"
@@ -315,7 +326,7 @@ export default function DashboardClient({ evaluations, drafts, isAdmin, currentU
             <p className="mt-1 text-xs text-white/70">View and manage your A3 Merch client roster</p>
           </Link>
 
-          {/* Card 4 — Artist Soundchecks */}
+          {/* Card 3 — Artist Soundchecks */}
           <Link
             href="/artists"
             className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#001489]/30 hover:shadow-md"

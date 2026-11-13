@@ -8,12 +8,12 @@ import { INITIAL_FORM_DATA, VALID_GENRES, getAgeProfileLabel, type EvalFormData 
  * every field as a string (or boolean/array for a few), so numbers become
  * strings and unknown keys are reported back rather than stored.
  */
-function buildFormData(fields: Record<string, unknown>) {
+export function buildFormData(fields: Record<string, unknown>) {
   const fd: Record<string, unknown> = { ...INITIAL_FORM_DATA };
   const applied: string[] = [];
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(fields)) {
-    if (key === "artist_name" || key === "name" || key === "genre" || key === "inputs") continue;
+    if (key === "artist_name" || key === "name" || key === "genre" || key === "inputs" || key === "draft_id") continue;
     if (!(key in INITIAL_FORM_DATA)) { ignored.push(key); continue; }
     if (value === null || value === undefined) continue;
     const initial = (INITIAL_FORM_DATA as unknown as Record<string, unknown>)[key];
@@ -35,7 +35,14 @@ function buildFormData(fields: Record<string, unknown>) {
 
 // POST /api/mcp/create-draft
 // Body: { artist_name, genre, ...any wizard input fields }  (fields may also be nested under "inputs")
-export async function createDraft(body: Record<string, unknown>, origin: string) {
+export interface CreateDraftOptions {
+  /** Profile id that owns the draft. Defaults to the first admin (API callers have no user). */
+  evaluatedBy?: string;
+  /** Recorded in the audit log. */
+  source?: string;
+}
+
+export async function createDraft(body: Record<string, unknown>, origin: string, opts: CreateDraftOptions = {}) {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Body must be a JSON object");
 
   const artistName = String(body.artist_name ?? body.name ?? "").trim();
@@ -53,7 +60,7 @@ export async function createDraft(body: Record<string, unknown>, origin: string)
   const formData = fd as unknown as EvalFormData;
 
   const sb = createAdminClient();
-  const evaluatedBy = await getFirstAdminId(sb);
+  const evaluatedBy = opts.evaluatedBy ?? await getFirstAdminId(sb);
 
   // ── Match or create the artist ──
   // Existing artists only get blank fields filled — a draft shouldn't
@@ -112,7 +119,7 @@ export async function createDraft(body: Record<string, unknown>, origin: string)
     event_type: "mcp_draft_created",
     user_id: evaluatedBy,
     target_id: draft.id,
-    details: { artist_name: artistName, genre, source: "mcp_api", fields: applied },
+    details: { artist_name: artistName, genre, source: opts.source ?? "mcp_api", fields: applied },
   }).then(null, () => {});
 
   return {
