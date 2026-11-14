@@ -109,7 +109,12 @@ function parseOrgSegment(segment: string): ParsedOrg | null {
     }
   }
 
-  if (cut < 0) return { name: s, territory: null, people: [] };
+  if (cut < 0) {
+    // A bare comma list ("Julianna Coyle, Chad Kudelka") is people with no org —
+    // never an org name. Org names don't contain commas.
+    if (/[,&]/.test(s)) return { name: "", territory: null, people: parsePeople(s) };
+    return { name: s, territory: null, people: [] };
+  }
 
   const name = clean(s.slice(0, cut));
   let rest = s.slice(cut + sepLen);
@@ -173,6 +178,29 @@ export function parseArtistList(text: string | null | undefined, exclude?: strin
     text.split(/[,\n\r;]+/).map(clean).filter((n) => n && n.toLowerCase() !== ex),
     (n) => n
   );
+}
+
+/**
+ * Per-person rosters: "Jacob Lapidus: Marcus King, Charley Crockett; Meredith Jones: Wyatt Flores".
+ * Blocks are separated by ";" or newlines; each is "Person: artist, artist".
+ * Blocks without a colon are returned in `invalid`.
+ */
+export function parseRosterBlocks(
+  text: string | null | undefined, exclude?: string
+): { rosters: { person: string; artists: string[] }[]; invalid: string[] } {
+  const rosters = new Map<string, { person: string; artists: string[] }>();
+  const invalid: string[] = [];
+  for (const block of (text ?? "").split(/[;\n\r]+/).map(clean).filter(Boolean)) {
+    const idx = block.indexOf(":");
+    const person = idx > 0 ? clean(block.slice(0, idx)) : "";
+    if (!person) { invalid.push(block); continue; }
+    const artists = parseArtistList(block.slice(idx + 1), exclude);
+    const key = person.toLowerCase();
+    const prev = rosters.get(key);
+    if (prev) prev.artists = dedupe([...prev.artists, ...artists], (n) => n);
+    else rosters.set(key, { person, artists });
+  }
+  return { rosters: Array.from(rosters.values()), invalid };
 }
 
 /** Map a territory / note to one of the wizard's agent roles. */

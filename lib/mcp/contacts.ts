@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { escapeLike } from "@/lib/mcp/data";
 import {
-  agentRoleFor, managerRoleFor, parseArtistList, parseManagement, parseOrgs, type ParsedOrg,
+  agentRoleFor, managerRoleFor, parseArtistList, parseManagement, parseOrgs, parseRosterBlocks, type ParsedOrg,
 } from "@/lib/mcp/contact-parse";
 import type { BookingEntry, ManagementEntry } from "@/app/evaluations/new/types";
 
@@ -22,6 +22,9 @@ export const CONTACT_FIELDS = [
   "management_company", "manager_names", "other_mgmt_artists", "booking_agent", "other_agent_artists",
 ] as const;
 
+/** Per-person roster fields. Not wizard inputs — they only feed known_artists. */
+export const ROSTER_FIELDS = ["manager_rosters", "agent_rosters"] as const;
+
 export interface ContactsSummary {
   management_companies: { id: string; name: string; status: Status }[];
   managers: { id: string; name: string; company: string | null; role: string; status: Status }[];
@@ -29,8 +32,12 @@ export interface ContactsSummary {
   agents: { id: string; name: string; agency: string | null; role: string; status: Status }[];
   /** New artist_managers + artist_agents rows */
   artist_links_added: number;
-  /** New known_artists rows (other_mgmt_artists / other_agent_artists) */
+  /** New known_artists rows (rosters + other_mgmt_artists / other_agent_artists) */
   roster_artists_added: number;
+  /** Where roster artists went */
+  rosters: { person_type: "manager" | "agent" | "management_company" | "agency"; name: string; id: string; added: number }[];
+  /** Roster data that was not applied, and why */
+  roster_skipped: string[];
 }
 
 export interface ContactInputs {
@@ -39,12 +46,22 @@ export interface ContactInputs {
   other_mgmt_artists?: unknown;
   booking_agent?: unknown;
   other_agent_artists?: unknown;
+  /** "Person: artist, artist; Person 2: artist" */
+  manager_rosters?: unknown;
+  agent_rosters?: unknown;
 }
 
 const s = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 
+/** Pick the non-blank per-person roster fields out of a request body. */
+export function rosterFieldsFrom(body: Record<string, unknown>): Partial<Record<(typeof ROSTER_FIELDS)[number], string>> {
+  const out: Partial<Record<(typeof ROSTER_FIELDS)[number], string>> = {};
+  for (const k of ROSTER_FIELDS) if (s(body[k]).trim()) out[k] = s(body[k]);
+  return out;
+}
+
 export function hasContactFields(inputs: ContactInputs): boolean {
-  return CONTACT_FIELDS.some((k) => s(inputs[k]).trim() !== "");
+  return [...CONTACT_FIELDS, ...ROSTER_FIELDS].some((k) => s(inputs[k]).trim() !== "");
 }
 
 // ── Lookups ──────────────────────────────────────────────────
@@ -132,7 +149,7 @@ export async function linkContacts(
 ): Promise<{ summary: ContactsSummary; managementEntries: ManagementEntry[]; bookingEntries: BookingEntry[] }> {
   const summary: ContactsSummary = {
     management_companies: [], managers: [], agencies: [], agents: [],
-    artist_links_added: 0, roster_artists_added: 0,
+    artist_links_added: 0, roster_artists_added: 0, rosters: [], roster_skipped: [],
   };
   const managementEntries: ManagementEntry[] = [];
   const bookingEntries: BookingEntry[] = [];
@@ -160,14 +177,13 @@ export async function linkContacts(
   const agentLinks: { id: string; role: string }[] = [];
   const agencyIds: string[] = [];
   for (const org of agencyOrgs) {
-    const agency = await findOrCreateOrg(sb, "agencies", org.name);
-    summary.agencies.push({ ...agency, territory: org.territory });
-    agencyIds.push(agency.id);
-    const entry: BookingEntry = { agency_id: agency.id, agency_name: agency.name, agent_selections: [] };
+    const agency = org.name ? await findOrCreateOrg(sb, "agencies", org.name) : null;
+    if (agency) { summary.agencies.push({ ...agency, territory: org.territory }); agencyIds.push(agency.id); }
+    const entry: BookingEntry = { agency_id: agency?.id ?? "", agency_name: agency?.name ?? "", agent_selections: [] };
     for (const p of org.people) {
-      const a = await findOrCreatePerson(sb, "agents", "agency_id", p.name, agency.id);
+      const a = await findOrCreatePerson(sb, "agents", "agency_id", p.name, agency?.id ?? null);
       const role = agentRoleFor(org.territory, p.note);
-      summary.agents.push({ ...a, agency: agency.name, role });
+      summary.agents.push({ ...a, agency: agency?.name ?? null, role });
       agentLinks.push({ id: a.id, role });
       entry.agent_selections.push({ agent_id: a.id, role, agent_name: a.name });
     }
@@ -179,23 +195,83 @@ export async function linkContacts(
   summary.artist_links_added += await linkArtist(sb, "artist_agents", "agent_id", artistId, agentLinks);
 
   // ── Rosters ──
-  // Attach to each manager/agent; fall back to the company/agency when no people were given.
-  const mgmtRoster = parseArtistList(s(inputs.other_mgmt_artists), artistName);
-  if (mgmtRoster.length) {
-    const owners = managerLinks.length
-      ? dedupeBy(managerLinks, (l) => l.id).map((l) => ["manager_id", l.id] as const)
-      : companyIds.map((id) => ["management_company_id", id] as const);
-    for (const [col, id] of owners) summary.roster_artists_added += await addRoster(sb, col, id, mgmtRoster);
-  }
-  const agentRoster = parseArtistList(s(inputs.other_agent_artists), artistName);
-  if (agentRoster.length) {
-    const owners = agentLinks.length
-      ? dedupeBy(agentLinks, (l) => l.id).map((l) => ["agent_id", l.id] as const)
-      : agencyIds.map((id) => ["agency_id", id] as const);
-    for (const [col, id] of owners) summary.roster_artists_added += await addRoster(sb, col, id, agentRoster);
-  }
+  await applyRosters(sb, summary, artistName, "manager", {
+    flat: s(inputs.other_mgmt_artists), perPerson: s(inputs.manager_rosters),
+    people: summary.managers, orgs: summary.management_companies,
+  });
+  await applyRosters(sb, summary, artistName, "agent", {
+    flat: s(inputs.other_agent_artists), perPerson: s(inputs.agent_rosters),
+    people: summary.agents, orgs: summary.agencies,
+  });
 
   return { summary, managementEntries, bookingEntries };
+}
+
+// ── Rosters ──────────────────────────────────────────────────
+
+/**
+ * Roster rules (avoid cross-contaminating rosters):
+ *  - Per-person blocks ("Person: a, b; Person 2: c") go to exactly that person —
+ *    one of the people in this call, or a unique match by name in the database.
+ *  - A flat list (other_*_artists) only applies when it's unambiguous: exactly
+ *    one person in this call, or no people and exactly one company/agency.
+ */
+async function applyRosters(
+  sb: SB, summary: ContactsSummary, artistName: string, type: "manager" | "agent",
+  src: { flat: string; perPerson: string; people: { id: string; name: string }[]; orgs: { id: string; name: string }[] }
+) {
+  const personCol = type === "manager" ? "manager_id" : "agent_id";
+  const orgCol = type === "manager" ? "management_company_id" : "agency_id";
+  const orgType = type === "manager" ? "management_company" : "agency";
+  const flatField = type === "manager" ? "other_mgmt_artists" : "other_agent_artists";
+  const blockField = type === "manager" ? "manager_rosters" : "agent_rosters";
+  const people = dedupeBy(src.people, (p) => p.id);
+  const add = async (
+    personType: ContactsSummary["rosters"][number]["person_type"], col: typeof personCol | typeof orgCol,
+    owner: { id: string; name: string }, names: string[]
+  ) => {
+    const added = await addRoster(sb, col, owner.id, names);
+    summary.roster_artists_added += added;
+    summary.rosters.push({ person_type: personType, name: owner.name, id: owner.id, added });
+  };
+
+  // Flat list
+  const flat = parseArtistList(src.flat, artistName);
+  if (flat.length) {
+    if (people.length === 1) await add(type, personCol, people[0], flat);
+    else if (people.length === 0 && src.orgs.length === 1) await add(orgType, orgCol, src.orgs[0], flat);
+    else if (people.length > 1) {
+      summary.roster_skipped.push(
+        `${flatField} not applied: ${people.length} ${type}s (${people.map((p) => p.name).join(", ")}) — ` +
+        `ambiguous. Send ${blockField} as "Name: artist, artist; Name 2: artist" instead.`
+      );
+    } else {
+      summary.roster_skipped.push(`${flatField} not applied: no ${type} or single ${orgType.replace("_", " ")} to attach it to.`);
+    }
+  }
+
+  // Per-person blocks
+  const { rosters, invalid } = parseRosterBlocks(src.perPerson, artistName);
+  for (const bad of invalid) summary.roster_skipped.push(`${blockField} block "${bad}" ignored: expected "Name: artist, artist".`);
+  for (const r of rosters) {
+    if (r.artists.length === 0) continue;
+    let owner: { id: string; name: string } | undefined = people.find((p) => p.name.toLowerCase() === r.person.toLowerCase());
+    if (!owner) {
+      const { data, error } = await sb.from(type === "manager" ? "managers" : "agents")
+        .select("id, name").ilike("name", escapeLike(r.person));
+      if (error) throw error;
+      if ((data ?? []).length === 1) owner = { id: data![0].id as string, name: data![0].name as string };
+      else {
+        summary.roster_skipped.push(
+          (data ?? []).length === 0
+            ? `${blockField}: no ${type} named "${r.person}" — add them via ${type === "manager" ? "manager_names" : "booking_agent"} first.`
+            : `${blockField}: ${data!.length} ${type}s named "${r.person}" — ambiguous, not applied.`
+        );
+        continue;
+      }
+    }
+    await add(type, personCol, owner, r.artists);
+  }
 }
 
 // ── Draft inputs ─────────────────────────────────────────────

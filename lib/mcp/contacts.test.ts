@@ -1,66 +1,13 @@
 import { describe, it, expect } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { linkContacts, applyContactEntries } from "./contacts";
-
-// ── Minimal in-memory stand-in for the Supabase query builder ──
-// Supports exactly what lib/mcp/contacts.ts uses: select/insert/update with
-// eq, is, ilike (exact, case-insensitive), limit, single.
-type Row = Record<string, unknown>;
-function fakeDb() {
-  const tables: Record<string, Row[]> = {};
-  let nextId = 1;
-  const t = (name: string) => (tables[name] ??= []);
-
-  function builder(table: string) {
-    const filters: ((r: Row) => boolean)[] = [];
-    let op: "select" | "insert" | "update" = "select";
-    let payload: Row | Row[] | null = null;
-    let limit = Infinity;
-    let single = false;
-
-    const unescape = (p: string) => p.replace(/\\([\\%_])/g, "$1");
-    const run = () => {
-      if (op === "insert") {
-        const rows = (Array.isArray(payload) ? payload : [payload!]).map((r) => ({ id: `id${nextId++}`, ...r }));
-        t(table).push(...rows);
-        return { data: single ? rows[0] : rows, error: null };
-      }
-      const matched = t(table).filter((r) => filters.every((f) => f(r)));
-      if (op === "update") {
-        matched.forEach((r) => Object.assign(r, payload));
-        return { data: matched, error: null };
-      }
-      const out = matched.slice(0, limit);
-      return { data: single ? out[0] ?? null : out, error: null };
-    };
-
-    const b = {
-      select: () => b,
-      insert: (p: Row | Row[]) => { op = "insert"; payload = p; return b; },
-      update: (p: Row) => { op = "update"; payload = p; return b; },
-      eq: (c: string, v: unknown) => { filters.push((r) => r[c] === v); return b; },
-      is: (c: string, v: unknown) => { filters.push((r) => (r[c] ?? null) === v); return b; },
-      ilike: (c: string, p: string) => {
-        filters.push((r) => String(r[c] ?? "").toLowerCase() === unescape(p).toLowerCase());
-        return b;
-      },
-      limit: (n: number) => { limit = n; return b; },
-      single: () => { single = true; return b; },
-      maybeSingle: () => { single = true; return b; },
-      then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => Promise.resolve(run()).then(res, rej),
-    };
-    return b;
-  }
-
-  return { sb: { from: builder } as unknown as SupabaseClient, tables, t };
-}
+import { fakeDb } from "./fake-db.test-helper";
 
 const INPUTS = {
   management_company: "Q Prime",
   manager_names: "Charlie Williams, Dan Potts (Day-to-Day)",
   booking_agent: "High Road Touring (North America): Matt Hickey, Sam Gans / THE TEAM - Michael Harvey-Bray",
-  other_mgmt_artists: "Wet Leg, Fontaines D.C.",
-  other_agent_artists: "Idles",
+  manager_rosters: "Charlie Williams: Wet Leg, Fontaines D.C.; Dan Potts: Idles",
+  agent_rosters: "Matt Hickey: Marcus King, Charley Crockett; Michael Harvey-Bray: Wyatt Flores",
 };
 
 describe("linkContacts", () => {
@@ -83,13 +30,14 @@ describe("linkContacts", () => {
       ["Michael Harvey-Bray", "THE TEAM", "Primary"],
     ]);
     expect(summary.artist_links_added).toBe(5);
-    // 2 managers × 2 artists + 3 agents × 1 artist
-    expect(summary.roster_artists_added).toBe(7);
+    // Each roster goes only to its own person: 2 + 1 + 2 + 1
+    expect(summary.roster_artists_added).toBe(6);
+    expect(summary.roster_skipped).toEqual([]);
 
     expect(t("managers").every((m) => m.management_company_id === summary.management_companies[0].id)).toBe(true);
     expect(t("artist_managers")).toHaveLength(2);
     expect(t("artist_agents")).toHaveLength(3);
-    expect(t("known_artists")).toHaveLength(7);
+    expect(t("known_artists")).toHaveLength(6);
     expect(managementEntries[0].manager_selections).toHaveLength(2);
     expect(bookingEntries).toHaveLength(2);
   });
@@ -144,6 +92,95 @@ describe("linkContacts", () => {
     const { summary } = await linkContacts(sb, "artist1", "Test Artist", {});
     expect(summary.artist_links_added + summary.roster_artists_added).toBe(0);
     expect(Object.values(tables).every((v) => v.length === 0)).toBe(true);
+  });
+});
+
+describe("linkContacts — rosters don't cross-contaminate", () => {
+  const rosterOf = (t: (n: string) => Record<string, unknown>[], col: string, id: string) =>
+    t("known_artists").filter((k) => k[col] === id).map((k) => k.name).sort();
+
+  it("applies agent_rosters only to the named agent", async () => {
+    const { sb, t } = fakeDb();
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      booking_agent: "Wasserman - Jacob Lapidus, Meredith Jones",
+      agent_rosters: "Jacob Lapidus: Marcus King, Charley Crockett; Meredith Jones: Wyatt Flores, Brandi Carlile",
+    });
+    const [jacob, meredith] = summary.agents;
+    expect(rosterOf(t, "agent_id", jacob.id)).toEqual(["Charley Crockett", "Marcus King"]);
+    expect(rosterOf(t, "agent_id", meredith.id)).toEqual(["Brandi Carlile", "Wyatt Flores"]);
+    expect(summary.rosters.map((r) => [r.name, r.added])).toEqual([["Jacob Lapidus", 2], ["Meredith Jones", 2]]);
+  });
+
+  it("does NOT apply a flat other_agent_artists list when there are multiple agents", async () => {
+    const { sb, t } = fakeDb();
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      booking_agent: "Wasserman - Jacob Lapidus, Meredith Jones",
+      other_agent_artists: "Marcus King, Charley Crockett",
+    });
+    expect(summary.roster_artists_added).toBe(0);
+    expect(t("known_artists")).toHaveLength(0);
+    expect(summary.roster_skipped).toHaveLength(1);
+    expect(summary.roster_skipped[0]).toMatch(/other_agent_artists not applied: 2 agents .*agent_rosters/);
+  });
+
+  it("applies a flat list when there is exactly one agent (backward compatible)", async () => {
+    const { sb, t } = fakeDb();
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      booking_agent: "CAA - David Ball",
+      other_agent_artists: "Marcus King, Charley Crockett",
+    });
+    expect(rosterOf(t, "agent_id", summary.agents[0].id)).toEqual(["Charley Crockett", "Marcus King"]);
+    expect(summary.roster_skipped).toEqual([]);
+  });
+
+  it("same rules for managers: flat list skipped with 2 managers, manager_rosters applied per person", async () => {
+    const { sb, t } = fakeDb();
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      management_company: "Q Prime",
+      manager_names: "Charlie Williams, Dan Potts",
+      other_mgmt_artists: "Should Not Land",
+      manager_rosters: "Dan Potts: Wet Leg",
+    });
+    const [charlie, dan] = summary.managers;
+    expect(rosterOf(t, "manager_id", charlie.id)).toEqual([]);
+    expect(rosterOf(t, "manager_id", dan.id)).toEqual(["Wet Leg"]);
+    expect(summary.roster_skipped[0]).toMatch(/other_mgmt_artists not applied: 2 managers/);
+  });
+
+  it("resolves roster people already in the database, and skips unknown or ambiguous names", async () => {
+    const { sb, t } = fakeDb();
+    t("agents").push({ id: "a1", name: "Jacob Lapidus", agency_id: "ag1" });
+    t("agents").push({ id: "a2", name: "Sam Smith", agency_id: "ag1" });
+    t("agents").push({ id: "a3", name: "Sam Smith", agency_id: "ag2" });
+
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      agent_rosters: "Jacob Lapidus: Marcus King; Sam Smith: X; Nobody Here: Y; just text",
+    });
+    expect(rosterOf(t, "agent_id", "a1")).toEqual(["Marcus King"]);
+    expect(t("known_artists")).toHaveLength(1);
+    expect(summary.roster_skipped).toHaveLength(3);
+    expect(summary.roster_skipped.join("\n")).toMatch(/2 agents named "Sam Smith"/);
+    expect(summary.roster_skipped.join("\n")).toMatch(/no agent named "Nobody Here"/);
+    expect(summary.roster_skipped.join("\n")).toMatch(/block "just text" ignored/);
+  });
+
+  it("treats a bare list of names in booking_agent as agents, not an agency", async () => {
+    const { sb, t } = fakeDb();
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", {
+      booking_agent: "Julianna Coyle, Chad Kudelka, Meredith Jones, Jacob Lapidus",
+    });
+    expect(t("agencies")).toHaveLength(0);
+    expect(summary.agents.map((a) => a.name)).toEqual(["Julianna Coyle", "Chad Kudelka", "Meredith Jones", "Jacob Lapidus"]);
+    expect(t("agents").every((a) => a.agency_id === null)).toBe(true);
+  });
+
+  it("is idempotent with per-person rosters", async () => {
+    const { sb, t } = fakeDb();
+    const input = { booking_agent: "Wasserman - Jacob Lapidus, Meredith Jones", agent_rosters: "Jacob Lapidus: Marcus King" };
+    await linkContacts(sb, "artist1", "Test Artist", input);
+    const { summary } = await linkContacts(sb, "artist1", "Test Artist", input);
+    expect(summary.roster_artists_added).toBe(0);
+    expect(t("known_artists")).toHaveLength(1);
   });
 });
 

@@ -7,6 +7,7 @@ import { listArtists } from "@/lib/mcp/tools/list-artists";
 import { createDraft } from "@/lib/mcp/tools/create-draft";
 import { listDrafts } from "@/lib/mcp/tools/list-drafts";
 import { updateDraft } from "@/lib/mcp/tools/update-draft";
+import { clearRoster, deleteContact, removeKnownArtists, unlinkArtist } from "@/lib/mcp/tools/roster-admin";
 import { INITIAL_FORM_DATA, VALID_GENRES } from "@/app/evaluations/new/types";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,8 @@ const INSTRUCTIONS =
   "(Priority, Active, Watch, Pass). Use search_artist / list_artists to find artists, get_evaluation " +
   "for full scoring detail, get_contacts for managers/agents and their rosters, and create_draft to " +
   "start a new evaluation that a person finishes in the app. Use update_draft to add data to an existing draft " +
-  "without clearing what's there, and list_drafts to see which evaluations " +
+  "without clearing what's there (send rosters per person via manager_rosters / agent_rosters), " +
+  "remove_known_artists / clear_roster / unlink_artist / delete_contact to clean up bad contact data, and list_drafts to see which evaluations " +
   "are started but unfinished.";
 
 type Json = Record<string, unknown>;
@@ -49,6 +51,7 @@ interface Tool {
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? undefined : String(v));
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false };
 
 const TOOLS: Tool[] = [
   {
@@ -146,8 +149,12 @@ const TOOLS: Tool[] = [
       "sell_through_pct, num_dates, merch_provider, spotify_yoy_pct). Percentages are entered as 22 for 22%. " +
       "Contacts: management_company + manager_names (comma-separated) and booking_agent (e.g. " +
       "\"High Road Touring (North America): Matt Hickey, Sam Gans / THE TEAM - Michael Harvey-Bray\") create or " +
-      "match records in the contacts database and link them to the artist; other_mgmt_artists / other_agent_artists " +
-      "(comma-separated) are added to those managers'/agents' rosters. Safe to repeat — existing records are reused. " +
+      "match records in the contacts database and link them to the artist. ROSTERS: send other artists each person " +
+      "manages/books PER PERSON via manager_rosters / agent_rosters, e.g. agent_rosters: \"Jacob Lapidus: Marcus King, " +
+      "Charley Crockett; Meredith Jones: Wyatt Flores\". The flat other_mgmt_artists / other_agent_artists lists are only " +
+      "applied when there is exactly one manager/agent (otherwise they're skipped as ambiguous — see roster_skipped). " +
+      "Safe to repeat — existing records are reused. To fix mistakes use remove_known_artists, clear_roster, " +
+      "unlink_artist or delete_contact. " +
       "Returns the draft id, an edit link, and which contacts were created vs already existed.",
     inputSchema: {
       type: "object",
@@ -159,6 +166,14 @@ const TOOLS: Tool[] = [
             .filter(([k, v]) => k !== "artist_name" && k !== "genre" && !Array.isArray(v))
             .map(([k, v]) => [k, typeof v === "boolean" ? { type: "boolean" } : { type: ["string", "number"] }])
         ),
+        manager_rosters: {
+          type: "string",
+          description: "Per-manager rosters: \"Manager Name: Artist A, Artist B; Other Manager: Artist C\"",
+        },
+        agent_rosters: {
+          type: "string",
+          description: "Per-agent rosters: \"Agent Name: Artist A, Artist B; Other Agent: Artist C\"",
+        },
       },
       required: ["artist_name", "genre"],
     },
@@ -175,8 +190,12 @@ const TOOLS: Tool[] = [
       "the artist already has one). Use the same field names as create_draft; percentages are entered as 22 for 22%. " +
       "Contacts: management_company + manager_names (comma-separated) and booking_agent (e.g. " +
       "\"High Road Touring (North America): Matt Hickey, Sam Gans / THE TEAM - Michael Harvey-Bray\") create or " +
-      "match records in the contacts database and link them to the artist; other_mgmt_artists / other_agent_artists " +
-      "(comma-separated) are added to those managers'/agents' rosters. Safe to repeat — existing records are reused. " +
+      "match records in the contacts database and link them to the artist. ROSTERS: send other artists each person " +
+      "manages/books PER PERSON via manager_rosters / agent_rosters, e.g. agent_rosters: \"Jacob Lapidus: Marcus King, " +
+      "Charley Crockett; Meredith Jones: Wyatt Flores\". The flat other_mgmt_artists / other_agent_artists lists are only " +
+      "applied when there is exactly one manager/agent (otherwise they're skipped as ambiguous — see roster_skipped). " +
+      "Safe to repeat — existing records are reused. To fix mistakes use remove_known_artists, clear_roster, " +
+      "unlink_artist or delete_contact. " +
       "Returns the draft id, an edit link, which fields were updated, and which contacts were created vs already existed.",
     inputSchema: {
       type: "object",
@@ -189,10 +208,97 @@ const TOOLS: Tool[] = [
             .filter(([k, v]) => k !== "artist_name" && k !== "genre" && !Array.isArray(v))
             .map(([k, v]) => [k, typeof v === "boolean" ? { type: "boolean" } : { type: ["string", "number"] }])
         ),
+        manager_rosters: {
+          type: "string",
+          description: "Per-manager rosters: \"Manager Name: Artist A, Artist B; Other Manager: Artist C\"",
+        },
+        agent_rosters: {
+          type: "string",
+          description: "Per-agent rosters: \"Agent Name: Artist A, Artist B; Other Agent: Artist C\"",
+        },
       },
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     run: (a, origin) => updateDraft(a, origin),
+  },
+  {
+    name: "remove_known_artists",
+    title: "Remove artists from a roster",
+    description:
+      "Remove specific artists from a manager's or agent's roster (known_artists). Identify the person by " +
+      "person_name, or person_id if several people share the name (the error lists candidate ids). Returns which " +
+      "artists were removed and which weren't on the roster. Does not touch the artists themselves.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        person_type: { type: "string", enum: ["manager", "agent"] },
+        person_name: { type: "string" },
+        person_id: { type: "string", description: "Use instead of person_name to pick one of several same-named people" },
+        artist_names: { type: "array", items: { type: "string" }, description: "Roster artist names to remove" },
+      },
+      required: ["person_type", "artist_names"],
+    },
+    annotations: DESTRUCTIVE,
+    run: (a) => removeKnownArtists(a),
+  },
+  {
+    name: "clear_roster",
+    title: "Clear a roster",
+    description:
+      "Delete ALL roster artists (known_artists) linked to one manager or agent — for a badly contaminated roster. " +
+      "Keeps the person and their links to evaluated artists. Prefer remove_known_artists for targeted fixes. " +
+      "Returns the number of records deleted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        person_type: { type: "string", enum: ["manager", "agent"] },
+        person_name: { type: "string" },
+        person_id: { type: "string", description: "Use instead of person_name to pick one of several same-named people" },
+      },
+      required: ["person_type"],
+    },
+    annotations: DESTRUCTIVE,
+    run: (a) => clearRoster(a),
+  },
+  {
+    name: "unlink_artist",
+    title: "Unlink an artist from a manager/agent",
+    description:
+      "Remove the link between a Soundcheck artist and one manager or agent (artist_managers / artist_agents). " +
+      "Does NOT delete the manager/agent. Note: re-sending the same manager_names / booking_agent via " +
+      "update_draft would link them again.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artist_name: { type: "string" },
+        person_type: { type: "string", enum: ["manager", "agent"] },
+        person_name: { type: "string" },
+        person_id: { type: "string", description: "Use instead of person_name to pick one of several same-named people" },
+      },
+      required: ["artist_name", "person_type"],
+    },
+    annotations: DESTRUCTIVE,
+    run: (a) => unlinkArtist(a),
+  },
+  {
+    name: "delete_contact",
+    title: "Delete a contact record",
+    description:
+      "Admin cleanup: permanently delete a junk contact record — e.g. an agency accidentally created from a list " +
+      "of names. Deleting a manager/agent also removes their roster and artist links. Deleting a management " +
+      "company/agency ALSO deletes every manager/agent at it, with their rosters and links — check get_contacts " +
+      "first. Pass id instead of name if several records share the name. Returns what was deleted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contact_type: { type: "string", enum: ["management_company", "agency", "manager", "agent"] },
+        name: { type: "string" },
+        id: { type: "string", description: "Use instead of name to pick one of several same-named records" },
+      },
+      required: ["contact_type"],
+    },
+    annotations: DESTRUCTIVE,
+    run: (a) => deleteContact(a),
   },
 ];
 

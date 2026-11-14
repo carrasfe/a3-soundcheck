@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseOrgs, parseManagement, parsePeople, parseArtistList, agentRoleFor, managerRoleFor } from "./contact-parse";
+import { parseOrgs, parseManagement, parsePeople, parseArtistList, parseRosterBlocks, agentRoleFor, managerRoleFor } from "./contact-parse";
 
 const names = (ps: { name: string }[]) => ps.map((p) => p.name);
 
@@ -104,5 +104,35 @@ describe("agentRoleFor", () => {
     expect(agentRoleFor("UK/EU", null)).toBe("UK/EU Booking");
     expect(agentRoleFor("Worldwide", null)).toBe("Global");
     expect(agentRoleFor(null, null)).toBe("Primary");
+  });
+});
+
+describe("parseOrgs — bare name lists", () => {
+  it("never turns a comma list into an org name", () => {
+    const orgs = parseOrgs("Julianna Coyle, Chad Kudelka, Meredith Jones, Jacob Lapidus");
+    expect(orgs).toHaveLength(1);
+    expect(orgs[0].name).toBe("");
+    expect(orgs[0].people.map((p) => p.name)).toEqual(["Julianna Coyle", "Chad Kudelka", "Meredith Jones", "Jacob Lapidus"]);
+  });
+});
+
+describe("parseRosterBlocks", () => {
+  it("parses per-person blocks", () => {
+    const { rosters, invalid } = parseRosterBlocks(
+      "Jacob Lapidus: Marcus King, Charley Crockett; Meredith Jones: Wyatt Flores, Brandi Carlile"
+    );
+    expect(rosters).toEqual([
+      { person: "Jacob Lapidus", artists: ["Marcus King", "Charley Crockett"] },
+      { person: "Meredith Jones", artists: ["Wyatt Flores", "Brandi Carlile"] },
+    ]);
+    expect(invalid).toEqual([]);
+  });
+
+  it("accepts newlines, merges repeats, excludes the evaluated artist, reports bad blocks", () => {
+    const { rosters, invalid } = parseRosterBlocks(
+      "Jacob Lapidus: Marcus King\nJacob Lapidus: Test Artist, Charley Crockett\nno colon here", "Test Artist"
+    );
+    expect(rosters).toEqual([{ person: "Jacob Lapidus", artists: ["Marcus King", "Charley Crockett"] }]);
+    expect(invalid).toEqual(["no colon here"]);
   });
 });

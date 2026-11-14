@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { HttpError } from "@/lib/mcp/http";
 import { appUrl, escapeLike, getFirstAdminId } from "@/lib/mcp/data";
-import { applyContactEntries, hasContactFields, linkContacts, type ContactsSummary } from "@/lib/mcp/contacts";
+import { ROSTER_FIELDS, applyContactEntries, hasContactFields, linkContacts, rosterFieldsFrom, type ContactsSummary } from "@/lib/mcp/contacts";
 import { INITIAL_FORM_DATA, VALID_GENRES, getAgeProfileLabel, type EvalFormData } from "@/app/evaluations/new/types";
 
 /**
@@ -15,6 +15,7 @@ export function buildFormData(fields: Record<string, unknown>) {
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(fields)) {
     if (key === "artist_name" || key === "name" || key === "genre" || key === "inputs" || key === "draft_id") continue;
+    if ((ROSTER_FIELDS as readonly string[]).includes(key)) continue; // handled by linkContacts, not stored
     if (!(key in INITIAL_FORM_DATA)) { ignored.push(key); continue; }
     if (value === null || value === undefined) continue;
     const initial = (INITIAL_FORM_DATA as unknown as Record<string, unknown>)[key];
@@ -101,9 +102,10 @@ export async function createDraft(body: Record<string, unknown>, origin: string,
   // A failure here is reported but doesn't block the draft.
   let contacts: ContactsSummary | null = null;
   let contactsError: string | null = null;
-  if (hasContactFields(formData)) {
+  const contactInputs = { ...formData, ...rosterFieldsFrom({ ...nested, ...body }) };
+  if (hasContactFields(contactInputs)) {
     try {
-      const linked = await linkContacts(sb, artistId, artistName, formData);
+      const linked = await linkContacts(sb, artistId, artistName, contactInputs);
       contacts = linked.summary;
       applyContactEntries(fd, linked.managementEntries, linked.bookingEntries);
     } catch (err) {
