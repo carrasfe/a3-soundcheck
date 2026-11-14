@@ -2,21 +2,22 @@ import { describe, it, expect } from "vitest";
 import { buildResearchPrompt } from "./research-prompt";
 
 describe("buildResearchPrompt", () => {
-  it("marks existing drafts for update_draft and new artists for create_draft", () => {
+  it("lists artists tagged draft or new", () => {
     const p = buildResearchPrompt([
       { name: "Wet Leg", genre: "Rock / Alt / Indie", existing: true },
       { name: "Zach Bryan", genre: "Country", existing: false },
     ]);
-    expect(p.startsWith("Run A3 Soundcheck research for 2 artists.")).toBe(true);
+    expect(p.startsWith("A3 Soundcheck batch research. Update drafts via update_draft, create via create_draft.")).toBe(true);
     expect(p).toContain(
       "ARTISTS:\n" +
-      "1. Wet Leg (Rock / Alt / Indie) — existing draft, use update_draft to add data\n" +
-      "2. Zach Bryan (Country) — new, use create_draft\n"
+      "1. Wet Leg (Rock / Alt / Indie) draft\n" +
+      "2. Zach Bryan (Country) new\n"
     );
   });
 
-  it("uses singular wording for one artist", () => {
+  it("stays compact", () => {
     const p = buildResearchPrompt([{ name: "Wet Leg", genre: "Rock / Alt / Indie", existing: false }]);
-    expect(p.startsWith("Run A3 Soundcheck research for 1 artist.")).toBe(true);
+    expect(p.length).toBeLessThan(1500);
+    expect(p).toContain("Pollstar (datacloud: US/CA headline only");
   });
 });
