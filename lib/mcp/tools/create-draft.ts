@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { HttpError } from "@/lib/mcp/http";
 import { appUrl, escapeLike, getFirstAdminId } from "@/lib/mcp/data";
+import { applyContactEntries, hasContactFields, linkContacts, type ContactsSummary } from "@/lib/mcp/contacts";
 import { INITIAL_FORM_DATA, VALID_GENRES, getAgeProfileLabel, type EvalFormData } from "@/app/evaluations/new/types";
 
 /**
@@ -96,6 +97,21 @@ export async function createDraft(body: Record<string, unknown>, origin: string,
     artistCreated = true;
   }
 
+  // ── Contacts: create/link companies, managers, agencies, agents, rosters ──
+  // A failure here is reported but doesn't block the draft.
+  let contacts: ContactsSummary | null = null;
+  let contactsError: string | null = null;
+  if (hasContactFields(formData)) {
+    try {
+      const linked = await linkContacts(sb, artistId, artistName, formData);
+      contacts = linked.summary;
+      applyContactEntries(fd, linked.managementEntries, linked.bookingEntries);
+    } catch (err) {
+      contactsError = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+      console.error("[create_draft] Contact linking failed:", JSON.stringify({ artistName, err }));
+    }
+  }
+
   // ── Insert the draft ──
   const { data: draft, error: draftErr } = await sb.from("evaluations").insert({
     artist_id: artistId,
@@ -130,5 +146,7 @@ export async function createDraft(body: Record<string, unknown>, origin: string,
     edit_url: `${appUrl(origin)}/evaluations/new?edit=${draft.id}`,
     fields_applied: applied,
     fields_ignored: ignored,
+    contacts,
+    ...(contactsError ? { contacts_error: contactsError } : {}),
   };
 }

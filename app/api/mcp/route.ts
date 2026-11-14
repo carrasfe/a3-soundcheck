@@ -144,7 +144,11 @@ const TOOLS: Tool[] = [
       "other evaluation input fields you have as strings or numbers (e.g. spotify_monthly_listeners, " +
       "fan_concentration_ratio, ig_followers, ig_er_pct, tiktok_followers, youtube_subscribers, venue_capacity, " +
       "sell_through_pct, num_dates, merch_provider, spotify_yoy_pct). Percentages are entered as 22 for 22%. " +
-      "Returns the draft id and an edit link.",
+      "Contacts: management_company + manager_names (comma-separated) and booking_agent (e.g. " +
+      "\"High Road Touring (North America): Matt Hickey, Sam Gans / THE TEAM - Michael Harvey-Bray\") create or " +
+      "match records in the contacts database and link them to the artist; other_mgmt_artists / other_agent_artists " +
+      "(comma-separated) are added to those managers'/agents' rosters. Safe to repeat — existing records are reused. " +
+      "Returns the draft id, an edit link, and which contacts were created vs already existed.",
     inputSchema: {
       type: "object",
       properties: {
@@ -169,7 +173,11 @@ const TOOLS: Tool[] = [
       "(uses that artist's most recent draft). Only the fields you pass are changed — existing data is kept and " +
       "blank values are ignored. If the artist has no draft, a new one is created (genre is then required unless " +
       "the artist already has one). Use the same field names as create_draft; percentages are entered as 22 for 22%. " +
-      "Returns the draft id, an edit link, and which fields were updated.",
+      "Contacts: management_company + manager_names (comma-separated) and booking_agent (e.g. " +
+      "\"High Road Touring (North America): Matt Hickey, Sam Gans / THE TEAM - Michael Harvey-Bray\") create or " +
+      "match records in the contacts database and link them to the artist; other_mgmt_artists / other_agent_artists " +
+      "(comma-separated) are added to those managers'/agents' rosters. Safe to repeat — existing records are reused. " +
+      "Returns the draft id, an edit link, which fields were updated, and which contacts were created vs already existed.",
     inputSchema: {
       type: "object",
       properties: {

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { HttpError } from "@/lib/mcp/http";
 import { appUrl, escapeLike } from "@/lib/mcp/data";
 import { buildFormData, createDraft } from "@/lib/mcp/tools/create-draft";
+import { CONTACT_FIELDS, applyContactEntries, linkContacts, type ContactsSummary } from "@/lib/mcp/contacts";
 import { VALID_GENRES, getAgeProfileLabel, type EvalFormData } from "@/app/evaluations/new/types";
 
 type DraftRow = { id: string; artist_id: string | null; inputs: Record<string, unknown> | null };
@@ -81,6 +82,27 @@ export async function updateDraft(body: Record<string, unknown>, origin: string)
   }
   if (genre) { merged.genre = genre; updated.push("genre"); }
 
+  // ── Contacts: re-link when any contact field was sent. Uses the merged values,
+  // so e.g. sending only other_mgmt_artists attaches the roster to the draft's
+  // existing managers. Idempotent — safe to repeat.
+  let contacts: ContactsSummary | null = null;
+  let contactsError: string | null = null;
+  if (draft.artist_id && updated.some((k) => (CONTACT_FIELDS as readonly string[]).includes(k))) {
+    try {
+      let name = typeof merged.artist_name === "string" ? merged.artist_name : artistName;
+      if (!name) {
+        const { data: a } = await sb.from("artists").select("name").eq("id", draft.artist_id).maybeSingle();
+        name = a?.name ?? "";
+      }
+      const linked = await linkContacts(sb, draft.artist_id, name, merged);
+      contacts = linked.summary;
+      applyContactEntries(merged, linked.managementEntries, linked.bookingEntries);
+    } catch (err) {
+      contactsError = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+      console.error("[update_draft] Contact linking failed:", JSON.stringify({ draftId: draft.id, err }));
+    }
+  }
+
   const { error: updErr } = await sb.from("evaluations").update({
     inputs: merged,
     weight_profile: getAgeProfileLabel(merged as unknown as EvalFormData),
@@ -114,5 +136,7 @@ export async function updateDraft(body: Record<string, unknown>, origin: string)
     edit_url: `${appUrl(origin)}/evaluations/new?edit=${draft.id}`,
     fields_updated: updated,
     fields_ignored: ignored,
+    contacts,
+    ...(contactsError ? { contacts_error: contactsError } : {}),
   };
 }
