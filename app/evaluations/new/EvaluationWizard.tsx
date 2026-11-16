@@ -105,8 +105,8 @@ function validateStep(step: number, data: EvalFormData): Errors {
   }
 
   if (step === 7) {
-    if (!data.reddit_members && data.reddit_members !== "0")
-      e.reddit_members = "Required (enter 0 if none)";
+    // Reddit and Discord are optional — blank means no subreddit / no server
+    if (data.reddit_members && parseFloat(data.reddit_members) < 0) e.reddit_members = "Must be 0 or greater";
     if (!data.p2_fan_identity) e.p2_fan_identity = "Required";
     if (!data.merch_sentiment) e.merch_sentiment  = "Required";
     if (!data.press_score)     e.press_score      = "Required";

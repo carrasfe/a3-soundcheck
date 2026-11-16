@@ -39,13 +39,12 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
         </div>
         <Input
           label="Weekly Visitors (subreddit)"
-          required
           type="number"
           min={0}
           value={data.reddit_members}
           onChange={set("reddit_members")}
-          placeholder="e.g. 5000"
-          hint="Total members in dedicated subreddit (0 if none exists)"
+          placeholder="Leave blank if no subreddit exists"
+          hint="Total members in the artist's dedicated subreddit (optional)"
           error={errors.reddit_members}
         />
       </section>
@@ -64,8 +63,8 @@ export default function Step7Community({ data, onChange, errors }: StepProps) {
           min={0}
           value={data.discord_members}
           onChange={set("discord_members")}
-          placeholder="e.g. 2500"
-          hint="Total Discord server members (0 or leave blank if none)"
+          placeholder="Leave blank if no Discord server"
+          hint="Total Discord server members (optional)"
         />
         <p className="mt-2 text-xs text-gray-500">
           Discord is a bonus-only metric — it adds to the P2 score but doesn't replace any weight.

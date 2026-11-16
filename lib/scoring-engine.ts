@@ -98,8 +98,8 @@ export interface ScoringInputs {
   p2_fan_identity: number;         // 1–5 manual: Fan Identity Signaling (1=No fan culture … 5=Deep tribal identity)
   ig_followers: number;
   ig_er_pct?: number;             // if provided directly; else calculated from followers
-  reddit_members: number;
-  discord_members?: number;
+  reddit_members?: number | null;  // blank / 0 = no subreddit → scores 1 (weight kept)
+  discord_members?: number | null; // blank / 0 = no server → no bonus
   merch_sentiment: number;        // 1–5 manual
   tiktok_followers: number;
   tiktok_avg_views?: number;      // used for Viral Signal bonus (P4) only
@@ -635,7 +635,11 @@ function scoreIgEr(igFollowers: number, igErPct: number | undefined, demo?: Demo
   return score;
 }
 
-function scoreReddit(genre: Genre, members: number, demo?: DemographicsInput): number {
+function scoreReddit(genre: Genre, membersIn: number | null | undefined, demo?: DemographicsInput): number {
+  // No subreddit (blank / null / 0 / invalid) is a real "no community" signal:
+  // it scores 1 and keeps its P2 weight — it is not excluded like YouTube.
+  const members = typeof membersIn === "number" && Number.isFinite(membersIn) && membersIn > 0 ? membersIn : 0;
+  if (members === 0) return 1;
   const mult = affinityMultiplier("Reddit", demo);
 
   let thresholds: [number, number, number, number];
@@ -655,8 +659,9 @@ function scoreReddit(genre: Genre, members: number, demo?: DemographicsInput): n
   return 5;
 }
 
-function discordBonus(members?: number): number {
-  if (!members || members === 0) return 0.00;
+function discordBonus(members?: number | null): number {
+  // Blank / null / 0 / invalid = no Discord server → no bonus
+  if (typeof members !== "number" || !Number.isFinite(members) || members <= 0) return 0.00;
   if (members <    500) return 0.05;
   if (members <  2_000) return 0.10;
   if (members <  8_000) return 0.15;

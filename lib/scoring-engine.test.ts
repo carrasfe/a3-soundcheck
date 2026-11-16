@@ -1222,3 +1222,46 @@ describe("Edge cases", () => {
     expect(r.touring_bracket).toBe(3);
   });
 });
+
+describe("P2 – Reddit & Discord are optional (blank = none)", () => {
+  const base = { genre: "Rock / Alt / Indie" as const };
+  // Spread in a copy without the key to simulate a field that was never sent
+  const { reddit_members: _r, ...noReddit } = DEFAULTS; // eslint-disable-line @typescript-eslint/no-unused-vars
+
+  it("scores Reddit 1 and keeps its weight when blank / null / 0", () => {
+    const zero = score({ ...base, reddit_members: 0 });
+    expect(zero.p2.sub_scores.Reddit).toBe(1);
+    expect(zero.p2.sub_weights.Reddit).toBeGreaterThan(0);
+
+    for (const v of [null, undefined, NaN]) {
+      const r = score({ ...base, reddit_members: v as unknown as number });
+      expect(r.p2.sub_scores.Reddit).toBe(1);
+      expect(r.p2.sub_weights.Reddit).toBe(zero.p2.sub_weights.Reddit);
+      expect(r.p2.final_score).toBe(zero.p2.final_score);
+    }
+
+    const missing = calculateScore({ ...noReddit, ...base } as ScoringInputs);
+    expect(missing.p2.sub_scores.Reddit).toBe(1);
+    expect(missing.p2.final_score).toBe(zero.p2.final_score);
+  });
+
+  it("applies no Discord bonus when blank / null / 0", () => {
+    const zero = score({ ...base, discord_members: 0 });
+    for (const v of [null, undefined, NaN]) {
+      const r = score({ ...base, discord_members: v as unknown as number });
+      expect(r.p2.bonus).toBe(zero.p2.bonus);
+      expect(r.p2.final_score).toBe(zero.p2.final_score);
+    }
+    expect(score({ ...base, discord_members: 3_000 }).p2.bonus).toBeGreaterThan(zero.p2.bonus ?? 0);
+  });
+
+  it("form inputs: blank Reddit/Discord strings score the same as 0", async () => {
+    const { buildScoringInputs, INITIAL_FORM_DATA } = await import("@/app/evaluations/new/types");
+    const fd = { ...INITIAL_FORM_DATA, genre: "Rock / Alt / Indie", reddit_members: "", discord_members: "" };
+    const blank = calculateScore(buildScoringInputs(fd)!);
+    const zeros = calculateScore(buildScoringInputs({ ...fd, reddit_members: "0", discord_members: "0" })!);
+    expect(blank.p2.sub_scores.Reddit).toBe(1);
+    expect(blank.p2.final_score).toBe(zeros.p2.final_score);
+    expect(blank.total_score).toBe(zeros.total_score);
+  });
+});

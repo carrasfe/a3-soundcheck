@@ -179,6 +179,11 @@ function tSegs(doc: jsPDF, segs: TextSeg[], x: number, y: number, sz: number): v
 
 function nv(s: string | undefined | null): number { return parseFloat(s ?? "0") || 0; }
 
+/** Optional community counts (Reddit / Discord): blank or 0 means none exists. */
+function fCommunity(s: string | undefined | null): string {
+  return nv(s as string) > 0 ? fK(s) : "None";
+}
+
 function fK(s: string | undefined | null): string {
   const v = nv(s as string);
   if (!s || !v) return "—";
@@ -571,7 +576,7 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
     },
     { name: "Fan Identity",    input: inp.p2_fan_identity ? `${inp.p2_fan_identity}/5` : "—",    score: r.p2.sub_scores.FanID ?? 0 },
     { name: "Instagram ER",    input: igERInput,                                                  score: r.p2.sub_scores.IG_ER ?? 0 },
-    { name: "Reddit",          input: fK(inp.reddit_members),                                     score: r.p2.sub_scores.Reddit ?? 0 },
+    { name: "Reddit",          input: fCommunity(inp.reddit_members),                                  score: r.p2.sub_scores.Reddit ?? 0 },
     { name: "Merch Sentiment", input: inp.merch_sentiment ? `${inp.merch_sentiment}/5` : "—",    score: r.p2.sub_scores.MerchSent ?? 0 },
     { name: "TikTok ER",       input: tikERInput,                                                 score: r.p2.sub_scores.TikTok ?? 0 },
   ];
@@ -591,7 +596,7 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
 
   rows.push({
     name: r.p2.youtube_excluded ? "YouTube (excl.)" : "Discord Bonus",
-    input: r.p2.youtube_excluded ? "ER not entered" : fK(inp.discord_members),
+    input: r.p2.youtube_excluded ? "ER not entered" : fCommunity(inp.discord_members),
     score: r.p2.bonus ?? 0,
     isBonus: true,
   });

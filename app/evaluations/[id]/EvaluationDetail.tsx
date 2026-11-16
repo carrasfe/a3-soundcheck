@@ -60,12 +60,15 @@ function PillarCard({
   weight,
   subRows,
   bonusLabel = "Bonus (VIP / Discord)",
+  infoRows = [],
 }: {
   name: string;
   result: PillarBreakdown;
   weight: number;
   subRows: Array<{ key: string; label: string; weight: number; inputVal?: string }>;
   bonusLabel?: string;
+  /** Unweighted bonus-only inputs (e.g. Discord) shown for reference */
+  infoRows?: Array<{ key: string; label: string; inputVal: string }>;
 }) {
   const scoreColor =
     result.final_score >= 4
@@ -118,6 +121,13 @@ function PillarCard({
               </tr>
             );
           })}
+          {infoRows.map(({ key, label, inputVal }) => (
+            <tr key={key}>
+              <td className="px-5 py-2 text-gray-700">{label}</td>
+              <td className="px-3 py-2 text-xs text-gray-400">{inputVal}</td>
+              <td colSpan={3} className="px-5 py-2 text-right text-xs text-gray-400">bonus only — no weight</td>
+            </tr>
+          ))}
         </tbody>
         {result.bonus !== undefined && result.bonus > 0 && (
           <tfoot>
@@ -262,7 +272,9 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           ? `${parseFloat(g("ig_er_pct")).toFixed(2)}% (${fmtNum(igFlwrs)} flwrs)`
           : "—",
       Reddit:
-        nv("reddit_members") > 0 ? nv("reddit_members").toLocaleString() : "—",
+        nv("reddit_members") > 0 ? nv("reddit_members").toLocaleString() : "None",
+      Discord:
+        nv("discord_members") > 0 ? `${nv("discord_members").toLocaleString()} members` : "None",
       MerchSent:
         g("merch_sentiment") ? `${g("merch_sentiment")}/5` : "—",
       TikTok: tiktokStr,
@@ -529,6 +541,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
               ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2sw.YouTube ?? 0, inputVal: iv("YouTube") }]
               : []),
           ]}
+          infoRows={[{ key: "Discord", label: "Discord", inputVal: iv("Discord") }]}
         />
 
         <PillarCard
