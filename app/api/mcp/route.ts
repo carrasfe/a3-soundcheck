@@ -6,6 +6,7 @@ import { getContacts } from "@/lib/mcp/tools/get-contacts";
 import { listArtists } from "@/lib/mcp/tools/list-artists";
 import { createDraft } from "@/lib/mcp/tools/create-draft";
 import { listDrafts } from "@/lib/mcp/tools/list-drafts";
+import { getDraft } from "@/lib/mcp/tools/get-draft";
 import { updateDraft } from "@/lib/mcp/tools/update-draft";
 import { clearRoster, deleteContact, removeKnownArtists, unlinkArtist } from "@/lib/mcp/tools/roster-admin";
 import { INITIAL_FORM_DATA, VALID_GENRES } from "@/app/evaluations/new/types";
@@ -35,7 +36,8 @@ const INSTRUCTIONS =
   "for full scoring detail, get_contacts for managers/agents and their rosters, and create_draft to " +
   "start a new evaluation that a person finishes in the app. Use update_draft to add data to an existing draft " +
   "without clearing what's there (send rosters per person via manager_rosters / agent_rosters), " +
-  "remove_known_artists / clear_roster / unlink_artist / delete_contact to clean up bad contact data, and list_drafts to see which evaluations " +
+  "remove_known_artists / clear_roster / unlink_artist / delete_contact to clean up bad contact data, get_draft to read " +
+  "a draft's current values, and list_drafts to see which evaluations " +
   "are started but unfinished.";
 
 type Json = Record<string, unknown>;
@@ -137,6 +139,23 @@ const TOOLS: Tool[] = [
     },
     annotations: READ_ONLY,
     run: (a, origin) => listDrafts({ filter: str(a.filter) }, origin),
+  },
+  {
+    name: "get_draft",
+    title: "Get draft evaluation",
+    description:
+      "Read a draft evaluation's current data: every stored input field, plus artist name, genre, status, who " +
+      "created it and when. Identify it by draft_id, or by artist_name (returns that artist's most recently saved " +
+      "draft). Also lists filled_fields and blank_fields — use it before update_draft to see what's still missing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        draft_id: { type: "string", description: "Draft evaluation UUID (from list_drafts, create_draft or update_draft)" },
+        artist_name: { type: "string", description: "Used when draft_id isn't given" },
+      },
+    },
+    annotations: READ_ONLY,
+    run: (a, origin) => getDraft({ draft_id: str(a.draft_id), artist_name: str(a.artist_name) }, origin),
   },
   {
     name: "create_draft",
