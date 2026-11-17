@@ -6,7 +6,7 @@
 
 import jsPDF from "jspdf";
 import type { ScoringResult } from "@/lib/scoring-engine";
-import { formatYoyPct } from "@/lib/scoring-engine";
+import { formatYoyPct, formatTikTokErTierLabel, formatYouTubeErTierLabel, p4BonusRows } from "@/lib/scoring-engine";
 import type { EvalFormData } from "@/app/evaluations/new/types";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 
@@ -557,7 +557,10 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
   // older evaluations that haven't had a Chartmetric ER entered yet.
   const isLegacyTikTokEr = !inp.tiktok_er_pct && !!inp.tiktok_avg_views && !!inp.tiktok_followers;
   const tikERInput = inp.tiktok_er_pct
-    ? `${parseFloat(inp.tiktok_er_pct).toFixed(2)}% (${fK(inp.tiktok_followers)} flwrs)`
+    ? withParts(`${parseFloat(inp.tiktok_er_pct).toFixed(2)}%`, [
+        `${fK(inp.tiktok_followers)} flwrs`,
+        tierNote(r.p2.tiktok_er_tier),
+      ])
     : isLegacyTikTokEr
       ? `${((nv(inp.tiktok_avg_views) / nv(inp.tiktok_followers)) * 100).toFixed(1)}%† (${fK(inp.tiktok_followers)} flwrs, ${fK(inp.tiktok_avg_views)} avg)`
       : inp.tiktok_followers ? fK(inp.tiktok_followers) : "—";
@@ -583,15 +586,25 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
 
   if (!r.p2.youtube_excluded) {
     const ytInput = inp.youtube_er_pct
-      ? (inp.youtube_subscribers
-          ? `${parseFloat(inp.youtube_er_pct).toFixed(2)}% (${fK(inp.youtube_subscribers)} subs)`
-          : `${parseFloat(inp.youtube_er_pct).toFixed(2)}%`)
+      ? withParts(`${parseFloat(inp.youtube_er_pct).toFixed(2)}%`, [
+          inp.youtube_subscribers ? `${fK(inp.youtube_subscribers)} subs` : null,
+          tierNote(r.p2.youtube_er_tier),
+          r.p2.youtube_floor_applied ? "floor 2" : null,
+        ])
       : fK(inp.youtube_subscribers);
     rows.push({
       name: "YouTube ER",
       input: ytInput,
       score: r.p2.sub_scores.YouTube ?? 0,
     });
+  }
+
+  // Reference-only YouTube inputs (audience feeds the P4 YouTube Reach bonus)
+  if (nv(inp.youtube_monthly_audience) > 0) {
+    rows.push({ name: "YT Audience", input: `${fK(inp.youtube_monthly_audience)}/mo`, score: 0, isInfo: true });
+  }
+  if (nv(inp.youtube_avg_likes) > 0) {
+    rows.push({ name: "YT Avg Likes", input: fK(inp.youtube_avg_likes), score: 0, isInfo: true });
   }
 
   rows.push({
@@ -603,10 +616,21 @@ function drawP2(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
 
   const endY = drawSubRows(doc, 1, first, rows);
 
-  if (isLegacyTikTokEr) {
-    const note = "† Legacy calculated ER (views/followers) — enter Chartmetric ER for accurate scoring";
-    t(doc, note, PCOL_X[1] + 2, endY + 2.5, { sz: 5.5, italic: true, color: LT });
+  // Footnotes: legacy-ER warning and the full tier labels for scale-adjusted ER scores
+  const notes: string[] = [];
+  if (isLegacyTikTokEr) notes.push("† Legacy calculated ER (views/followers) — enter Chartmetric ER for accurate scoring");
+  const ttEr = parseFloat(inp.tiktok_er_pct);
+  if (inp.tiktok_er_pct && !isNaN(ttEr) && r.p2.tiktok_er_tier && r.p2.tiktok_er_tier.mode !== "baseline") {
+    notes.push(formatTikTokErTierLabel(ttEr, r.p2.tiktok_er_tier));
   }
+  const ytEr = parseFloat(inp.youtube_er_pct);
+  if (inp.youtube_er_pct && !isNaN(ytEr) && r.p2.youtube_er_tier &&
+      (r.p2.youtube_er_tier.mode !== "baseline" || r.p2.youtube_floor_applied)) {
+    notes.push(formatYouTubeErTierLabel(ytEr, r.p2.youtube_er_tier, !!r.p2.youtube_floor_applied));
+  }
+  notes.forEach((note, i) => {
+    t(doc, note, PCOL_X[1] + 2, endY + 2.5 + i * 2.5, { sz: 5.5, italic: true, color: LT });
+  });
 
   return endY;
 }
@@ -657,11 +681,15 @@ function drawP4(doc: jsPDF, r: ScoringResult, inp: EvalFormData): number {
     { name: "Playlist",     input: inp.playlist_score ? `${inp.playlist_score}/5` : "—",         score: r.p4.sub_scores.playlist ?? 0 },
   ];
 
-  if ((r.p4.bonus ?? 0) > 0) {
-    const ttFollowers = nv(inp.tiktok_followers);
-    const ttViews     = nv(inp.tiktok_avg_views);
-    const ratioStr    = ttFollowers > 0 ? `×${(ttViews / ttFollowers).toFixed(0)} ratio` : "—";
-    rows.push({ name: "TikTok Viral", input: ratioStr, score: r.p4.bonus!, isBonus: true });
+  for (const b of p4BonusRows(r.p4)) {
+    if (b.label === "TikTok Viral Signal") {
+      const ttFollowers = nv(inp.tiktok_followers);
+      const ttViews     = nv(inp.tiktok_avg_views);
+      const ratioStr    = ttFollowers > 0 ? `×${(ttViews / ttFollowers).toFixed(0)} ratio` : "—";
+      rows.push({ name: "TikTok Viral", input: ratioStr, score: b.value, isBonus: true });
+    } else {
+      rows.push({ name: "YouTube Reach", input: `${fK(inp.youtube_monthly_audience)}/mo`, score: b.value, isBonus: true });
+    }
   }
 
   let endY = drawSubRows(doc, 3, first, rows);

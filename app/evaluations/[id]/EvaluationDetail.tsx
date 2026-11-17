@@ -4,7 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import type { EvaluationRecord } from "./page";
 import type { ScoringResult, PillarBreakdown } from "@/lib/scoring-engine";
-import { formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel, formatYoyPct } from "@/lib/scoring-engine";
+import {
+  formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel, formatYoyPct,
+  formatTikTokErTierLabel, formatYouTubeErTierLabel, p4BonusRows,
+} from "@/lib/scoring-engine";
 import { getAgeProfileLabel } from "@/app/evaluations/new/types";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
@@ -61,14 +64,17 @@ function PillarCard({
   subRows,
   bonusLabel = "Bonus (VIP / Discord)",
   infoRows = [],
+  bonusRows,
 }: {
   name: string;
   result: PillarBreakdown;
   weight: number;
   subRows: Array<{ key: string; label: string; weight: number; inputVal?: string }>;
   bonusLabel?: string;
-  /** Unweighted bonus-only inputs (e.g. Discord) shown for reference */
-  infoRows?: Array<{ key: string; label: string; inputVal: string }>;
+  /** Unweighted inputs shown for reference (e.g. Discord, YouTube audience) */
+  infoRows?: Array<{ key: string; label: string; inputVal: string; note?: string }>;
+  /** Itemized bonuses — replaces the single bonus row when given */
+  bonusRows?: { label: string; value: number }[];
 }) {
   const scoreColor =
     result.final_score >= 4
@@ -121,15 +127,26 @@ function PillarCard({
               </tr>
             );
           })}
-          {infoRows.map(({ key, label, inputVal }) => (
+          {infoRows.map(({ key, label, inputVal, note }) => (
             <tr key={key}>
               <td className="px-5 py-2 text-gray-700">{label}</td>
               <td className="px-3 py-2 text-xs text-gray-400">{inputVal}</td>
-              <td colSpan={3} className="px-5 py-2 text-right text-xs text-gray-400">bonus only — no weight</td>
+              <td colSpan={3} className="px-5 py-2 text-right text-xs text-gray-400">{note ?? "bonus only — no weight"}</td>
             </tr>
           ))}
         </tbody>
-        {result.bonus !== undefined && result.bonus > 0 && (
+        {bonusRows ? (
+          bonusRows.length > 0 && (
+            <tfoot>
+              {bonusRows.map((b, i) => (
+                <tr key={b.label} className={`${i === 0 ? "border-t border-dashed border-gray-200 " : ""}bg-emerald-50/50`}>
+                  <td className="px-5 py-1.5 text-xs text-emerald-700" colSpan={4}>{b.label}</td>
+                  <td className="px-5 py-1.5 text-right text-xs font-semibold text-emerald-700">+{b.value.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tfoot>
+          )
+        ) : result.bonus !== undefined && result.bonus > 0 && (
           <tfoot>
             <tr className="border-t border-dashed border-gray-200 bg-emerald-50/50">
               <td
@@ -275,6 +292,10 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
         nv("reddit_members") > 0 ? nv("reddit_members").toLocaleString() : "None",
       Discord:
         nv("discord_members") > 0 ? `${nv("discord_members").toLocaleString()} members` : "None",
+      YouTubeAudience:
+        nv("youtube_monthly_audience") > 0 ? fmtNum(nv("youtube_monthly_audience")) : "—",
+      YouTubeLikes:
+        nv("youtube_avg_likes") > 0 ? fmtNum(nv("youtube_avg_likes")) : "—",
       MerchSent:
         g("merch_sentiment") ? `${g("merch_sentiment")}/5` : "—",
       TikTok: tiktokStr,
@@ -494,6 +515,16 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           if (igErTier && igErTier.mode !== "baseline" && !isNaN(igErPct)) {
             notes.push(formatIgErTierLabel(igErPct, igErTier));
           }
+          const ttTier = r.p2?.tiktok_er_tier;
+          const ttPct = parseFloat(g("tiktok_er_pct"));
+          if (ttTier && ttTier.mode !== "baseline" && !isNaN(ttPct)) {
+            notes.push(formatTikTokErTierLabel(ttPct, ttTier));
+          }
+          const ytTier = r.p2?.youtube_er_tier;
+          const ytPct = parseFloat(g("youtube_er_pct"));
+          if (ytTier && (ytTier.mode !== "baseline" || r.p2?.youtube_floor_applied) && !isNaN(ytPct)) {
+            notes.push(formatYouTubeErTierLabel(ytPct, ytTier, !!r.p2?.youtube_floor_applied));
+          }
           const yoyFloor = r.p4?.yoy_floor;
           const yoyPct = parseFloat(g("spotify_yoy_pct"));
           if (yoyFloor?.applied && !isNaN(yoyPct)) {
@@ -541,7 +572,11 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
               ? [{ key: "YouTube", label: "YouTube Engagement", weight: p2sw.YouTube ?? 0, inputVal: iv("YouTube") }]
               : []),
           ]}
-          infoRows={[{ key: "Discord", label: "Discord", inputVal: iv("Discord") }]}
+          infoRows={[
+            { key: "Discord", label: "Discord", inputVal: iv("Discord") },
+            { key: "YouTubeAudience", label: "YouTube Monthly Audience", inputVal: iv("YouTubeAudience"), note: "feeds P4 YouTube Reach" },
+            { key: "YouTubeLikes", label: "YouTube Avg Likes", inputVal: iv("YouTubeLikes"), note: "reference only — not scored" },
+          ]}
         />
 
         <PillarCard
@@ -560,7 +595,7 @@ export default function EvaluationDetail({ evaluation, isAdmin }: Props) {
           name="P4 — Growth Trajectory"
           result={r.p4}
           weight={r.pillar_weights.p4}
-          bonusLabel="TikTok Viral Signal"
+          bonusRows={p4BonusRows(r.p4)}
           subRows={[
             { key: "spotify_yoy",       label: "Spotify YoY",        weight: 0.30, inputVal: iv("spotify_yoy") },
             { key: "venue_progression", label: "Venue Progression",  weight: 0.25, inputVal: iv("venue_progression") },

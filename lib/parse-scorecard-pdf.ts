@@ -457,6 +457,13 @@ async function _parsePDF(
               fd.tiktok_followers = reverseFK(inp);
             }
           }
+          else if (name.startsWith("yt audience")) {
+            // "YT Audience  8.5M/mo" → youtube_monthly_audience
+            if (inp && inp !== "—") fd.youtube_monthly_audience = reverseFK(inp.replace(/\/mo$/i, ""));
+          }
+          else if (name.startsWith("yt avg likes")) {
+            if (inp && inp !== "—") fd.youtube_avg_likes = reverseFK(inp);
+          }
           else if (name.includes("youtube er") || name.includes("youtube")) {
             if (name.includes("excl")) break; // "YouTube (excl.)" bonus row — skip
             if (!inp || inp === "—" || inp.toLowerCase().includes("not entered")) break;

@@ -25,9 +25,9 @@ CHARTMETRIC (app.chartmetric.com):
 - Still in Spotify section: scroll down to playlists and read the editorial playlist count for playlist_score
 - Stay in Platforms, click Instagram: read followers and engagement rate. In the metrics section below, click '3 Month' to see the 90-day follower growth
 - Stay in Platforms, click TikTok: read followers, average views/video, and engagement rate
-- Stay in Platforms, click YouTube: read subscribers and engagement rate
+- Stay in Platforms, click YouTube: read subscribers, engagement rate, monthly audience, and average likes per video
 
 Then: Rostr (team tab: mgmt, agents by territory) → Pollstar (datacloud: US/CA headline only, ignore support/international) → Push all to Soundcheck.
 
-Fields: spotify_monthly_listeners, fan_concentration_ratio, spotify_yoy_pct, ig_followers, ig_er_pct, ig_90day_gain, tiktok_followers, tiktok_avg_views, tiktok_er_pct, youtube_subscribers, youtube_er_pct, reddit_members, discord_members, store_quality, merch_range, price_point_highest, d2c_level, merch_provider, press_score, playlist_score, num_dates, market_coverage, venue_capacity, sell_through_pct, management_company, manager_names, booking_agent, d_13_17_m, d_13_17_f, d_18_24_m, d_18_24_f, d_25_34_m, d_25_34_f, d_35_44_m, d_35_44_f, d_45_64_m, d_45_64_f, d_65_m, d_65_f, eth_white, eth_hispanic, eth_aa, eth_asian. Percentages as numbers (22 not 0.22).`;
+Fields: spotify_monthly_listeners, fan_concentration_ratio, spotify_yoy_pct, ig_followers, ig_er_pct, ig_90day_gain, tiktok_followers, tiktok_avg_views, tiktok_er_pct, youtube_subscribers, youtube_er_pct, youtube_monthly_audience, youtube_avg_likes, reddit_members, discord_members, store_quality, merch_range, price_point_highest, d2c_level, merch_provider, press_score, playlist_score, num_dates, market_coverage, venue_capacity, sell_through_pct, management_company, manager_names, booking_agent, d_13_17_m, d_13_17_f, d_18_24_m, d_18_24_f, d_25_34_m, d_25_34_f, d_35_44_m, d_35_44_f, d_45_64_m, d_45_64_f, d_65_m, d_65_f, eth_white, eth_hispanic, eth_aa, eth_asian. Percentages as numbers (22 not 0.22).`;
 }

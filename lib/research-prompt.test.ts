@@ -30,7 +30,10 @@ describe("buildResearchPrompt", () => {
       "- Stay in Platforms, click Instagram"
     );
     expect(p).toContain("click '3 Month' to see the 90-day follower growth");
-    expect(p).toContain("- Stay in Platforms, click YouTube: read subscribers and engagement rate");
+    expect(p).toContain(
+      "- Stay in Platforms, click YouTube: read subscribers, engagement rate, monthly audience, and average likes per video"
+    );
+    expect(p).toContain("youtube_er_pct, youtube_monthly_audience, youtube_avg_likes,");
     for (const gone of ["List view", "list view", "Social & Streaming", "Overview tab", "Playlists tab"]) {
       expect(p).not.toContain(gone);
     }

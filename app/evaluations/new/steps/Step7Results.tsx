@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import type { ScoringResult } from "@/lib/scoring-engine";
 import type { EvalFormData } from "../types";
 import { buildScoringInputs, getAgeProfileLabel } from "../types";
-import { calculateScore, formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel } from "@/lib/scoring-engine";
+import {
+  calculateScore, formatFcrTierLabel, formatIgErTierLabel, formatYoyFloorLabel,
+  formatTikTokErTierLabel, formatYouTubeErTierLabel, p4BonusRows,
+} from "@/lib/scoring-engine";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
 interface Props {
@@ -30,7 +33,7 @@ const TIER_STYLES: Record<string, string> = {
 };
 
 function PillarCard({
-  name, result, weight, subRows, bonus, bonusLabel = "Bonus (VIP / Discord)",
+  name, result, weight, subRows, bonus, bonusLabel = "Bonus (VIP / Discord)", bonusRows,
 }: {
   name: string;
   result: { final_score: number; weighted_score: number; sub_scores: Record<string, number> };
@@ -38,6 +41,8 @@ function PillarCard({
   subRows: Array<{ key: string; label: string; weight: number }>;
   bonus?: number;
   bonusLabel?: string;
+  /** Itemized bonuses — replaces the single bonus row when given */
+  bonusRows?: { label: string; value: number }[];
 }) {
   const scoreColor =
     result.final_score >= 4 ? "text-[#001489]"
@@ -78,7 +83,18 @@ function PillarCard({
             );
           })}
         </tbody>
-        {bonus !== undefined && bonus > 0 && (
+        {bonusRows ? (
+          bonusRows.length > 0 && (
+            <tfoot>
+              {bonusRows.map((b, i) => (
+                <tr key={b.label} className={`${i === 0 ? "border-t border-dashed border-gray-200 " : ""}bg-emerald-50/50`}>
+                  <td className="px-5 py-1.5 text-xs text-emerald-700" colSpan={3}>{b.label}</td>
+                  <td className="px-5 py-1.5 text-right text-xs font-semibold text-emerald-700">+{b.value.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tfoot>
+          )
+        ) : bonus !== undefined && bonus > 0 && (
           <tfoot>
             <tr className="border-t border-dashed border-gray-200 bg-emerald-50/50">
               <td className="px-5 py-1.5 text-xs text-emerald-700" colSpan={3}>{bonusLabel}</td>
@@ -255,6 +271,14 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
         if (!isNaN(igErPct) && data.ig_er_pct && r.p2.ig_er_tier.mode !== "baseline") {
           notes.push(formatIgErTierLabel(igErPct, r.p2.ig_er_tier));
         }
+        const ttErPct = parseFloat(data.tiktok_er_pct);
+        if (!isNaN(ttErPct) && data.tiktok_er_pct && r.p2.tiktok_er_tier.mode !== "baseline") {
+          notes.push(formatTikTokErTierLabel(ttErPct, r.p2.tiktok_er_tier));
+        }
+        const ytErPct = parseFloat(data.youtube_er_pct);
+        if (!isNaN(ytErPct) && data.youtube_er_pct && (r.p2.youtube_er_tier.mode !== "baseline" || r.p2.youtube_floor_applied)) {
+          notes.push(formatYouTubeErTierLabel(ytErPct, r.p2.youtube_er_tier, r.p2.youtube_floor_applied));
+        }
         const yoyPct = parseFloat(data.spotify_yoy_pct);
         if (!isNaN(yoyPct) && data.spotify_yoy_pct && r.p4.yoy_floor.applied) {
           notes.push(formatYoyFloorLabel(yoyPct, r.p4.yoy_floor));
@@ -319,8 +343,7 @@ export default function Step7Results({ data, savedId, isSaving, saveError, saveS
         name="P4 — Growth Trajectory"
         result={r.p4}
         weight={r.pillar_weights.p4}
-        bonus={r.p4.bonus}
-        bonusLabel="TikTok Viral Signal"
+        bonusRows={p4BonusRows(r.p4)}
         subRows={[
           { key: "spotify_yoy",       label: "Spotify YoY",          weight: 0.30 },
           { key: "venue_progression", label: "Venue Progression",    weight: 0.25 },

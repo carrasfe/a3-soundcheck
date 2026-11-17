@@ -2,6 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   calculateScore,
   tiktokViralBonus,
+  youtubeReachBonus,
+  getTikTokErFollowerTier,
+  getYouTubeErSubscriberTier,
+  formatTikTokErTierLabel,
+  formatYouTubeErTierLabel,
   getFcrListenerTier,
   getIgErFollowerTier,
   getYoyAbsoluteGain,
@@ -325,8 +330,8 @@ describe("P2 – TikTok ER (Chartmetric native)", () => {
     [8, 4],
     [12, 5],
   ] as const).forEach(([erPct, expected]) => {
-    it(`ER ${erPct}% (uncapped followers) → score ${expected}`, () => {
-      const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 200_000, tiktok_er_pct: erPct });
+    it(`ER ${erPct}% (50K-200K baseline tier) → score ${expected}`, () => {
+      const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 100_000, tiktok_er_pct: erPct });
       expect(r.p2.sub_scores.TikTok).toBe(expected);
     });
   });
@@ -1263,5 +1268,169 @@ describe("P2 – Reddit & Discord are optional (blank = none)", () => {
     expect(blank.p2.sub_scores.Reddit).toBe(1);
     expect(blank.p2.final_score).toBe(zeros.p2.final_score);
     expect(blank.total_score).toBe(zeros.total_score);
+  });
+});
+
+describe("P2 – TikTok ER follower tiers", () => {
+  const tt = (followers: number, er: number) =>
+    score({ genre: "Hip-Hop / Rap", tiktok_followers: followers, tiktok_er_pct: er }).p2.sub_scores.TikTok;
+
+  it("resolves the follower tiers", () => {
+    expect(getTikTokErFollowerTier(10_000)).toMatchObject({ range_label: "<15K", mode: "capped", cap_score: 1 });
+    expect(getTikTokErFollowerTier(30_000)).toMatchObject({ range_label: "15K-50K", mode: "capped", cap_score: 3 });
+    expect(getTikTokErFollowerTier(100_000)).toMatchObject({ range_label: "50K-200K", mode: "baseline", multiplier: 1 });
+    expect(getTikTokErFollowerTier(300_000)).toMatchObject({ range_label: "200K-500K", multiplier: 0.6 });
+    expect(getTikTokErFollowerTier(700_000)).toMatchObject({ range_label: "500K-1M", multiplier: 0.4 });
+    expect(getTikTokErFollowerTier(2_000_000)).toMatchObject({ range_label: "1M+", multiplier: 0.25 });
+  });
+
+  it("200K-500K uses 0.6/1.8/3.6/6%", () => {
+    expect(tt(300_000, 0.5)).toBe(1);
+    expect(tt(300_000, 0.6)).toBe(2);
+    expect(tt(300_000, 1.8)).toBe(3);
+    expect(tt(300_000, 3.6)).toBe(4);
+    expect(tt(300_000, 6)).toBe(5);
+  });
+
+  it("500K-1M uses 0.4/1.2/2.4/4%", () => {
+    expect(tt(700_000, 0.39)).toBe(1);
+    expect(tt(700_000, 0.45)).toBe(2);
+    expect(tt(700_000, 1.2)).toBe(3);
+    expect(tt(700_000, 2.4)).toBe(4);
+    expect(tt(700_000, 4)).toBe(5);
+  });
+
+  it("1M+ uses 0.25/0.75/1.5/2.5%", () => {
+    expect(tt(2_000_000, 0.2)).toBe(1);
+    expect(tt(2_000_000, 0.25)).toBe(2);
+    expect(tt(2_000_000, 0.75)).toBe(3);
+    expect(tt(2_000_000, 1.5)).toBe(4);
+    expect(tt(2_000_000, 2.5)).toBe(5);
+  });
+
+  it("small-account caps are unchanged", () => {
+    expect(tt(10_000, 20)).toBe(1);
+    expect(tt(30_000, 20)).toBe(3);
+  });
+
+  it("exposes the tier on the result and formats the label", () => {
+    const r = score({ genre: "Hip-Hop / Rap", tiktok_followers: 700_000, tiktok_er_pct: 0.45 });
+    expect(r.p2.tiktok_er_tier.range_label).toBe("500K-1M");
+    expect(formatTikTokErTierLabel(0.45, r.p2.tiktok_er_tier)).toBe("TikTok ER 0.45% (Tier: 500K-1M adjusted)");
+  });
+
+  it("leaves the TikTok Viral Signal bonus unchanged", () => {
+    expect(tiktokViralBonus(100_000, 600_000)).toBe(1.0);
+    expect(tiktokViralBonus(10_000, 60_000)).toBe(1.0);
+  });
+});
+
+describe("P2 – YouTube ER subscriber tiers + floor", () => {
+  // Rock / Alt / Indie = HIGH genre: baseline thresholds 1.0 / 2.25 / 4.0 / 6.5
+  const yt = (subs: number, er: number) =>
+    score({ genre: "Rock / Alt / Indie", youtube_subscribers: subs, youtube_er_pct: er }).p2;
+
+  it("resolves the subscriber tiers", () => {
+    expect(getYouTubeErSubscriberTier(3_000)).toMatchObject({ mode: "capped", cap_score: 1 });
+    expect(getYouTubeErSubscriberTier(20_000)).toMatchObject({ mode: "capped", cap_score: 3 });
+    expect(getYouTubeErSubscriberTier(100_000)).toMatchObject({ range_label: "50K-200K", mode: "baseline" });
+    expect(getYouTubeErSubscriberTier(400_000)).toMatchObject({ range_label: "200K-1M", multiplier: 0.5 });
+    expect(getYouTubeErSubscriberTier(3_000_000)).toMatchObject({ range_label: "1M+", multiplier: 0.2 });
+  });
+
+  it("50K-200K keeps the genre baseline", () => {
+    expect(yt(100_000, 2.0).sub_scores.YouTube).toBe(2);
+    expect(yt(100_000, 7.0).sub_scores.YouTube).toBe(5);
+  });
+
+  it("200K-1M halves the thresholds (0.5 / 1.125 / 2.0 / 3.25)", () => {
+    expect(yt(400_000, 0.4).sub_scores.YouTube).toBe(1);
+    expect(yt(400_000, 0.6).sub_scores.YouTube).toBe(2);
+    expect(yt(400_000, 1.2).sub_scores.YouTube).toBe(3);
+    expect(yt(400_000, 2.0).sub_scores.YouTube).toBe(4);
+    expect(yt(400_000, 3.3).sub_scores.YouTube).toBe(5);
+  });
+
+  it("1M+ uses 0.2× thresholds (0.2 / 0.45 / 0.8 / 1.3)", () => {
+    expect(yt(3_000_000, 0.5).sub_scores.YouTube).toBe(3);
+    expect(yt(3_000_000, 1.3).sub_scores.YouTube).toBe(5);
+  });
+
+  it("floors 500K+ channels at 2 so YouTube isn't excluded", () => {
+    const low = yt(3_000_000, 0.06);
+    expect(low.sub_scores.YouTube).toBe(2);
+    expect(low.youtube_floor_applied).toBe(true);
+    expect(low.youtube_excluded).toBe(false);
+    expect(formatYouTubeErTierLabel(0.06, low.youtube_er_tier, low.youtube_floor_applied))
+      .toBe("YouTube ER 0.06% (Tier: 1M+ adjusted; floor 2 for 500K+ subs)");
+
+    const mid = yt(600_000, 0.1);
+    expect(mid.sub_scores.YouTube).toBe(2);
+    expect(mid.youtube_floor_applied).toBe(true);
+  });
+
+  it("no floor at or below 500K subs, and none without an ER", () => {
+    const small = yt(400_000, 0.1);
+    expect(small.sub_scores.YouTube).toBe(1);
+    expect(small.youtube_floor_applied).toBe(false);
+    expect(small.youtube_excluded).toBe(true);
+
+    const noEr = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 3_000_000, youtube_er_pct: undefined }).p2;
+    expect(noEr.sub_scores.YouTube).toBe(0);
+    expect(noEr.youtube_floor_applied).toBe(false);
+  });
+
+  it("formats the label without a floor", () => {
+    expect(formatYouTubeErTierLabel(0.06, getYouTubeErSubscriberTier(3_000_000))).toBe("YouTube ER 0.06% (Tier: 1M+ adjusted)");
+  });
+});
+
+describe("P4 – YouTube Reach bonus", () => {
+  it("scales with monthly audience", () => {
+    expect(youtubeReachBonus(1_000_000, 900_000, 2)).toBe(0);
+    expect(youtubeReachBonus(1_000_000, 1_000_000, 2)).toBe(0.25);
+    expect(youtubeReachBonus(1_000_000, 4_999_999, 2)).toBe(0.25);
+    expect(youtubeReachBonus(1_000_000, 5_000_000, 2)).toBe(0.5);
+    expect(youtubeReachBonus(1_000_000, 20_000_000, 2)).toBe(1.0);
+  });
+
+  it("only applies above 500K subscribers", () => {
+    expect(youtubeReachBonus(500_000, 50_000_000, 2)).toBe(0);
+    expect(youtubeReachBonus(500_001, 50_000_000, 2)).toBe(1.0);
+  });
+
+  it("is 0 with no monthly audience", () => {
+    expect(youtubeReachBonus(3_000_000, undefined, 2)).toBe(0);
+    expect(youtubeReachBonus(3_000_000, null, 2)).toBe(0);
+  });
+
+  it("only applies when the YouTube ER score is 1 or 2", () => {
+    expect(youtubeReachBonus(3_000_000, 25_000_000, 1)).toBe(1.0);
+    expect(youtubeReachBonus(3_000_000, 25_000_000, 2)).toBe(1.0);
+    for (const s of [0, 3, 4, 5]) expect(youtubeReachBonus(3_000_000, 25_000_000, s)).toBe(0);
+  });
+
+  it("is withheld in the full score when YouTube ER scores 3+", () => {
+    // 3M subs, 1M+ tier (0.2×): 0.5% ER → score 3
+    const r = score({ genre: "Rock / Alt / Indie", youtube_subscribers: 3_000_000, youtube_er_pct: 0.5, youtube_monthly_audience: 25_000_000 });
+    expect(r.p2.sub_scores.YouTube).toBe(3);
+    expect(r.p4.bonuses.youtube_reach).toBe(0);
+  });
+
+  it("adds to P4, is reported separately from TikTok Viral, and P4 is capped at 5", () => {
+    const base = { genre: "Rock / Alt / Indie" as const, youtube_subscribers: 3_000_000, youtube_er_pct: 0.06 };
+    const without = score({ ...base, youtube_monthly_audience: 0 });
+    const withReach = score({ ...base, youtube_monthly_audience: 6_000_000 });
+    expect(withReach.p4.bonuses).toEqual({ tiktok_viral: 0, youtube_reach: 0.5 });
+    expect(withReach.p4.final_score).toBeCloseTo(without.p4.final_score + 0.5, 6);
+    expect(withReach.p4.bonus).toBe(0.5);
+
+    const both = score({
+      ...base, youtube_monthly_audience: 25_000_000,
+      tiktok_followers: 100_000, tiktok_avg_views: 600_000,
+      spotify_yoy_pct: 100, venue_progression: "tier_change", ig_90day_gain: 50_000, press_score: 5, playlist_score: 5,
+    });
+    expect(both.p4.bonuses).toEqual({ tiktok_viral: 1.0, youtube_reach: 1.0 });
+    expect(both.p4.final_score).toBe(5);
   });
 });

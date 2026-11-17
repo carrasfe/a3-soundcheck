@@ -36,6 +36,8 @@ const FIELD_DEFS: FieldDef[] = [
   { label: "TikTok Avg Views",         key: "tiktok_avg_views",          group: "Fan Engagement" },
   { label: "YouTube Subscribers",      key: "youtube_subscribers",       group: "Fan Engagement" },
   { label: "YouTube ER %",             key: "youtube_er_pct",            group: "Fan Engagement" },
+  { label: "YouTube Monthly Audience", key: "youtube_monthly_audience",  group: "Fan Engagement" },
+  { label: "YouTube Avg Likes",        key: "youtube_avg_likes",         group: "Fan Engagement" },
   { label: "Reddit Members",           key: "reddit_members",            group: "Fan Engagement" },
   { label: "Discord Members",          key: "discord_members",           group: "Fan Engagement" },
   { label: "Merch Sentiment",          key: "merch_sentiment",           group: "Fan Engagement" },

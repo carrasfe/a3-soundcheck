@@ -4,7 +4,16 @@ import { useMemo } from "react";
 import { Input, ScoreBadge } from "../ui";
 import type { EvalFormData, StepProps } from "../types";
 import { buildScoringInputs } from "../types";
-import { calculateScore, tiktokViralBonus } from "@/lib/scoring-engine";
+import {
+  calculateScore, tiktokViralBonus, youtubeReachBonus, YOUTUBE_SUBSCRIBER_FLOOR_MIN, type MetricTier,
+} from "@/lib/scoring-engine";
+
+/** "Tier: 500K-1M followers — thresholds adjusted ×0.4" style note under a score. */
+function tierNote(tier: MetricTier, unit: string, metric: string): { text: string; warn: boolean } {
+  if (tier.mode === "capped") return { text: `⚠ ${tier.range_label} ${unit} — ${metric} score capped at ${tier.cap_score}`, warn: true };
+  if (tier.mode === "adjusted") return { text: `Tier: ${tier.range_label} ${unit} — thresholds adjusted ×${tier.multiplier}`, warn: false };
+  return { text: `Tier: ${tier.range_label} ${unit} — baseline thresholds`, warn: false };
+}
 
 export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }: StepProps) {
   const set = (key: keyof EvalFormData) =>
@@ -25,6 +34,12 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
     if (!f || !v) return null;
     return ((v / f) * 100).toFixed(2) + "%";
   }, [data.tiktok_er_pct, data.tiktok_followers, data.tiktok_avg_views]);
+
+  const reachBonus = useMemo(() => {
+    const subs = parseFloat(data.youtube_subscribers) || 0;
+    const aud  = parseFloat(data.youtube_monthly_audience) || 0;
+    return { bonus: youtubeReachBonus(subs, aud, p2?.sub_scores.YouTube ?? 0), subs, aud };
+  }, [data.youtube_subscribers, data.youtube_monthly_audience, p2]);
 
   const viralSignal = useMemo(() => {
     const f = parseFloat(data.tiktok_followers) || 0;
@@ -84,12 +99,10 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
             It is <strong>not</strong> used for scoring; enter the Chartmetric ER above for an accurate TikTok score.
           </p>
         )}
-        {parseFloat(data.tiktok_followers) < 15_000 && data.tiktok_followers && (
-          <p className="mt-2 text-xs text-amber-600">⚠ Under 15K followers — TikTok score capped at 1</p>
-        )}
-        {parseFloat(data.tiktok_followers) >= 15_000 && parseFloat(data.tiktok_followers) < 50_000 && (
-          <p className="mt-2 text-xs text-amber-600">⚠ 15–50K followers — TikTok score capped at 3</p>
-        )}
+        {p2?.tiktok_er_tier && data.tiktok_followers && (() => {
+          const n = tierNote(p2.tiktok_er_tier, "followers", "TikTok");
+          return <p className={`mt-2 text-xs ${n.warn ? "text-amber-600" : "text-gray-500"}`}>{n.text}</p>;
+        })()}
         {viralSignal && (
           <p className="mt-2 rounded-lg bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700">
             ⚡ TikTok Viral Signal detected: {(viralSignal.avgViews / 1000).toFixed(0)}K avg views on {(viralSignal.followers / 1000).toFixed(0)}K followers — P4 bonus +{viralSignal.bonus.toFixed(1)} will apply
@@ -140,9 +153,44 @@ export default function Step6TikTokYouTube({ data, onChange, csvFilled, errors }
             onChange={set("youtube_er_pct")}
             placeholder="Enter as 2.5, not 0.025"
           />
+          <Input
+            label="Monthly Audience"
+            type="number"
+            min={0}
+            value={data.youtube_monthly_audience}
+            onChange={set("youtube_monthly_audience")}
+            placeholder="From Chartmetric YouTube tab"
+            hint="Feeds the P4 YouTube Reach bonus (500K+ subscribers with a YouTube score of 1–2)"
+            csvFilled={csvFilled.has("youtube_monthly_audience")}
+          />
+          <Input
+            label="Avg Likes per Video"
+            type="number"
+            min={0}
+            value={data.youtube_avg_likes}
+            onChange={set("youtube_avg_likes")}
+            placeholder="Average Likes per Video from Chartmetric"
+            hint="For reference only — not scored"
+            csvFilled={csvFilled.has("youtube_avg_likes")}
+          />
         </div>
+        {p2?.youtube_er_tier && data.youtube_subscribers && (() => {
+          const n = tierNote(p2.youtube_er_tier, "subscribers", "YouTube");
+          return <p className={`mt-2 text-xs ${n.warn ? "text-amber-600" : "text-gray-500"}`}>{n.text}</p>;
+        })()}
+        {p2?.youtube_floor_applied && (
+          <p className="mt-2 text-xs text-[#001489]">
+            Subscriber floor: over {(YOUTUBE_SUBSCRIBER_FLOOR_MIN / 1000).toFixed(0)}K subscribers — YouTube score raised to 2 so it stays in P2
+          </p>
+        )}
+        {reachBonus.bonus > 0 && (
+          <p className="mt-2 rounded-lg bg-[#001489]/5 px-3 py-2 text-xs font-medium text-[#001489]">
+            YouTube Reach: {(reachBonus.aud / 1_000_000).toFixed(1)}M monthly audience on {(reachBonus.subs / 1_000_000).toFixed(1)}M subscribers — P4 bonus +{reachBonus.bonus.toFixed(2)} will apply
+          </p>
+        )}
         <p className="mt-2 text-xs text-gray-500">
           Semi-optional: if score is 0–1, YouTube is excluded from the weighted average and its weight is redistributed.
+          Channels over 500K subscribers can't score below 2.
         </p>
       </section>
     </div>

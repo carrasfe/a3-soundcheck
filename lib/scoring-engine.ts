@@ -106,6 +106,7 @@ export interface ScoringInputs {
   tiktok_er_pct?: number;         // Chartmetric native engagement rate %, entered directly
   youtube_subscribers: number;
   youtube_er_pct?: number;        // engagement rate % entered directly (e.g. 2.5 means 2.5%)
+  youtube_monthly_audience?: number | null; // Chartmetric monthly audience — feeds the P4 YouTube Reach bonus only
 
   // ── Pillar 3 ──
   store_quality: number;          // 1–5 manual
@@ -132,11 +133,16 @@ export interface PillarBreakdown {
 
 /** A listener/follower-size band used to scale genre thresholds at scale. */
 export interface MetricTier {
-  tier: number;             // 1 (smallest) – 5 (largest)
+  tier: number;             // 1 (smallest) – N (largest)
   range_label: string;      // e.g. "250K-1M"
   multiplier: number;       // threshold multiplier applied for this tier
   mode: "capped" | "baseline" | "adjusted";
   cap_score?: number;       // only present when mode === "capped"
+}
+
+export interface P4Bonuses {
+  tiktok_viral: number;
+  youtube_reach: number;
 }
 
 /** Result of checking the Spotify YoY absolute-listener-gain floor. */
@@ -160,10 +166,16 @@ export interface ScoringResult {
     youtube_excluded: boolean;
     fcr_tier: MetricTier;
     ig_er_tier: MetricTier;
+    tiktok_er_tier: MetricTier;
+    youtube_er_tier: MetricTier;
+    /** true when the 500K+ subscriber floor raised the YouTube score to 2 */
+    youtube_floor_applied: boolean;
   };
   p3: PillarBreakdown;
   p4: PillarBreakdown & {
     yoy_floor: YoyFloorInfo;
+    /** Individual P4 bonuses; `bonus` is their sum (final score capped at 5). */
+    bonuses: P4Bonuses;
   };
   total_score: number;
   revenue_tier: "PREMIUM" | "HIGH" | "STANDARD" | "LOW";
@@ -320,6 +332,38 @@ const IG_ER_FOLLOWER_TIERS: TierBand[] = [
   { max: Infinity,     range_label: "500K+",       multiplier: 0.4, mode: "adjusted" },
 ];
 
+// TikTok ER (Chartmetric native) thresholds scale down for big accounts —
+// engagement per view naturally falls as follower count grows.
+const TIKTOK_ER_FOLLOWER_TIERS: TierBand[] = [
+  { max: 15_000,    range_label: "<15K",      multiplier: 1.0,  mode: "capped",   cap_score: 1 },
+  { max: 50_000,    range_label: "15K-50K",   multiplier: 1.0,  mode: "capped",   cap_score: 3 },
+  { max: 200_000,   range_label: "50K-200K",  multiplier: 1.0,  mode: "baseline" },
+  { max: 500_000,   range_label: "200K-500K", multiplier: 0.6,  mode: "adjusted" },
+  { max: 1_000_000, range_label: "500K-1M",   multiplier: 0.4,  mode: "adjusted" },
+  { max: Infinity,  range_label: "1M+",       multiplier: 0.25, mode: "adjusted" },
+];
+
+// YouTube ER thresholds (genre-based) scale down for big channels.
+const YOUTUBE_ER_SUBSCRIBER_TIERS: TierBand[] = [
+  { max: 5_000,     range_label: "<5K",       multiplier: 1.0, mode: "capped",   cap_score: 1 },
+  { max: 50_000,    range_label: "5K-50K",    multiplier: 1.0, mode: "capped",   cap_score: 3 },
+  { max: 200_000,   range_label: "50K-200K",  multiplier: 1.0, mode: "baseline" },
+  { max: 1_000_000, range_label: "200K-1M",   multiplier: 0.5, mode: "adjusted" },
+  { max: Infinity,  range_label: "1M+",       multiplier: 0.2, mode: "adjusted" },
+];
+
+/** Above this many subscribers YouTube can't score below 2 (so it isn't excluded from P2). */
+export const YOUTUBE_SUBSCRIBER_FLOOR_MIN = 500_000;
+const YOUTUBE_SUBSCRIBER_FLOOR_SCORE = 2;
+
+export function getTikTokErFollowerTier(followers: number): MetricTier {
+  return resolveTier(followers, TIKTOK_ER_FOLLOWER_TIERS);
+}
+
+export function getYouTubeErSubscriberTier(subscribers: number): MetricTier {
+  return resolveTier(subscribers, YOUTUBE_ER_SUBSCRIBER_TIERS);
+}
+
 export function getFcrListenerTier(monthlyListeners: number): MetricTier {
   return resolveTier(monthlyListeners, FCR_LISTENER_TIERS);
 }
@@ -342,6 +386,23 @@ export function formatFcrTierLabel(fcrPct: number, tier: MetricTier): string {
 /** e.g. "IG ER 1.5% (Tier 4: 200K-500K adjusted)" */
 export function formatIgErTierLabel(erPct: number, tier: MetricTier): string {
   return `IG ER ${erPct.toFixed(1)}% (Tier ${tier.tier}: ${tier.range_label}${tierSuffix(tier)})`;
+}
+
+function rangeTierSuffix(tier: MetricTier): string {
+  if (tier.mode === "capped")   return " — capped at " + tier.cap_score;
+  if (tier.mode === "adjusted") return " adjusted";
+  return "";
+}
+
+/** e.g. "TikTok ER 0.45% (Tier: 500K-1M adjusted)" */
+export function formatTikTokErTierLabel(erPct: number, tier: MetricTier): string {
+  return `TikTok ER ${erPct.toFixed(2)}% (Tier: ${tier.range_label}${rangeTierSuffix(tier)})`;
+}
+
+/** e.g. "YouTube ER 0.06% (Tier: 1M+ adjusted)" — with the subscriber floor noted when it applied */
+export function formatYouTubeErTierLabel(erPct: number, tier: MetricTier, floorApplied = false): string {
+  const floor = floorApplied ? `; floor ${YOUTUBE_SUBSCRIBER_FLOOR_SCORE} for 500K+ subs` : "";
+  return `YouTube ER ${erPct.toFixed(2)}% (Tier: ${tier.range_label}${rangeTierSuffix(tier)}${floor})`;
 }
 
 // ─── Spotify YoY absolute-gain floor ──────────────────────────────────────────
@@ -669,16 +730,22 @@ function discordBonus(members?: number | null): number {
   return 0.30;
 }
 
-// Chartmetric's native TikTok ER (engagement per view) — a platform-normalized
-// metric, so unlike FCR/IG ER it isn't scaled by listener/follower size or by
-// audience demographics; only the follower gate below still applies.
+// Chartmetric's native TikTok ER (engagement per view). Not scaled by
+// audience demographics; thresholds scale by follower tier (see
+// TIKTOK_ER_FOLLOWER_TIERS): small accounts are capped, big ones adjusted down.
 const TIKTOK_ER_THRESHOLDS: [number, number, number, number] = [1, 3, 6, 10];
+
+/** t × multiplier, rounded so an ER typed exactly at a threshold (e.g. 1.2% = 3 × 0.4) isn't lost to float error. */
+function scaleThreshold(t: number, multiplier: number): number {
+  return Math.round(t * multiplier * 1e6) / 1e6;
+}
 
 function scoreTikTokEr(followers: number, erPct?: number): number {
   if (erPct === undefined || erPct === null) return 0;
 
-  const maxScore = followers < 15_000 ? 1 : followers < 50_000 ? 3 : 5;
-  const [t1, t2, t3, t4] = TIKTOK_ER_THRESHOLDS;
+  const tier = getTikTokErFollowerTier(followers);
+  const maxScore = tier.mode === "capped" && tier.cap_score !== undefined ? tier.cap_score : 5;
+  const [t1, t2, t3, t4] = TIKTOK_ER_THRESHOLDS.map((t) => scaleThreshold(t, tier.multiplier));
 
   let score: number;
   if (erPct < t1) score = 1;
@@ -690,11 +757,12 @@ function scoreTikTokEr(followers: number, erPct?: number): number {
   return Math.min(score, maxScore);
 }
 
-function scoreYouTubeEr(genre: Genre, subs: number, erPct?: number): number {
-  if (erPct === undefined || erPct === null) return 0;
-  if (subs === 0) return 0;
+function scoreYouTubeEr(genre: Genre, subs: number, erPct?: number): { score: number; floorApplied: boolean } {
+  if (erPct === undefined || erPct === null) return { score: 0, floorApplied: false };
+  if (subs === 0) return { score: 0, floorApplied: false };
 
-  const maxScore = subs < 5_000 ? 1 : subs < 50_000 ? 3 : 5;
+  const tier = getYouTubeErSubscriberTier(subs);
+  const maxScore = tier.mode === "capped" && tier.cap_score !== undefined ? tier.cap_score : 5;
 
   let thresholds: [number, number, number, number];
   if (YT_HIGH_GENRES.has(genre)) {
@@ -705,14 +773,23 @@ function scoreYouTubeEr(genre: Genre, subs: number, erPct?: number): number {
     thresholds = [0.3, 1.0, 2.5, 4.5];
   }
 
-  let score: number;
-  if (erPct < thresholds[0]) score = 1;
-  else if (erPct < thresholds[1]) score = 2;
-  else if (erPct < thresholds[2]) score = 3;
-  else if (erPct < thresholds[3]) score = 4;
-  else score = 5;
+  const [t1, t2, t3, t4] = thresholds.map((t) => scaleThreshold(t, tier.multiplier));
 
-  return Math.min(score, maxScore);
+  let score: number;
+  if (erPct < t1) score = 1;
+  else if (erPct < t2) score = 2;
+  else if (erPct < t3) score = 3;
+  else if (erPct < t4) score = 4;
+  else score = 5;
+  score = Math.min(score, maxScore);
+
+  // Subscriber floor: a 500K+ channel has real reach even when ER is low, so it
+  // can't drop to 1 (which would exclude YouTube from P2). Only applies once an
+  // ER has been entered — a missing ER still means "no data".
+  if (subs > YOUTUBE_SUBSCRIBER_FLOOR_MIN && score < YOUTUBE_SUBSCRIBER_FLOOR_SCORE) {
+    return { score: YOUTUBE_SUBSCRIBER_FLOOR_SCORE, floorApplied: true };
+  }
+  return { score, floorApplied: false };
 }
 
 function tiktokAgeAdjustedWeight(baseWeight: number, demo?: DemographicsInput): number {
@@ -727,6 +804,9 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   sub_weights: Record<string, number>;
   tiktok_age_adjusted_weight: number;
   youtube_excluded: boolean;
+  tiktok_er_tier: MetricTier;
+  youtube_er_tier: MetricTier;
+  youtube_floor_applied: boolean;
   fcr_tier: MetricTier;
   ig_er_tier: MetricTier;
 } {
@@ -740,10 +820,13 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
   const redditScore  = scoreReddit(inputs.genre, inputs.reddit_members, inputs.demographics);
   const merchScore   = inputs.merch_sentiment;
   const tiktokScore  = scoreTikTokEr(inputs.tiktok_followers, inputs.tiktok_er_pct);
-  const ytScore      = scoreYouTubeEr(inputs.genre, inputs.youtube_subscribers, inputs.youtube_er_pct);
+  const yt           = scoreYouTubeEr(inputs.genre, inputs.youtube_subscribers, inputs.youtube_er_pct);
+  const ytScore      = yt.score;
 
   const fcrTier   = getFcrListenerTier(inputs.spotify_monthly_listeners);
   const igErTier  = getIgErFollowerTier(inputs.ig_followers);
+  const ttErTier  = getTikTokErFollowerTier(inputs.tiktok_followers);
+  const ytErTier  = getYouTubeErSubscriberTier(inputs.youtube_subscribers);
 
   // TikTok age-adjusted weight
   const ttAdjWeight  = tiktokAgeAdjustedWeight(wTikTok, inputs.demographics);
@@ -805,6 +888,9 @@ function computeP2(inputs: ScoringInputs): PillarBreakdown & {
     youtube_excluded: ytExcluded,
     fcr_tier: fcrTier,
     ig_er_tier: igErTier,
+    tiktok_er_tier: ttErTier,
+    youtube_er_tier: ytErTier,
+    youtube_floor_applied: yt.floorApplied,
     weighted_score: weighted,
     bonus: totalBonus,
     final_score: weighted + totalBonus,
@@ -931,7 +1017,37 @@ export function tiktokViralBonus(followers: number, avgViews?: number): number {
   return avgViews >= 50_000 ? 1.0 : 0.5;
 }
 
-function computeP4(inputs: ScoringInputs): PillarBreakdown & { yoy_floor: YoyFloorInfo } {
+/**
+ * YouTube Reach (P4): a big channel whose ER scores low still has real reach.
+ * Only for 500K+ subscribers whose YouTube ER score is 1 or 2 (a score of 3+
+ * already rewards the channel in P2; 0 = no ER entered). Scaled by
+ * Chartmetric monthly audience.
+ */
+export function youtubeReachBonus(subscribers: number, monthlyAudience: number | null | undefined, youtubeErScore: number): number {
+  if (youtubeErScore !== 1 && youtubeErScore !== 2) return 0;
+  if (!subscribers || subscribers <= YOUTUBE_SUBSCRIBER_FLOOR_MIN) return 0;
+  const a = typeof monthlyAudience === "number" && Number.isFinite(monthlyAudience) ? monthlyAudience : 0;
+  if (a >= 20_000_000) return 1.0;
+  if (a >=  5_000_000) return 0.5;
+  if (a >=  1_000_000) return 0.25;
+  return 0;
+}
+
+/**
+ * P4 bonus rows for display ("TikTok Viral Signal +0.50", "YouTube Reach +0.25").
+ * Results saved before bonuses were split only have the combined `bonus`, which
+ * could only have been the TikTok Viral Signal.
+ */
+export function p4BonusRows(p4: { bonus?: number; bonuses?: P4Bonuses } | undefined): { label: string; value: number }[] {
+  if (!p4) return [];
+  if (!p4.bonuses) return (p4.bonus ?? 0) > 0 ? [{ label: "TikTok Viral Signal", value: p4.bonus! }] : [];
+  return [
+    { label: "TikTok Viral Signal", value: p4.bonuses.tiktok_viral },
+    { label: "YouTube Reach", value: p4.bonuses.youtube_reach },
+  ].filter((b) => b.value > 0);
+}
+
+function computeP4(inputs: ScoringInputs, youtubeErScore: number): PillarBreakdown & { yoy_floor: YoyFloorInfo; bonuses: P4Bonuses } {
   let yoyScore = scoreSpotifyYoY(inputs.spotify_yoy_pct, inputs.spotify_monthly_listeners);
 
   // Album cycle override: boost by 1 if score < 3, max 3
@@ -959,7 +1075,9 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown & { yoy_floor: YoyFlo
     playlistScore * 0.10;
 
   const viralBonus = tiktokViralBonus(inputs.tiktok_followers, inputs.tiktok_avg_views);
-  const finalScore = Math.min(5, weighted + viralBonus);
+  const reachBonus = youtubeReachBonus(inputs.youtube_subscribers, inputs.youtube_monthly_audience, youtubeErScore);
+  const totalBonus = viralBonus + reachBonus;
+  const finalScore = Math.min(5, weighted + totalBonus);
 
   return {
     sub_scores: {
@@ -970,9 +1088,10 @@ function computeP4(inputs: ScoringInputs): PillarBreakdown & { yoy_floor: YoyFlo
       playlist: playlistScore,
     },
     weighted_score: weighted,
-    bonus: viralBonus > 0 ? viralBonus : undefined,
+    bonus: totalBonus > 0 ? totalBonus : undefined,
     final_score: finalScore,
     yoy_floor: yoyFloor,
+    bonuses: { tiktok_viral: viralBonus, youtube_reach: reachBonus },
   };
 }
 
@@ -1021,7 +1140,7 @@ export function calculateScore(inputs: ScoringInputs): ScoringResult {
   const p1 = computeP1(inputs);
   const p2 = computeP2(inputs);
   const p3 = computeP3(inputs);
-  const p4 = computeP4(inputs);
+  const p4 = computeP4(inputs, p2.sub_scores.YouTube);
 
   const total =
     p1.final_score * wp1 +

@@ -101,6 +101,8 @@ export interface EvalFormData {
   tiktok_er_pct: string;
   youtube_subscribers: string;
   youtube_er_pct: string;
+  youtube_monthly_audience: string; // feeds the P4 YouTube Reach bonus
+  youtube_avg_likes: string;        // display only — not scored
 
   // ── Step 5: E-Commerce ──
   store_quality: string;
@@ -138,7 +140,7 @@ export const INITIAL_FORM_DATA: EvalFormData = {
   spotify_monthly_listeners: "", fan_concentration_ratio: "", p2_fan_identity: "",
   ig_followers: "", ig_er_pct: "", reddit_members: "", discord_members: "",
   merch_sentiment: "", tiktok_followers: "", tiktok_avg_views: "", tiktok_er_pct: "",
-  youtube_subscribers: "", youtube_er_pct: "",
+  youtube_subscribers: "", youtube_er_pct: "", youtube_monthly_audience: "", youtube_avg_likes: "",
   store_quality: "", merch_range: "", price_point_highest: "", d2c_level: "",
   spotify_yoy_pct: "", show_album_cycle: false, album_cycle_override: "",
   venue_progression: "", ig_90day_gain: "", press_score: "", playlist_score: "",
@@ -267,6 +269,7 @@ export function buildScoringInputs(fd: EvalFormData): ScoringInputs | null {
     tiktok_er_pct: n(fd.tiktok_er_pct),
     youtube_subscribers: nOr(fd.youtube_subscribers, 0),
     youtube_er_pct: n(fd.youtube_er_pct),
+    youtube_monthly_audience: n(fd.youtube_monthly_audience),
     store_quality: nOr(fd.store_quality, 1),
     merch_range: (nOr(fd.merch_range, 1) as MerchRangeOption),
     price_point_highest: n(fd.price_point_highest),
