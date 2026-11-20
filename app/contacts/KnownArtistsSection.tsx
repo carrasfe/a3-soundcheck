@@ -4,67 +4,10 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import type { KnownArtistRow } from "./actions";
 import { addKnownArtists, removeKnownArtist } from "./actions";
+import { parseRosterPaste } from "@/lib/roster-paste";
 
-// ─── Roster parser ─────────────────────────────────────────────────────────────
-//
-// Two modes, chosen by whether the pasted text contains any metric lines:
-//
-// CHARTMETRIC MODE (text has metrics) — position-based state machine:
-//   Artist Name      ← first non-metric line after a metric (or at start)
-//   Genre Tag        ← subsequent non-metric lines (skipped)
-//   15.3M            ← metric → "expect_artist" state
-//   4.2M             ← metric
-//   Next Artist Name ← first non-metric after metrics → artist
-//
-// PLAIN LIST MODE (no metrics) — every line is treated as an artist name.
-//
-// In both modes a single-word line whose lowercase form matches a common genre
-// term is skipped (catches edge cases like a bare "Rock" or "Soul" line).
-
-const METRIC_RE = /^#?[\d,.][\d,.]*\s*[kKmMbB]?$/;
-
-const GENERIC_GENRE_WORDS = new Set([
-  "rock", "pop", "indie", "folk", "jazz", "metal", "punk", "soul",
-  "country", "blues", "reggae", "dance", "electronic", "classical",
-  "latin", "alternative", "emo", "grunge", "ambient", "gospel",
-  "worship", "rap", "funk", "house", "techno", "ska", "swing",
-]);
-
-function isGenericGenreWord(line: string): boolean {
-  return !line.includes(" ") && line.length < 15 && GENERIC_GENRE_WORDS.has(line.toLowerCase());
-}
-
-function parseRoster(text: string): string[] {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const hasMetrics = lines.some((l) => METRIC_RE.test(l));
-  const seen = new Set<string>();
-  const artists: string[] = [];
-
-  if (!hasMetrics) {
-    // Plain list: every line is an artist name
-    for (const line of lines) {
-      if (!seen.has(line) && !isGenericGenreWord(line)) {
-        seen.add(line);
-        artists.push(line);
-      }
-    }
-    return artists;
-  }
-
-  // Chartmetric format: position-based
-  let state: "expect_artist" | "in_genres" = "expect_artist";
-  for (const line of lines) {
-    if (METRIC_RE.test(line)) { state = "expect_artist"; continue; }
-    if (state === "expect_artist") {
-      if (isGenericGenreWord(line)) continue; // skip stray genre word, stay in expect_artist
-      if (!seen.has(line)) { seen.add(line); artists.push(line); }
-      state = "in_genres";
-    }
-    // in_genres: skip
-  }
-
-  return artists;
-}
+// Roster parsing (Rostr "See All", Chartmetric, or a plain list) lives in
+// lib/roster-paste.ts so it's shared with Quick Research and unit-tested.
 
 // ─── Paste Roster Modal ────────────────────────────────────────────────────────
 
@@ -82,7 +25,7 @@ function PasteRosterModal({
   const [addError, setAddError] = useState<string | null>(null);
 
   function handleParse() {
-    const names = parseRoster(rawText);
+    const names = parseRosterPaste(rawText);
     setParsed(names);
     setChecked(new Set(names));
   }
@@ -138,13 +81,14 @@ function PasteRosterModal({
           {!parsed ? (
             <>
               <p className="text-sm text-gray-500">
-                Paste a roster copied from Chartmetric or any source. Genre tags and
-                listener counts will be filtered out automatically.
+                Paste a roster copied from Rostr, Chartmetric or any source. Genre tags,
+                listener/follower counts and &ldquo;On tour&rdquo; are filtered out automatically —
+                review the list before adding.
               </p>
               <textarea
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
-                placeholder={"Paste artist roster from Chartmetric or any list…\n\nExample:\nArctic Monkeys\nAlternative\nIndie Rock\n15.3M\n4.2M\nRoyal Blood\nRock\n858k\n413k"}
+                placeholder={"Paste artist roster from Rostr, Chartmetric or any list…\n\nExample:\nArctic Monkeys\nAlternative\nIndie Rock\n15.3M\n4.2M\nRoyal Blood\nRock\n858k\n413k"}
                 rows={12}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono outline-none resize-y focus:border-[#C8102E] focus:ring-1 focus:ring-[#C8102E]"
               />

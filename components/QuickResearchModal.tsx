@@ -5,6 +5,7 @@ import { VALID_GENRES } from "@/app/evaluations/new/types";
 import { createResearchDrafts } from "@/app/research/actions";
 import type { DraftRow } from "@/app/page";
 import { buildResearchPrompt, type ResearchArtist } from "@/lib/research-prompt";
+import { parseRosterPaste } from "@/lib/roster-paste";
 
 const MAX_ARTISTS = 10; // keep in sync with app/research/actions.ts
 const DEFAULT_GENRE = "Rock / Alt / Indie";
@@ -17,11 +18,14 @@ const normName = (s: string) => s.trim().toLowerCase();
 const toGenre = (g: string | null | undefined) =>
   VALID_GENRES.find((v) => v.toLowerCase() === (g ?? "").trim().toLowerCase()) ?? DEFAULT_GENRE;
 
-/** Split pasted text into names: one per line, or comma-separated when it's a single line. */
+/**
+ * Split pasted text into names. Multi-line pastes go through the roster parser
+ * (skips Rostr/Chartmetric genre tags, listener counts and "On tour");
+ * a single line is split on commas.
+ */
 function splitNames(text: string): string[] {
-  const lines = text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-  const parts = lines.length > 1 ? lines : text.split(",");
-  return parts.map((s) => s.trim()).filter(Boolean);
+  if (/[\r\n]/.test(text.trim())) return parseRosterPaste(text);
+  return text.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -127,9 +131,16 @@ export default function QuickResearchModal({ drafts, onClose, onDone }: Props) {
     if (rows.find((r) => r.key === key)?.draftId) return; // draft rows are read-only
     const text = e.clipboardData.getData("text");
     if (!/[\n,]/.test(text)) return; // plain single name — let the input handle it
+    const multiLine = /[\r\n]/.test(text.trim());
     const names = splitNames(text);
-    if (names.length <= 1) return;
+    // A single comma-free name: let the input take it as typed. A multi-line paste
+    // always goes through the parser, even if only one artist survives.
+    if (!multiLine && names.length <= 1) return;
     e.preventDefault();
+    if (names.length === 0) {
+      setNotice("No artist names found in the pasted text.");
+      return;
+    }
     setRows((rs) => {
       const i = rs.findIndex((r) => r.key === key);
       const current = rs[i];
