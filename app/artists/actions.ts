@@ -177,3 +177,69 @@ export async function updateArtistFlags(
   revalidatePath("/artists/[id]", "layout");
   return { error: null };
 }
+
+// ─── Link team (artist detail "Link now" modal) ───────────────
+
+export type TeamSelection =
+  | { kind: "existing"; id: string }
+  | { kind: "new"; name: string; org: string };
+
+/**
+ * Link managers / agents to an artist from the Team panel's "Link now" modal.
+ * Existing people are linked as-is; new people are created (their company /
+ * agency found case-insensitively or created). Additive and idempotent —
+ * existing links are never removed or duplicated.
+ */
+export async function linkArtistTeam(
+  artistId: string,
+  selection: { managers: TeamSelection[]; agents: TeamSelection[] }
+): Promise<{ error: string | null; linked: number }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated", linked: 0 };
+
+  const { findOrCreateOrg, findOrCreatePerson, linkArtist } = await import("@/lib/mcp/contacts");
+  const sb = supabase as unknown as Parameters<typeof findOrCreateOrg>[0];
+
+  try {
+    const resolve = async (
+      items: TeamSelection[], kind: "manager" | "agent"
+    ): Promise<{ id: string; role: string }[]> => {
+      const out: { id: string; role: string }[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        let id: string;
+        if (item.kind === "existing") {
+          id = item.id;
+        } else {
+          const name = item.name.trim();
+          if (!name) continue;
+          const orgName = item.org.trim();
+          const org = orgName
+            ? await findOrCreateOrg(sb, kind === "manager" ? "management_companies" : "agencies", orgName)
+            : null;
+          const person = await findOrCreatePerson(
+            sb, kind === "manager" ? "managers" : "agents",
+            kind === "manager" ? "management_company_id" : "agency_id",
+            name, org?.id ?? null
+          );
+          id = person.id;
+        }
+        out.push({ id, role: kind === "manager" ? (i === 0 ? "Lead" : "Day-to-Day") : (i === 0 ? "Primary" : "Secondary") });
+      }
+      return out;
+    };
+
+    const managers = await resolve(selection.managers, "manager");
+    const agents = await resolve(selection.agents, "agent");
+    const linked =
+      (await linkArtist(sb, "artist_managers", "manager_id", artistId, managers)) +
+      (await linkArtist(sb, "artist_agents", "agent_id", artistId, agents));
+
+    revalidatePath(`/artists/${artistId}`);
+    return { error: null, linked };
+  } catch (err) {
+    const message = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+    return { error: message, linked: 0 };
+  }
+}

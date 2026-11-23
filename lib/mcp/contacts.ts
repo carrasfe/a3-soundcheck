@@ -66,7 +66,7 @@ export function hasContactFields(inputs: ContactInputs): boolean {
 
 // ── Lookups ──────────────────────────────────────────────────
 
-async function findOrCreateOrg(sb: SB, table: "management_companies" | "agencies", name: string) {
+export async function findOrCreateOrg(sb: SB, table: "management_companies" | "agencies", name: string) {
   const { data, error } = await sb.from(table).select("id, name").ilike("name", escapeLike(name)).limit(1);
   if (error) throw error;
   if (data?.[0]) return { id: data[0].id as string, name: data[0].name as string, status: "existing" as Status };
@@ -79,7 +79,7 @@ async function findOrCreateOrg(sb: SB, table: "management_companies" | "agencies
  * Find a person by name at an org; reuse an org-less record with the same name
  * (and attach it to the org); otherwise create one.
  */
-async function findOrCreatePerson(
+export async function findOrCreatePerson(
   sb: SB, table: "managers" | "agents", orgCol: "management_company_id" | "agency_id",
   name: string, orgId: string | null
 ) {
@@ -106,7 +106,7 @@ async function findOrCreatePerson(
 }
 
 /** Insert artist↔person links that don't exist yet. Returns how many were added. */
-async function linkArtist(
+export async function linkArtist(
   sb: SB, table: "artist_managers" | "artist_agents", personCol: "manager_id" | "agent_id",
   artistId: string, people: { id: string; role: string }[]
 ): Promise<number> {
